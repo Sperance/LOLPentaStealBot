@@ -1,6 +1,5 @@
 package ru.descend.bot
 
-import com.google.gson.Gson
 import dev.kord.common.annotation.KordPreview
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
@@ -12,14 +11,12 @@ import me.jakejmattson.discordkt.dsl.ListenerException
 import me.jakejmattson.discordkt.dsl.bot
 import ru.descend.bot.data.Configuration
 import java.awt.Color
-import java.io.FileWriter
-import java.io.PrintWriter
 
 @KordPreview
 fun main() {
     //Get the bot token from the command line (or your preferred way).
     //Start the bot and set configuration options.
-    bot("MTE2NzE0MTUxNzYzMTE2ODU0Mg.GdmE_M.CWl4aktgkUs4lj0OLBfUCzYKtOB-mjAmW0-bos") {
+    bot(catchToken()) {
 
 //        val configuration = data("config/config.json") { BotConfiguration() }
 
