@@ -8,6 +8,7 @@ import ru.descend.bot.data.Configuration
 import me.jakejmattson.discordkt.extensions.descriptor
 import java.io.File
 import java.util.Base64
+import java.util.Random
 
 fun User.lowDescriptor(): String {
     return descriptor().split(" :: ")[1]
@@ -41,6 +42,19 @@ suspend fun <T> Flow<T>.asList(): ArrayList<T> {
 fun User.isBotOwner(): Boolean {
     return id == Configuration.botOwnerId
 }
+
+fun getRandom(): Random {
+    RAND_INT_SEED++
+    return Random(System.currentTimeMillis() + RAND_INT_SEED)
+}
+
+private var RAND_INT_SEED = 1
+
+fun getRandom(maxPos: Int) : Int {
+    return getRandom().nextInt(maxPos)
+}
+
+fun User.toStringUID() = id.value.toString()
 
 suspend fun User.checkRoleForName(guild: Guild, name: String): Boolean {
     var result = false

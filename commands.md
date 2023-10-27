@@ -23,11 +23,9 @@
 | stats    |           | Show the all list of Users with Pentastill`s |
 
 ## Context
-| Commands      | Arguments | Description                         |
-|---------------|-----------|-------------------------------------|
-| AddPentaKill  | User      | Write a PentaKill for current user  |
-| AddPentaSteal | User      | Write a Pentasteal for current user |
-| message1      | Message   | Do it                               |
+| Commands | Arguments | Description |
+|----------|-----------|-------------|
+| message1 | Message   | Do it       |
 
 ## Utility
 | Commands | Arguments | Description                |

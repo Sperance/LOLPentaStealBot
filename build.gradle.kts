@@ -14,13 +14,15 @@ repositories {
 dependencies {
     implementation("me.jakejmattson", "DiscordKt", "0.23.4")
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("junit:junit:4.12")
+    implementation("org.junit.jupiter:junit-jupiter:5.8.1")
+
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation(kotlin("test"))
 }
 
 tasks {
     compileKotlin {
-        kotlinOptions {
-            freeCompilerArgs += "-Xopt-in=kotlin.RequiresOptIn"
-        }
         dependsOn("writeProperties")
     }
 
@@ -31,4 +33,8 @@ tasks {
         property("url", "https://github.com/DiscordKt/ExampleBot")
         setOutputFile("src/main/resources/bot.properties")
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
