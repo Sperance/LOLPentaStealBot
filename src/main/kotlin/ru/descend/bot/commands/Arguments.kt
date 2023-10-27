@@ -7,6 +7,7 @@ import dev.kord.core.entity.User
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.extensions.descriptor
+import ru.descend.bot.MAIN_ROLE_NAME
 import ru.descend.bot.checkPermission
 import ru.descend.bot.checkRoleForName
 import ru.descend.bot.data.Configuration
@@ -15,7 +16,7 @@ import ru.descend.bot.savedObj.Person
 
 
 private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
-    if (!author.checkRoleForName(guild, "Пентастилька") && !author.checkPermission(guild, Permission.Administrator) && !author.isBotOwner()){
+    if (!author.checkRoleForName(guild, MAIN_ROLE_NAME) && !author.checkPermission(guild, Permission.Administrator) && !author.isBotOwner()){
         return false
     }
     return true
@@ -39,10 +40,10 @@ fun arguments() = commands("Arguments") {
                 return@execute
             }
 
-            val builder = GsonBuilder()
-            val gson = builder.create()
-            val obj = Person.create(userWho)
-            println(gson.toJson(obj))
+//            val builder = GsonBuilder()
+//            val gson = builder.create()
+//            val obj = Person.create(userWho)
+//            println(gson.toJson(obj))
 
             respond("Okay")
         }
@@ -51,9 +52,6 @@ fun arguments() = commands("Arguments") {
     slash("pstill", "Add a user who still Pentakill :D"){
         execute(UserArg("Who"), UserArg("FromWhom").optional{ Configuration.getBotAsUser(kord = discord.kord) } ){
             val (userWho, userFromWhom) = args
-
-            println("WHO: ${userWho.descriptor()}")
-            println("FromWhom: ${userFromWhom.descriptor()}")
 
             if (!checkCommandsAccess(guild, author)){
                 respond("У вас нет доступа к данной команде. Обратитесь к Администратору")

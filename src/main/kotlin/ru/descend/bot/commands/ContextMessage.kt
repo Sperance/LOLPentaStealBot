@@ -1,7 +1,6 @@
 package ru.descend.bot.commands
 
 import me.jakejmattson.discordkt.commands.commands
-import ru.descend.bot.lowDescriptor
 
 //Вызывается по сообщению в дискорде с чата справа сверху из 3х точек - Приложения
 fun contextMessage() = commands("Context") {
