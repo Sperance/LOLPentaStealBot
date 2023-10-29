@@ -1,7 +1,5 @@
 package ru.descend.bot.lolapi
 
-import ChampionsDTO
-
 object LeagueMainObject {
 
     private val leagueApi = LeagueApi("RGAPI-a3c4d742-818d-40c9-9ec3-01fe2c426757", LeagueApi.RU)

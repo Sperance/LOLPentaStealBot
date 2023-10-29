@@ -11,8 +11,7 @@ import java.io.File
 data class DataPSteal(
     var whoSteal: String,
     var fromWhomSteal: String,
-    var heroWhoSteal: String = "",
-    var heroWhomSteal: String = "",
+    var heroSteal: String = "",
 
     var date: Long = System.currentTimeMillis()
 )
@@ -48,10 +47,10 @@ class DataPerson {
         findForUUID(uid)?.pentaKills?.add(DataPKill(heroKey))
     }
 
-    fun addPentaStill(uid: String = "0", uidFrom: String = "0") {
+    fun addPentaStill(uid: String = "0", uidFrom: String = "0", heroStill: String) {
         if (uid == uidFrom) return
         val userUid = if (uid == "0") uidFrom else uid
-        findForUUID(userUid)?.pentaStills?.add(DataPSteal(whoSteal = uid, fromWhomSteal = uidFrom))
+        findForUUID(userUid)?.pentaStills?.add(DataPSteal(whoSteal = uid, fromWhomSteal = uidFrom, heroSteal = heroStill))
     }
 }
 

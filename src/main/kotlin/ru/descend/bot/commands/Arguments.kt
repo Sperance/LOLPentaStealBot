@@ -7,6 +7,8 @@ import dev.kord.core.entity.User
 import dev.kord.core.entity.interaction.AutoCompleteInteraction
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
+import me.jakejmattson.discordkt.extensions.addField
+import me.jakejmattson.discordkt.extensions.descriptor
 import me.jakejmattson.discordkt.extensions.footer
 import ru.descend.bot.MAIN_ROLE_NAME
 import ru.descend.bot.checkPermission
@@ -59,17 +61,22 @@ fun arguments() = commands("Arguments") {
             data.addPentaKill(userWho.id.value.toString(), findObjHero.key)
             writeDataFile(guild, data)
 
-            respond {
+            respondPublic {
                 title = "ПЕНТАКИЛЛ"
-                description = "Призыватель ${userWho.lowDescriptor()} состилил ЦЕЛЫХ 5 ЧУДИКОВ. Поздравляем!"
+                description = "Призыватель ${userWho.lowDescriptor()} сделал внезапную Пенту за чемпиона '$hero'. Поздравляем!"
                 footer("Всего пентакиллов: ${data.findForUUID(userWho.id.value.toString())!!.pentaKills.size}")
             }
         }
     }
 
     slash("pstill", "Add a user who still Pentakill :D"){
-        execute(UserArg("Who").optional{ Configuration.getBotAsUser(kord = discord.kord) }, UserArg("FromWhom").optional{ Configuration.getBotAsUser(kord = discord.kord) } ){
-            val (userWho, userFromWhom) = args
+        execute(
+            AutocompleteArg("hero", "За какого героя была сделана Пента", type = AnyArg, autocomplete = {
+                LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }
+            }),
+            UserArg("Who").optional{ Configuration.getBotAsUser(kord = discord.kord) },
+            UserArg("FromWhom").optional{ Configuration.getBotAsUser(kord = discord.kord) }){
+            val (heroSteal, userWho, userFromWhom) = args
 
             if (!checkCommandsAccess(guild, author)){
                 respond("У вас нет доступа к данной команде. Обратитесь к Администратору")
@@ -86,6 +93,12 @@ fun arguments() = commands("Arguments") {
                 return@execute
             }
 
+            if (heroSteal.isBlank()){
+                respond("Должен быть выбран герой, состилящий пенту")
+                return@execute
+            }
+
+            val findObjHero = LeagueMainObject.heroObjects.find { (it as InterfaceChampionBase).name == heroSteal } as InterfaceChampionBase
             val data = readDataFile(guild)
             if (userWho.isBot()) data.addPersons(Person(userFromWhom))
             else if (userFromWhom.isBot()) data.addPersons(Person(userWho))
@@ -93,20 +106,28 @@ fun arguments() = commands("Arguments") {
                 data.addPersons(Person(userWho))
                 data.addPersons(Person(userFromWhom))
             }
-            data.addPentaStill(if (userWho.isBot()) "0" else userWho.toStringUID(), if (userFromWhom.isBot()) "0" else userFromWhom.toStringUID())
+            data.addPentaStill(if (userWho.isBot()) "0" else userWho.toStringUID(), if (userFromWhom.isBot()) "0" else userFromWhom.toStringUID(), findObjHero.key)
             writeDataFile(guild, data)
 
             val description = if (userWho.isBot()) {
-                "Какой-то ноунейм состилил пенту у высокоуважаемого ${userFromWhom.lowDescriptor()}"
+                "Какой-то ноунейм за чемпиона '$heroSteal' состилил пенту у высокоуважаемого ${userFromWhom.lowDescriptor()}"
             } else if (userFromWhom.isBot()) {
-                "Красавчик ${userWho.lowDescriptor()} состилил пенту у Щегола какого-то"
+                "Красавчик ${userWho.lowDescriptor()} за чемпиона '$heroSteal' состилил пенту у Щегола какого-то"
             } else {
-                "Соболезнуем, но ${userWho.lowDescriptor()} случайно состилил пенту у ${userFromWhom.lowDescriptor()}"
+                "Соболезнуем, но ${userWho.lowDescriptor()} случайно состилил пенту за чемпиона '$heroSteal' у ${userFromWhom.lowDescriptor()}"
             }
 
-            respond {
+            val iUser = if (userWho.isBot()) userFromWhom else userWho
+            val textPStillWho = data.findForUUID(iUser.toStringUID())!!.pentaStills.filter { it.whoSteal == iUser.toStringUID() }.size
+            val textPStillWhom = data.findForUUID(iUser.toStringUID())!!.pentaStills.filter { it.fromWhomSteal == iUser.toStringUID() }.size
+
+            respondPublic {
                 title = "ПЕНТАСТИЛЛ"
                 this.description = description
+                footer {
+                    text = "Всего состилил: $textPStillWho\n" +
+                            "Всего состилено: $textPStillWhom"
+                }
             }
         }
     }
