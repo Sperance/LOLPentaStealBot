@@ -1,22 +1,26 @@
 package ru.descend.bot.commands
 
-import com.google.gson.GsonBuilder
+import InterfaceChampionBase
 import dev.kord.common.entity.Permission
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
+import dev.kord.core.entity.interaction.AutoCompleteInteraction
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
-import me.jakejmattson.discordkt.extensions.descriptor
 import me.jakejmattson.discordkt.extensions.footer
 import ru.descend.bot.MAIN_ROLE_NAME
 import ru.descend.bot.checkPermission
 import ru.descend.bot.checkRoleForName
 import ru.descend.bot.data.Configuration
+import ru.descend.bot.isBot
 import ru.descend.bot.isBotOwner
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.savedObj.Person
 import ru.descend.bot.savedObj.readDataFile
 import ru.descend.bot.savedObj.writeDataFile
+import ru.descend.bot.toStringUID
+import java.util.Arrays
 
 
 private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
@@ -26,40 +30,45 @@ private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
     return true
 }
 
-//Most of the time, you will want your commands to accept input.
-//This can be accomplished with the different ArgumentTypes.
 fun arguments() = commands("Arguments") {
-
-    slash("pkill", "Add a user who still Pentakill :D"){
-        execute(UserArg("Who")){
-            val (userWho) = args
+    slash("pkill", "Add a user who do Pentakill :D"){
+        execute(UserArg("Who"), AutocompleteArg("hero", "За какого героя была сделана Пента",
+            type = AnyArg, autocomplete = {
+                LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }
+            })) {
+            val (userWho, hero) = args
 
             if (!checkCommandsAccess(guild, author)){
                 respond("У вас нет доступа к данной команде. Обратитесь к Администратору")
                 return@execute
             }
 
-            if (userWho.isBot){
+            if (userWho.isBot()){
                 respond("Какого хрена? Бот красавчик в отличии от тебя")
                 return@execute
             }
 
+            if (!LeagueMainObject.heroNames.contains(hero)){
+                respond("Выбран чет какой-то кривой герой, попробуй еще раз")
+                return@execute
+            }
+
+            val findObjHero = LeagueMainObject.heroObjects.find { (it as InterfaceChampionBase).name == hero } as InterfaceChampionBase
             val data = readDataFile(guild)
             data.addPersons(Person(userWho))
-            data.addPentaKill(userWho.id.value.toString())
+            data.addPentaKill(userWho.id.value.toString(), findObjHero.key)
             writeDataFile(guild, data)
 
             respond {
-                title = "ПЕНТАКИЛЛЛъ"
+                title = "ПЕНТАКИЛЛ"
                 description = "Призыватель ${userWho.lowDescriptor()} состилил ЦЕЛЫХ 5 ЧУДИКОВ. Поздравляем!"
                 footer("Всего пентакиллов: ${data.findForUUID(userWho.id.value.toString())!!.pentaKills.size}")
             }
-            respond("Okay")
         }
     }
 
     slash("pstill", "Add a user who still Pentakill :D"){
-        execute(UserArg("Who"), UserArg("FromWhom").optional{ Configuration.getBotAsUser(kord = discord.kord) } ){
+        execute(UserArg("Who").optional{ Configuration.getBotAsUser(kord = discord.kord) }, UserArg("FromWhom").optional{ Configuration.getBotAsUser(kord = discord.kord) } ){
             val (userWho, userFromWhom) = args
 
             if (!checkCommandsAccess(guild, author)){
@@ -67,12 +76,38 @@ fun arguments() = commands("Arguments") {
                 return@execute
             }
 
-            if (userWho.isBot){
-                respond("Какого хрена? Бот красавчик в отличии от тебя")
+            if (userWho.isBot() && userFromWhom.isBot()){
+                respond("ОШИБКА: Хотя бы один параметр должен быть указан")
                 return@execute
             }
 
-            respond("Okay")
+            if (userWho.id == userFromWhom.id){
+                respond("Сам у себя стилишь... Извращенец. Так нельзя")
+                return@execute
+            }
+
+            val data = readDataFile(guild)
+            if (userWho.isBot()) data.addPersons(Person(userFromWhom))
+            else if (userFromWhom.isBot()) data.addPersons(Person(userWho))
+            else {
+                data.addPersons(Person(userWho))
+                data.addPersons(Person(userFromWhom))
+            }
+            data.addPentaStill(if (userWho.isBot()) "0" else userWho.toStringUID(), if (userFromWhom.isBot()) "0" else userFromWhom.toStringUID())
+            writeDataFile(guild, data)
+
+            val description = if (userWho.isBot()) {
+                "Какой-то ноунейм состилил пенту у высокоуважаемого ${userFromWhom.lowDescriptor()}"
+            } else if (userFromWhom.isBot()) {
+                "Красавчик ${userWho.lowDescriptor()} состилил пенту у Щегола какого-то"
+            } else {
+                "Соболезнуем, но ${userWho.lowDescriptor()} случайно состилил пенту у ${userFromWhom.lowDescriptor()}"
+            }
+
+            respond {
+                title = "ПЕНТАСТИЛЛ"
+                this.description = description
+            }
         }
     }
 }

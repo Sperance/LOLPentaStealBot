@@ -9,14 +9,16 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven("https://jitpack.io")
 }
 
 dependencies {
     implementation("me.jakejmattson", "DiscordKt", "0.23.4")
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.github.jr-selphius:LeagueOfLegendsAPI:1.0.0")
+
     implementation("junit:junit:4.12")
     implementation("org.junit.jupiter:junit-jupiter:5.8.1")
-
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation(kotlin("test"))
 }

@@ -10,12 +10,16 @@ import me.jakejmattson.discordkt.dsl.CommandException
 import me.jakejmattson.discordkt.dsl.ListenerException
 import me.jakejmattson.discordkt.dsl.bot
 import ru.descend.bot.data.Configuration
+import ru.descend.bot.lolapi.LeagueMainObject
 import java.awt.Color
 
 @KordPreview
 fun main() {
     //Get the bot token from the command line (or your preferred way).
     //Start the bot and set configuration options.
+
+    initializeDataAPI()
+
     bot(catchToken()) {
 
 //        val configuration = data("config/config.json") { BotConfiguration() }
@@ -81,4 +85,9 @@ fun main() {
             println("Bot ${this.properties.bot.name} started")
         }
     }
+}
+
+fun initializeDataAPI() {
+    LeagueMainObject.heroNames = LeagueMainObject.catchHeroNames()
+    println("HEROES COUNT: ${LeagueMainObject.heroNames.size}")
 }

@@ -12,10 +12,10 @@
 | Modal    |           |             |
 
 ## Arguments
-| Commands | Arguments       | Description                       |
-|----------|-----------------|-----------------------------------|
-| pkill    | Who             | Add a user who still Pentakill :D |
-| pstill   | Who, [FromWhom] | Add a user who still Pentakill :D |
+| Commands | Arguments         | Description                       |
+|----------|-------------------|-----------------------------------|
+| pkill    | Who, hero         | Add a user who do Pentakill :D    |
+| pstill   | [Who], [FromWhom] | Add a user who still Pentakill :D |
 
 ## Basics
 | Commands | Arguments | Description                                  |

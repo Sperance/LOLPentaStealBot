@@ -56,6 +56,12 @@ fun getRandom(maxPos: Int) : Int {
 
 fun User.toStringUID() = id.value.toString()
 
+fun User.isBot(): Boolean {
+    if (isBot) return true
+    if (id == Configuration.botCurrentId) return true
+    return false
+}
+
 suspend fun User.checkRoleForName(guild: Guild, name: String): Boolean {
     var result = false
     asMember(guild.id).roles.collect {
