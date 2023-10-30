@@ -18,7 +18,6 @@ fun main() {
     println("Initializing is Started")
     initializeDataAPI()
     bot(catchToken()[0]) {
-
         prefix {
             Configuration.prefix
         }

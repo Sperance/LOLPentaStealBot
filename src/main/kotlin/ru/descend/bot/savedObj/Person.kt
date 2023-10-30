@@ -86,8 +86,7 @@ fun readDataFile(guid: Guild): DataPerson {
         return DataPerson()
     }
 
-    val gson = GsonBuilder().create()
-    return gson.fromJson(fileData.readText(), DataPerson::class.java)
+    return GsonBuilder().create().fromJson(fileData.readText(), DataPerson::class.java)
 }
 
 fun writeDataFile(guid: Guild, src: Any) {
@@ -101,7 +100,5 @@ fun writeDataFile(guid: Guild, src: Any) {
         fileData.createNewFile()
     }
 
-    val gson = GsonBuilder().create()
-    val data = gson.toJson(src)
-    fileData.writeText(data)
+    fileData.writeText(GsonBuilder().create().toJson(src))
 }

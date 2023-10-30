@@ -12,20 +12,16 @@
 | Modal    |           |             |
 
 ## Arguments
-| Commands | Arguments               | Description                       |
-|----------|-------------------------|-----------------------------------|
-| pkill    | Who, hero               | Add a user who do Pentakill :D    |
-| pstill   | hero, [Who], [FromWhom] | Add a user who still Pentakill :D |
+| Commands | Arguments               | Description                          |
+|----------|-------------------------|--------------------------------------|
+| pkill    | Who, hero               | Запишите того, кто сделал Пентакилл  |
+| pstill   | hero, [Who], [FromWhom] | Запишите того, кто сделал Пентастилл |
 
 ## Basics
-| Commands | Arguments | Description                                  |
-|----------|-----------|----------------------------------------------|
-| stats    |           | Show the all list of Users with Pentastill`s |
-
-## Context
-| Commands | Arguments | Description |
-|----------|-----------|-------------|
-| message1 | Message   | Do it       |
+| Commands   | Arguments | Description                          |
+|------------|-----------|--------------------------------------|
+| statPKill  |           | Показать всех пентакиллеров сервера  |
+| statPStill |           | Показать всех пентастилерров сервера |
 
 ## Utility
 | Commands | Arguments | Description                |

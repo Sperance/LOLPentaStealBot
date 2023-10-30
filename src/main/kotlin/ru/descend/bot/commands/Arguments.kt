@@ -10,6 +10,7 @@ import me.jakejmattson.discordkt.extensions.descriptor
 import me.jakejmattson.discordkt.extensions.footer
 import me.jakejmattson.discordkt.extensions.fullName
 import ru.descend.bot.MAIN_ROLE_NAME
+import ru.descend.bot.SECOND_ROLE_NAME
 import ru.descend.bot.checkPermission
 import ru.descend.bot.checkRoleForName
 import ru.descend.bot.data.Configuration
@@ -23,14 +24,14 @@ import ru.descend.bot.savedObj.writeDataFile
 import ru.descend.bot.toStringUID
 
 private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
-    if (!author.checkRoleForName(guild, MAIN_ROLE_NAME) && !author.checkPermission(guild, Permission.Administrator) && !author.isBotOwner()){
+    if (!author.checkRoleForName(guild, SECOND_ROLE_NAME) && !author.checkRoleForName(guild, MAIN_ROLE_NAME) && !author.checkPermission(guild, Permission.Administrator) && !author.isBotOwner()){
         return false
     }
     return true
 }
 
 fun arguments() = commands("Arguments") {
-    slash("pkill", "Add a user who do Pentakill :D"){
+    slash("pkill", "Запишите того, кто сделал Пентакилл"){
         execute(UserArg("Who"), AutocompleteArg("hero", "За какого героя была сделана Пента",
             type = AnyArg, autocomplete = {
                 LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }
@@ -68,7 +69,7 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash("pstill", "Add a user who still Pentakill :D"){
+    slash("pstill", "Запишите того, кто сделал Пентастилл"){
         execute(
             AutocompleteArg("hero", "За какого героя была сделана Пента", type = AnyArg, autocomplete = {
                 LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }

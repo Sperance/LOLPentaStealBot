@@ -7,8 +7,19 @@ import kotlinx.coroutines.flow.Flow
 import ru.descend.bot.data.Configuration
 import me.jakejmattson.discordkt.extensions.descriptor
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.Base64
+import java.util.Date
+import java.util.Locale
 import java.util.Random
+
+fun Long.toFormatDate() : String {
+    return SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(this))
+}
+
+fun Long.toFormatDateTime() : String {
+    return SimpleDateFormat("dd.MM.yy HH:mm:ss", Locale.getDefault()).format(Date(this))
+}
 
 fun User.lowDescriptor(): String {
     return descriptor().split(" :: ")[1]
@@ -20,7 +31,9 @@ fun catchToken(): List<String> {
         file.createNewFile()
         //TODO Write token
     }
-    return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
+    val array = decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
+    println("Descrypted token size: ${array.size}")
+    return array
 }
 
 fun String.toBase64() : String {
