@@ -4,12 +4,11 @@ import InterfaceChampionBase
 import dev.kord.common.entity.Permission
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
-import dev.kord.core.entity.interaction.AutoCompleteInteraction
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
-import me.jakejmattson.discordkt.extensions.addField
 import me.jakejmattson.discordkt.extensions.descriptor
 import me.jakejmattson.discordkt.extensions.footer
+import me.jakejmattson.discordkt.extensions.fullName
 import ru.descend.bot.MAIN_ROLE_NAME
 import ru.descend.bot.checkPermission
 import ru.descend.bot.checkRoleForName
@@ -22,8 +21,6 @@ import ru.descend.bot.savedObj.Person
 import ru.descend.bot.savedObj.readDataFile
 import ru.descend.bot.savedObj.writeDataFile
 import ru.descend.bot.toStringUID
-import java.util.Arrays
-
 
 private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
     if (!author.checkRoleForName(guild, MAIN_ROLE_NAME) && !author.checkPermission(guild, Permission.Administrator) && !author.isBotOwner()){
@@ -39,6 +36,8 @@ fun arguments() = commands("Arguments") {
                 LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }
             })) {
             val (userWho, hero) = args
+
+            println("Start command '$name' from ${author.fullName} with params: 'userWho=${userWho.fullName}', 'hero=$hero'")
 
             if (!checkCommandsAccess(guild, author)){
                 respond("У вас нет доступа к данной команде. Обратитесь к Администратору")
@@ -77,6 +76,8 @@ fun arguments() = commands("Arguments") {
             UserArg("Who").optional{ Configuration.getBotAsUser(kord = discord.kord) },
             UserArg("FromWhom").optional{ Configuration.getBotAsUser(kord = discord.kord) }){
             val (heroSteal, userWho, userFromWhom) = args
+
+            println("Start command '$name' from ${author.fullName} with params: 'heroSteal=$heroSteal', 'userWho=${userWho.fullName}', 'userFromWhom=${userFromWhom.fullName}'")
 
             if (!checkCommandsAccess(guild, author)){
                 respond("У вас нет доступа к данной команде. Обратитесь к Администратору")

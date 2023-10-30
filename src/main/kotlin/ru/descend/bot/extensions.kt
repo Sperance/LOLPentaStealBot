@@ -14,14 +14,13 @@ fun User.lowDescriptor(): String {
     return descriptor().split(" :: ")[1]
 }
 
-fun catchToken(): String {
+fun catchToken(): List<String> {
     val file = File("token.dsc")
     if (!file.exists()) {
         file.createNewFile()
-        //TODO Encrypted token write to file
+        //TODO Write token
     }
-
-    return decrypt(file.readBytes(), DSC_PS).decodeToString()
+    return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
 }
 
 fun String.toBase64() : String {

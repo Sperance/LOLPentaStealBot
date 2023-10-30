@@ -47,27 +47,12 @@ class LeagueApi(private val apiKey: String, private val region: String) {
         val okHttpClient = OkHttpClient()
         val newOkHttpBuilder = okHttpClient.newBuilder()
         newOkHttpBuilder.addInterceptor {
-
             val requestBuilder: Request.Builder = it.request().newBuilder()
             requestBuilder.header("Content-Type", "application/json")
             requestBuilder.header("Origin", "https://developer.riotgames.com")
             requestBuilder.header("X-Riot-Token", apiKey)
 
-            val buildedReq = requestBuilder.build()
-            println("NEW url: ${buildedReq.url()}")
-
-            it.proceed(buildedReq)
-
-//            val originalRequest = it.request()
-//            val originalUrl = originalRequest.url()
-//            val newUrl = originalUrl.newBuilder()
-//                .addQueryParameter("Origin", "https://developer.riotgames.com")
-//                .addQueryParameter("X-Riot-Token", apiKey)
-//                .build()
-//
-//            println("NEW URL: $newUrl")
-//            val newRequest = originalRequest.newBuilder().url(newUrl).build()
-//            it.proceed(newRequest)
+            it.proceed(requestBuilder.build())
         }
         return newOkHttpBuilder.build()
     }

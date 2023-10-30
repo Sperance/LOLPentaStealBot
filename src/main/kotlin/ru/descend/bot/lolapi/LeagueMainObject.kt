@@ -1,8 +1,10 @@
 package ru.descend.bot.lolapi
 
+import ru.descend.bot.catchToken
+
 object LeagueMainObject {
 
-    private val leagueApi = LeagueApi("RGAPI-a3c4d742-818d-40c9-9ec3-01fe2c426757", LeagueApi.RU)
+    private val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
 
     var heroObjects = ArrayList<Any>()
     var heroNames = ArrayList<String>()

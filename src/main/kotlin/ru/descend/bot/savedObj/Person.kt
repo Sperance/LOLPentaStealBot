@@ -1,6 +1,8 @@
 package ru.descend.bot.savedObj
 
 import com.google.gson.GsonBuilder
+import dev.kord.common.entity.Snowflake
+import dev.kord.core.cache.data.UserData
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
 import kotlinx.serialization.Serializable
@@ -58,20 +60,26 @@ class DataPerson {
 class Person {
     var uid: String
     var name: String
+    var discriminator: String
     var pentaKills: ArrayList<DataPKill> = ArrayList()
     var pentaStills: ArrayList<DataPSteal> = ArrayList()
     constructor(user: User) {
         this.uid = user.id.value.toString()
         this.name = user.username
+        this.discriminator = user.discriminator
+    }
+
+    fun toUser(guild: Guild) : User {
+        return User(UserData(Snowflake(uid.toLong()), name, discriminator), guild.kord)
     }
 }
 
 fun readDataFile(guid: Guild): DataPerson {
+    val fileDir = File("data")
+    if (!fileDir.exists()) fileDir.mkdir()
 
-    val file = File("src/main/resources/data/${guid.id.value}")
-    if (!file.exists()) {
-        file.mkdir()
-    }
+    val file = File("${fileDir.path}/${guid.id.value}")
+    if (!file.exists()) file.mkdir()
     val fileData = File(file.path + "/summoner_data.json")
     if (!fileData.exists()) {
         fileData.createNewFile()
@@ -83,11 +91,11 @@ fun readDataFile(guid: Guild): DataPerson {
 }
 
 fun writeDataFile(guid: Guild, src: Any) {
+    val fileDir = File("data")
+    if (!fileDir.exists()) fileDir.mkdir()
 
-    val file = File("src/main/resources/data/${guid.id.value}")
-    if (!file.exists()) {
-        file.mkdir()
-    }
+    val file = File("${fileDir.path}/${guid.id.value}")
+    if (!file.exists()) file.mkdir()
     val fileData = File(file.path + "/summoner_data.json")
     if (!fileData.exists()) {
         fileData.createNewFile()
