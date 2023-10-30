@@ -7,6 +7,7 @@ import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
 import kotlinx.serialization.Serializable
 import ru.descend.bot.data.Configuration
+import ru.descend.bot.toStringUID
 import java.io.File
 
 @Serializable
@@ -49,10 +50,9 @@ class DataPerson {
         findForUUID(uid)?.pentaKills?.add(DataPKill(heroKey))
     }
 
-    fun addPentaStill(uid: String = "0", uidFrom: String = "0", heroStill: String) {
-        if (uid == uidFrom) return
-        val userUid = if (uid == "0") uidFrom else uid
-        findForUUID(userUid)?.pentaStills?.add(DataPSteal(whoSteal = uid, fromWhomSteal = uidFrom, heroSteal = heroStill))
+    fun addPentaStill(user: User, uidWho: String = "0", uidFrom: String = "0", heroStill: String) {
+        if (uidWho == uidFrom) return
+        findForUUID(user.toStringUID())?.pentaStills?.add(DataPSteal(whoSteal = uidWho, fromWhomSteal = uidFrom, heroSteal = heroStill))
     }
 }
 

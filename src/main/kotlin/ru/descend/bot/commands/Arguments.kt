@@ -108,7 +108,14 @@ fun arguments() = commands("Arguments") {
                 data.addPersons(Person(userWho))
                 data.addPersons(Person(userFromWhom))
             }
-            data.addPentaStill(if (userWho.isBot()) "0" else userWho.toStringUID(), if (userFromWhom.isBot()) "0" else userFromWhom.toStringUID(), findObjHero.key)
+
+            if (!userWho.isBot() && !userFromWhom.isBot()){
+                data.addPentaStill(userWho, userWho.toStringUID(), userFromWhom.toStringUID(), findObjHero.key)
+                data.addPentaStill(userFromWhom, userWho.toStringUID(), userFromWhom.toStringUID(), findObjHero.key)
+            } else {
+                data.addPentaStill(if (userWho.isBot()) userFromWhom else userWho, if (userWho.isBot()) "0" else userWho.toStringUID(), if (userFromWhom.isBot()) "0" else userFromWhom.toStringUID(), findObjHero.key)
+            }
+
             writeDataFile(guild, data)
 
             val description = if (userWho.isBot()) {
