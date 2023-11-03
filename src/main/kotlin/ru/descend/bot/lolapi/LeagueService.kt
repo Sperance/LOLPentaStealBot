@@ -1,6 +1,5 @@
 package ru.descend.bot.lolapi
 
-import ChampionsDTO
 import org.jetbrains.annotations.Nullable
 import retrofit2.Call
 import retrofit2.http.GET
@@ -163,7 +162,4 @@ interface LeagueService {
      */
     @GET("/lol/summoner/v4/summoners/{summonerId}")
     fun getSummonerBySummonerId(@Path("summonerId") summonerId: String) : Call<SummonerDto>
-
-    @GET("http://ddragon.leagueoflegends.com/cdn/13.21.1/data/ru_RU/champion.json")
-    fun getChampions() : Call<ChampionsDTO>
 }

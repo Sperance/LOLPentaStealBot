@@ -9,12 +9,15 @@ object LeagueMainObject {
     var heroObjects = ArrayList<Any>()
     var heroNames = ArrayList<String>()
     fun catchHeroNames(): ArrayList<String> {
-        val exec = leagueApi.leagueService.getChampions()
-        val body = exec.execute().body()!!
+        val dragonService = leagueApi.dragonService
+
+        val versions = dragonService.getVersions().execute().body()!!
+        val champions = dragonService.getChampions(versions.first(), "ru_RU").execute().body()!!
+
         val namesAllHero = ArrayList<String>()
-        body.data::class.java.declaredFields.forEach {
+        champions.data::class.java.declaredFields.forEach {
             it.isAccessible = true
-            val curData = it.get(body.data)
+            val curData = it.get(champions.data)
             heroObjects.add(curData)
             val nameField = curData::class.java.getDeclaredField("name")
             nameField.isAccessible = true

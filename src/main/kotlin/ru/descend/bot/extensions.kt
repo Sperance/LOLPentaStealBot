@@ -13,6 +13,11 @@ import java.util.Date
 import java.util.Locale
 import java.util.Random
 
+fun printLog(message: Any){
+    val curDTime = System.currentTimeMillis().toFormatDateTime()
+    println("[$curDTime] $message")
+}
+
 fun Long.toFormatDate() : String {
     return SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(this))
 }

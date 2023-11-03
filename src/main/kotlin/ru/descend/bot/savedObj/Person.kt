@@ -74,7 +74,7 @@ class Person {
     }
 }
 
-fun readDataFile(guid: Guild): DataPerson {
+fun readPersonFile(guid: Guild): DataPerson {
     val fileDir = File("data")
     if (!fileDir.exists()) fileDir.mkdir()
 
@@ -89,7 +89,7 @@ fun readDataFile(guid: Guild): DataPerson {
     return GsonBuilder().create().fromJson(fileData.readText(), DataPerson::class.java)
 }
 
-fun writeDataFile(guid: Guild, src: Any) {
+fun writePersonFile(guid: Guild, src: Any) {
     val fileDir = File("data")
     if (!fileDir.exists()) fileDir.mkdir()
 

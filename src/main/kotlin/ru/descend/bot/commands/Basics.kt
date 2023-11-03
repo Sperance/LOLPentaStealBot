@@ -6,7 +6,7 @@ import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.extensions.footer
 import me.jakejmattson.discordkt.extensions.fullName
 import ru.descend.bot.lowDescriptor
-import ru.descend.bot.savedObj.readDataFile
+import ru.descend.bot.savedObj.readPersonFile
 import ru.descend.bot.toFormatDate
 import ru.descend.bot.toFormatDateTime
 
@@ -27,7 +27,7 @@ fun basics() = commands("Basics") {
             val fieldsHero = ArrayList<EmbedBuilder.Field>()
             initializeTitlePKill(fieldsHero)
 
-            val arrayPerson = readDataFile(guild).listPersons
+            val arrayPerson = readPersonFile(guild).listPersons
             arrayPerson.sortByDescending { it.pentaKills.size }
             arrayPerson.forEach {
                 if (it.pentaKills.isNotEmpty()) {

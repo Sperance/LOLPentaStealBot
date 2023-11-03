@@ -1,12 +1,13 @@
 package ru.descend.bot.commands
 
-import InterfaceChampionBase
+import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import dev.kord.common.entity.Permission
+import dev.kord.common.entity.Permissions
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
+import dev.kord.core.entity.channel.TextChannel
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
-import me.jakejmattson.discordkt.extensions.descriptor
 import me.jakejmattson.discordkt.extensions.footer
 import me.jakejmattson.discordkt.extensions.fullName
 import ru.descend.bot.MAIN_ROLE_NAME
@@ -20,7 +21,9 @@ import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.savedObj.Person
 import ru.descend.bot.savedObj.readDataFile
+import ru.descend.bot.savedObj.readPersonFile
 import ru.descend.bot.savedObj.writeDataFile
+import ru.descend.bot.savedObj.writePersonFile
 import ru.descend.bot.toStringUID
 
 private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
@@ -31,6 +34,21 @@ private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
 }
 
 fun arguments() = commands("Arguments") {
+
+    slash("initializeBotChannel", "Основной канал для бота", Permissions(Permission.Administrator)){
+        execute(ChannelArg<TextChannel>("channel")){
+            val (channel) = args
+
+            println("Start command '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
+
+            val data = readDataFile(guild)
+            data.botChannelId = channel.id.value.toString()
+            writeDataFile(guild, data)
+
+            respond("Guild channel saved in '${channel.name}(${channel.id.value})'")
+        }
+    }
+
     slash("pkill", "Запишите того, кто сделал Пентакилл"){
         execute(UserArg("Who"), AutocompleteArg("hero", "За какого героя была сделана Пента",
             type = AnyArg, autocomplete = {
@@ -56,10 +74,10 @@ fun arguments() = commands("Arguments") {
             }
 
             val findObjHero = LeagueMainObject.heroObjects.find { (it as InterfaceChampionBase).name == hero } as InterfaceChampionBase
-            val data = readDataFile(guild)
+            val data = readPersonFile(guild)
             data.addPersons(Person(userWho))
             data.addPentaKill(userWho.id.value.toString(), findObjHero.key)
-            writeDataFile(guild, data)
+            writePersonFile(guild, data)
 
             respondPublic {
                 title = "ПЕНТАКИЛЛ"
@@ -101,7 +119,7 @@ fun arguments() = commands("Arguments") {
             }
 
             val findObjHero = LeagueMainObject.heroObjects.find { (it as InterfaceChampionBase).name == heroSteal } as InterfaceChampionBase
-            val data = readDataFile(guild)
+            val data = readPersonFile(guild)
             if (userWho.isBot()) data.addPersons(Person(userFromWhom))
             else if (userFromWhom.isBot()) data.addPersons(Person(userWho))
             else {
@@ -116,7 +134,7 @@ fun arguments() = commands("Arguments") {
                 data.addPentaStill(if (userWho.isBot()) userFromWhom else userWho, if (userWho.isBot()) "0" else userWho.toStringUID(), if (userFromWhom.isBot()) "0" else userFromWhom.toStringUID(), findObjHero.key)
             }
 
-            writeDataFile(guild, data)
+            writePersonFile(guild, data)
 
             val description = if (userWho.isBot()) {
                 "Какой-то ноунейм за чемпиона '$heroSteal' состилил пенту у высокоуважаемого ${userFromWhom.lowDescriptor()}"

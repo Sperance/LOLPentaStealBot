@@ -12,10 +12,11 @@
 | Modal    |           |             |
 
 ## Arguments
-| Commands | Arguments               | Description                          |
-|----------|-------------------------|--------------------------------------|
-| pkill    | Who, hero               | Запишите того, кто сделал Пентакилл  |
-| pstill   | hero, [Who], [FromWhom] | Запишите того, кто сделал Пентастилл |
+| Commands             | Arguments               | Description                          |
+|----------------------|-------------------------|--------------------------------------|
+| initializeBotChannel | channel                 | Основной канал для бота              |
+| pkill                | Who, hero               | Запишите того, кто сделал Пентакилл  |
+| pstill               | hero, [Who], [FromWhom] | Запишите того, кто сделал Пентастилл |
 
 ## Basics
 | Commands   | Arguments | Description                          |

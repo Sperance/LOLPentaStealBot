@@ -1,5 +1,5 @@
 group = "ru.descend"
-version = "0.2"
+version = "0.9"
 description = "Unofficial Bot for League of Legends"
 
 plugins {
@@ -11,6 +11,7 @@ plugins {
 
 application {
     mainClass.set("ru.descend.bot.MainApp.kt")
+
 }
 
 repositories {
@@ -30,12 +31,29 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
+tasks {
+    compileKotlin {
+        kotlinOptions.jvmTarget = "1.8"
+        dependsOn("writeProperties")
+    }
+
+    register<WriteProperties>("writeProperties") {
+        property("name", project.name)
+        property("description", project.description.toString())
+        property("version", version.toString())
+        property("url", "https://github.com/DiscordKt/ExampleBot")
+        setOutputFile("src/main/resources/bot.properties")
+    }
+}
+
 tasks.withType<Tar> { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
 tasks.withType<Zip> { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
 tasks.withType<Jar> {
     manifest {
         attributes["Main-Class"] = "ru.descend.bot.MainAppKt"
     }
+    archiveFileName.set("${project.name}_${archiveVersion}.jar")
+
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     // To add all of the dependencies

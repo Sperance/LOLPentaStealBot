@@ -8,17 +8,6 @@ import retrofit2.http.Query
 interface LeagueStaticDataService {
 
     /**
-     * Retrieves champion list
-     *
-     */
-    @GET("/lol/static-data/v3/champions")
-    fun getChampions(@Query("tags") tags: Set<String>,
-                     @Query("locale") locale: String,
-                     @Query("version") version: String,
-                     @Query("champListData") champListData: Set<String>)
-            : Call<ChampionListDto>
-
-    /**
      * Retrieve champion by ID
      *
      */

@@ -26,6 +26,7 @@ class LeagueApi(private val apiKey: String, private val region: String) {
 
     val ENDPOINT: String = "https://$region.api.riotgames.com"
 
+    val dragonService : LLDragonService by lazy { retrofit.create(LLDragonService::class.java) }
     val leagueService: LeagueService by lazy { retrofit.create(LeagueService::class.java) }
     val leagueStaticDataService: LeagueStaticDataService by lazy { retrofit.create(LeagueStaticDataService::class.java) }
 
