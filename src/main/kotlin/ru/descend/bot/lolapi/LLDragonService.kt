@@ -8,6 +8,8 @@ import ru.descend.bot.lolapi.champions.DragonVersionDTO
 
 interface LLDragonService {
 
+    //https://www.npmjs.com/package/ddragon?activeTab=code
+
     @GET("https://ddragon.leagueoflegends.com/api/versions.json")
     fun getVersions() : Call<List<String>>
 

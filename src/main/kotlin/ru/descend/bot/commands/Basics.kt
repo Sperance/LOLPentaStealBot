@@ -16,7 +16,23 @@ fun basics() = commands("Basics") {
         execute {
             println("Start command '$name' from ${author.fullName}")
 
-            respond("Да не тыкайся ты сюда, еще не готово")
+            val fieldsHero = ArrayList<EmbedBuilder.Field>()
+            initializeTitlePStill(fieldsHero)
+
+            val arrayPerson = readPersonFile(guild).listPersons
+            arrayPerson.sortByDescending { it.pentaKills.size }
+            arrayPerson.forEach {person ->
+                if (person.pentaKills.isNotEmpty()) {
+                    addLinePStill(fieldsHero, person.toUser(guild), person.pentaStills.count { it.whoSteal == person.uid }, person.pentaStills.count { it.fromWhomSteal == person.uid })
+                }
+            }
+
+            respond {
+                title = "Доска Пентастиллов"
+                description = "Здесь прям лютые зверюги"
+                fields = fieldsHero
+                footer("Сформировано: ${System.currentTimeMillis().toFormatDateTime()}")
+            }
         }
     }
 
@@ -43,6 +59,18 @@ fun basics() = commands("Basics") {
             }
         }
     }
+}
+
+fun initializeTitlePStill(field: ArrayList<EmbedBuilder.Field>) {
+    field.add(0, EmbedBuilder.Field().apply { name = "Призыватель"; value = ""; inline = true })
+    field.add(1, EmbedBuilder.Field().apply { name = "Состилил"; value = ""; inline = true })
+    field.add(1, EmbedBuilder.Field().apply { name = "Состилено"; value = ""; inline = true })
+}
+
+fun addLinePStill(field: ArrayList<EmbedBuilder.Field>, user: User, stealIn: Int, stealOut: Int) {
+    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = user.lowDescriptor(); inline = true })
+    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = stealIn.toString(); inline = true })
+    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = stealOut.toString(); inline = true })
 }
 
 fun initializeTitlePKill(field: ArrayList<EmbedBuilder.Field>) {

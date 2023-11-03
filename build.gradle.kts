@@ -41,7 +41,7 @@ tasks {
         property("name", project.name)
         property("description", project.description.toString())
         property("version", version.toString())
-        property("url", "https://github.com/DiscordKt/ExampleBot")
+        property("url", "https://github.com/Sperance/LOLPentaStealBot")
         setOutputFile("src/main/resources/bot.properties")
     }
 }
@@ -52,7 +52,7 @@ tasks.withType<Jar> {
     manifest {
         attributes["Main-Class"] = "ru.descend.bot.MainAppKt"
     }
-    archiveFileName.set("${project.name}_${archiveVersion}.jar")
+    archiveFileName.set("${project.name}_${version}.jar")
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 

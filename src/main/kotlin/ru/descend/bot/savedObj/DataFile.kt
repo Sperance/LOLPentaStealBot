@@ -7,7 +7,6 @@ import java.io.File
 
 @Serializable
 class DataFile {
-
     var botChannelId: String? = null
     var messageId: String? = null
 }
