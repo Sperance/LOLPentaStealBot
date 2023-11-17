@@ -25,8 +25,8 @@
 | statPStill |           | Показать всех пентастилерров сервера |
 
 ## Utility
-| Commands | Arguments | Description                |
-|----------|-----------|----------------------------|
-| Help     | [Command] | Display a help menu.       |
-| info     |           | Bot info for LOLPentaSteal |
+| Commands | Arguments | Description                   |
+|----------|-----------|-------------------------------|
+| Help     | [Command] | Display a help menu.          |
+| info     |           | Bot info for LOLPentaStealBot |
 

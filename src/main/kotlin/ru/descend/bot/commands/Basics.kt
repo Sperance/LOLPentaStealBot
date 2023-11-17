@@ -6,23 +6,24 @@ import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.extensions.footer
 import me.jakejmattson.discordkt.extensions.fullName
 import ru.descend.bot.lowDescriptor
+import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.readPersonFile
 import ru.descend.bot.toFormatDate
 import ru.descend.bot.toFormatDateTime
 
 fun basics() = commands("Basics") {
 
-    slash("statPStill", "Показать всех пентастилерров сервера"){
+    slash("statPStill", "Показать всех Пентастилерров сервера"){
         execute {
-            println("Start command '$name' from ${author.fullName}")
+            printLog("Start command '$name' from ${author.fullName}")
 
             val fieldsHero = ArrayList<EmbedBuilder.Field>()
             initializeTitlePStill(fieldsHero)
 
             val arrayPerson = readPersonFile(guild).listPersons
-            arrayPerson.sortByDescending { it.pentaKills.size }
+            arrayPerson.sortByDescending { it.pentaStills.size }
             arrayPerson.forEach {person ->
-                if (person.pentaKills.isNotEmpty()) {
+                if (person.pentaStills.isNotEmpty()) {
                     addLinePStill(fieldsHero, person.toUser(guild), person.pentaStills.count { it.whoSteal == person.uid }, person.pentaStills.count { it.fromWhomSteal == person.uid })
                 }
             }
@@ -36,9 +37,9 @@ fun basics() = commands("Basics") {
         }
     }
 
-    slash("statPKill", "Показать всех пентакиллеров сервера") {
+    slash("statPKill", "Показать всех Пентакиллеров сервера") {
         execute {
-            println("Start command '$name' from ${author.fullName}")
+            printLog("Start command '$name' from ${author.fullName}")
 
             val fieldsHero = ArrayList<EmbedBuilder.Field>()
             initializeTitlePKill(fieldsHero)

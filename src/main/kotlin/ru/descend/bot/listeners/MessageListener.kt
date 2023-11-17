@@ -9,18 +9,12 @@ import me.jakejmattson.discordkt.extensions.descriptor
 import ru.descend.bot.printLog
 
 fun listeners() = listeners {
-    on<MessageCreateEvent> {
-        require(message.author?.isBot == false)
-        printLog("Author: ${message.author?.username?:""} Message: ${message.content}")
-    }
-
     on<MemberJoinEvent> {
-        val member = member.asUser().descriptor()
-        printLog("[Joined to server] $member")
+        val memberUser = member.asUser().descriptor()
+        printLog("[${guild.id}]{Joined to server} $memberUser")
     }
-
     on<MemberLeaveEvent> {
         val member = user.descriptor()
-        printLog("[Leave from server] $member")
+        printLog("[${guild.id}]{Leave from server} $member")
     }
 }

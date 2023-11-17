@@ -34,6 +34,7 @@ fun catchToken(): List<String> {
     val file = File("token.dsc")
     if (!file.exists()) {
         file.createNewFile()
+//        file.writeBytes(encrypt("MTE2NzE0MTUxNzYzMTE2ODU0Mg.GeBsSG.4TJIS5OWZJ3xuR-KSR9MU-RJJdFz-M9ESv03m8\nRGAPI-8f102ebf-ce3c-43d8-8300-c32992b92d89", DSC_PS))
         //TODO Write token
     }
     val array = decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")

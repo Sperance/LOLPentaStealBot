@@ -5,6 +5,20 @@ import okhttp3.Request
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
+enum class EnumRegions(val text: String){
+    BR("br1"),
+    EUNE("eun1"),
+    EUW("euw1"),
+    JP("jp1"),
+    KR("kr"),
+    LAN("la1"),
+    LAS("la2"),
+    NA("na1"),
+    OCE("oc1"),
+    TR("tr1"),
+    RU("ru"),
+    PBE("pbe1")
+}
 
 class LeagueApi(private val apiKey: String, private val region: String) {
 
@@ -26,8 +40,9 @@ class LeagueApi(private val apiKey: String, private val region: String) {
     val ENDPOINT: String = "https://$region.api.riotgames.com"
 
     val dragonService : LLDragonService by lazy { retrofit.create(LLDragonService::class.java) }
+    val leagueService : LeagueService by lazy { retrofit.create(LeagueService::class.java) }
 
-    var retrofit: Retrofit
+    private var retrofit: Retrofit
 
     init {
         retrofit = createRetrofit(createOkHttpClient())

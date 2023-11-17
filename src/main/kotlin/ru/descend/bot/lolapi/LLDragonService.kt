@@ -4,11 +4,8 @@ import ru.descend.bot.lolapi.champions.ChampionsDTO
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Path
-import ru.descend.bot.lolapi.champions.DragonVersionDTO
 
 interface LLDragonService {
-
-    //https://www.npmjs.com/package/ddragon?activeTab=code
 
     @GET("https://ddragon.leagueoflegends.com/api/versions.json")
     fun getVersions() : Call<List<String>>

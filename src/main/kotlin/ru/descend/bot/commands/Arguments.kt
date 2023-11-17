@@ -17,8 +17,12 @@ import ru.descend.bot.checkRoleForName
 import ru.descend.bot.data.Configuration
 import ru.descend.bot.isBot
 import ru.descend.bot.isBotOwner
+import ru.descend.bot.lolapi.EnumRegions
+import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
+import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.LeaguePerson
 import ru.descend.bot.savedObj.Person
 import ru.descend.bot.savedObj.readDataFile
 import ru.descend.bot.savedObj.readPersonFile
@@ -39,7 +43,7 @@ fun arguments() = commands("Arguments") {
         execute(ChannelArg<TextChannel>("channel")){
             val (channel) = args
 
-            println("Start command '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
+            printLog("Start command '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
 
             val data = readDataFile(guild)
             data.botChannelId = channel.id.value.toString()
@@ -49,14 +53,39 @@ fun arguments() = commands("Arguments") {
         }
     }
 
+    slash("pConnectUser", "Связать учетную запись Лиги легенд и пользователя Discord", Permissions(Permission.Administrator)){
+        execute(UserArg("User", "Пользователь Discord"), ChoiceArg<String>("Region", "Регион аккаунта Лиги легенд", "ru"), AnyArg("SummonerName", "Имя призывателя в Лиге легенд")){
+            val (user, region, summonerName) = args
+
+            printLog("Start command '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'")
+
+            val data = readPersonFile(guild)
+            val findedUser = data.listPersons.find { it.uid == user.toStringUID() }
+            if (findedUser == null){
+                val newPerson = Person(user)
+                newPerson.leaguePerson = LeaguePerson()
+                newPerson.leaguePerson!!.initialize(region, summonerName)
+                data.addPersons(newPerson)
+                writePersonFile(guild, data)
+            } else {
+                findedUser.leaguePerson = LeaguePerson()
+                findedUser.leaguePerson!!.initialize(region, summonerName)
+                data.updatePerson(findedUser)
+                writePersonFile(guild, data)
+            }
+
+            respond("Пользователь ${user.lowDescriptor()} связан с учётной записью $region $summonerName")
+        }
+    }
+
     slash("pkill", "Запишите того, кто сделал Пентакилл"){
-        execute(UserArg("Who"), AutocompleteArg("hero", "За какого героя была сделана Пента",
+        execute(UserArg("Who", "Кто сделал Пентакилл"), AutocompleteArg("hero", "За какого героя был сделан Пентакилл",
             type = AnyArg, autocomplete = {
                 LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }
             })) {
             val (userWho, hero) = args
 
-            println("Start command '$name' from ${author.fullName} with params: 'userWho=${userWho.fullName}', 'hero=$hero'")
+            printLog("Start command '$name' from ${author.fullName} with params: 'userWho=${userWho.fullName}', 'hero=$hero'")
 
             if (!checkCommandsAccess(guild, author)){
                 respond("У вас нет доступа к данной команде. Обратитесь к Администратору")
@@ -89,14 +118,14 @@ fun arguments() = commands("Arguments") {
 
     slash("pstill", "Запишите того, кто сделал Пентастилл"){
         execute(
-            AutocompleteArg("hero", "За какого героя была сделана Пента", type = AnyArg, autocomplete = {
+            AutocompleteArg("hero", "За какого героя был сделан Пентастилл", type = AnyArg, autocomplete = {
                 LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }
             }),
-            UserArg("Who").optional{ Configuration.getBotAsUser(kord = discord.kord) },
-            UserArg("FromWhom").optional{ Configuration.getBotAsUser(kord = discord.kord) }){
+            UserArg("Who", "Кто сделал Пентастилл (оставь пустым если Ноунейм)").optional{ Configuration.getBotAsUser(kord = discord.kord) },
+            UserArg("FromWhom", "У кого был состилен Пентакилл (оставь пустым если у Ноунейма)").optional{ Configuration.getBotAsUser(kord = discord.kord) }){
             val (heroSteal, userWho, userFromWhom) = args
 
-            println("Start command '$name' from ${author.fullName} with params: 'heroSteal=$heroSteal', 'userWho=${userWho.fullName}', 'userFromWhom=${userFromWhom.fullName}'")
+            printLog("Start command '$name' from ${author.fullName} with params: 'heroSteal=$heroSteal', 'userWho=${userWho.fullName}', 'userFromWhom=${userFromWhom.fullName}'")
 
             if (!checkCommandsAccess(guild, author)){
                 respond("У вас нет доступа к данной команде. Обратитесь к Администратору")

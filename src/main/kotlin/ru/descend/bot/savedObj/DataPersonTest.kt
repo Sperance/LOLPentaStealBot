@@ -10,6 +10,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.junit.jupiter.api.Test
 import ru.descend.bot.DSC_PS
+import ru.descend.bot.catchToken
 import ru.descend.bot.decrypt
 import ru.descend.bot.encrypt
 import ru.descend.bot.getRandom
@@ -19,24 +20,20 @@ import java.io.IOException
 import java.net.ProtocolException
 
 class DataPersonTest {
-
-    @Test
-    fun test_create_file(){
-        val file = File("src/main/resources/data")
-        if (!file.exists()) {
-            file.mkdir()
-        }
-        val fileData = File(file.path + "/53453459345345_data.json")
-        if (!fileData.exists()) {
-            fileData.createNewFile()
-        }
-    }
-
     @Test
     fun test_randomize_int() {
         repeat(100){
             println(getRandom(5))
         }
+    }
+
+    @Test
+    fun test_connect_rito(){
+        val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
+        val ecex = leagueApi.leagueService.getBySummonerName("Атлант").execute()
+        println("exec: " + ecex.raw())
+        val response = ecex.body()
+        println(response?.id + " " + response?.name + " " + response?.accountId + " " + response?.puuid + " " + response?.summonerLevel)
     }
 
 //    @Test
