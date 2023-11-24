@@ -1,23 +1,21 @@
 package ru.descend.bot.savedObj
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.google.auth.oauth2.GoogleCredentials
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.cloud.FirestoreClient
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
+import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Test
-import ru.descend.bot.DSC_PS
 import ru.descend.bot.catchToken
-import ru.descend.bot.decrypt
-import ru.descend.bot.encrypt
+import ru.descend.bot.firebase.FirePKill
+import ru.descend.bot.firebase.FirePerson
+import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.getRandom
 import ru.descend.bot.lolapi.LeagueApi
-import java.io.File
-import java.io.IOException
-import java.net.ProtocolException
+import ru.descend.bot.lolapi.LeagueMainObject
+import java.io.FileInputStream
 
 class DataPersonTest {
     @Test
@@ -34,6 +32,26 @@ class DataPersonTest {
         println("exec: " + ecex.raw())
         val response = ecex.body()
         println(response?.id + " " + response?.name + " " + response?.accountId + " " + response?.puuid + " " + response?.summonerLevel)
+    }
+
+    @Test
+    fun test_firebase(){
+        val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
+        println(leagueApi.leagueService.getMatchIDByPUUID("ML88UCuH67sUxzc7p9-E6UsF-s_AP6rlcXUeJ4O1jix-xUXOwCti9nHM7EhASAgEvkqPDdFGkh8Msg").execute().body())
+    }
+
+    @Test
+    fun test_loop() {
+        val ind = ArrayList<String>()
+        ind.add("1")
+        ind.add("2")
+        ind.add("3")
+        ind.add("4")
+        ind.add("5")
+        ind.forEach lit@ {
+            if (it == "2") return@lit
+            println(it)
+        }
     }
 
 //    @Test

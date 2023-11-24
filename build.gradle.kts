@@ -29,6 +29,9 @@ dependencies {
     implementation("org.junit.jupiter:junit-jupiter:5.10.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation(kotlin("test"))
+
+//    implementation("com.google.firebase:firebase-database-ktx:23.0.0")
+    implementation("com.google.firebase:firebase-admin:9.2.0")
 }
 
 tasks {

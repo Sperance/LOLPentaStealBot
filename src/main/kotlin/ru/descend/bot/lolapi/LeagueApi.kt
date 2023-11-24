@@ -5,22 +5,7 @@ import okhttp3.Request
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-enum class EnumRegions(val text: String){
-    BR("br1"),
-    EUNE("eun1"),
-    EUW("euw1"),
-    JP("jp1"),
-    KR("kr"),
-    LAN("la1"),
-    LAS("la2"),
-    NA("na1"),
-    OCE("oc1"),
-    TR("tr1"),
-    RU("ru"),
-    PBE("pbe1")
-}
-
-class LeagueApi(private val apiKey: String, private val region: String) {
+class LeagueApi(private val apiKey: String, region: String) {
 
     companion object Regions {
         const val BR = "br1"
@@ -37,22 +22,17 @@ class LeagueApi(private val apiKey: String, private val region: String) {
         const val PBE = "pbe1"
     }
 
-    val ENDPOINT: String = "https://$region.api.riotgames.com"
-
+    private val ENDPOINT: String = "https://$region.api.riotgames.com"
     val dragonService : LLDragonService by lazy { retrofit.create(LLDragonService::class.java) }
     val leagueService : LeagueService by lazy { retrofit.create(LeagueService::class.java) }
 
-    private var retrofit: Retrofit
+    private var retrofit: Retrofit = createRetrofit()
 
-    init {
-        retrofit = createRetrofit(createOkHttpClient())
-    }
-
-    private fun createRetrofit(httpClient: OkHttpClient) : Retrofit {
+    private fun createRetrofit() : Retrofit {
         return Retrofit.Builder()
             .baseUrl(ENDPOINT)
             .addConverterFactory(GsonConverterFactory.create())
-            .client(httpClient)
+            .client(createOkHttpClient())
             .build()
     }
 
@@ -64,7 +44,6 @@ class LeagueApi(private val apiKey: String, private val region: String) {
             requestBuilder.header("Content-Type", "application/json")
             requestBuilder.header("Origin", "https://developer.riotgames.com")
             requestBuilder.header("X-Riot-Token", apiKey)
-
             it.proceed(requestBuilder.build())
         }
         return newOkHttpBuilder.build()

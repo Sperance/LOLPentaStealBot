@@ -13,5 +13,10 @@
                 </archive>  
             </configuration>  
         </plugin>  
+		<dependency>
+    <groupId>com.google.firebase</groupId>
+    <artifactId>firebase-admin</artifactId>
+    <version>6.11.0</version>
+ </dependency>
     </plugins>  
 </build>  

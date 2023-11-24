@@ -15,19 +15,20 @@ import ru.descend.bot.SECOND_ROLE_NAME
 import ru.descend.bot.checkPermission
 import ru.descend.bot.checkRoleForName
 import ru.descend.bot.data.Configuration
+import ru.descend.bot.firebase.CompleteResult
+import ru.descend.bot.firebase.F_PENTAKILLS
+import ru.descend.bot.firebase.F_PENTASTILLS
+import ru.descend.bot.firebase.FireChampion
+import ru.descend.bot.firebase.FireKordPerson
+import ru.descend.bot.firebase.FirePKill
+import ru.descend.bot.firebase.FirePSteal
+import ru.descend.bot.firebase.FirePerson
+import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.isBot
 import ru.descend.bot.isBotOwner
-import ru.descend.bot.lolapi.EnumRegions
-import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.LeaguePerson
-import ru.descend.bot.savedObj.Person
-import ru.descend.bot.savedObj.readDataFile
-import ru.descend.bot.savedObj.readPersonFile
-import ru.descend.bot.savedObj.writeDataFile
-import ru.descend.bot.savedObj.writePersonFile
 import ru.descend.bot.toStringUID
 
 private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
@@ -45,9 +46,13 @@ fun arguments() = commands("Arguments") {
 
             printLog("Start command '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
 
-            val data = readDataFile(guild)
-            data.botChannelId = channel.id.value.toString()
-            writeDataFile(guild, data)
+            var curGuild = FirebaseService.getGuild(guild)
+            if (curGuild == null){
+                FirebaseService.addGuild(guild)
+                curGuild = FirebaseService.getGuild(guild)
+            }
+            curGuild!!.botChannelId = channel.id.value.toString()
+            curGuild.fireSaveData()
 
             respond("Guild channel saved in '${channel.name}(${channel.id.value})'")
         }
@@ -58,27 +63,30 @@ fun arguments() = commands("Arguments") {
             val (user, region, summonerName) = args
 
             printLog("Start command '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'")
-
-            val data = readPersonFile(guild)
-            val findedUser = data.listPersons.find { it.uid == user.toStringUID() }
-            if (findedUser == null){
-                val newPerson = Person(user)
-                newPerson.leaguePerson = LeaguePerson()
-                newPerson.leaguePerson!!.initialize(region, summonerName)
-                data.addPersons(newPerson)
-                writePersonFile(guild, data)
-            } else {
-                findedUser.leaguePerson = LeaguePerson()
-                findedUser.leaguePerson!!.initialize(region, summonerName)
-                data.updatePerson(findedUser)
-                writePersonFile(guild, data)
+            var newUser = FirebaseService.getUser(guild, user.toStringUID())
+            if (newUser == null) {
+                val person = FirePerson()
+                person.initKORD(user)
+                FirebaseService.addPerson(guild, person)
+                newUser = FirebaseService.getUser(guild, person.KORD_id)
+            }
+            val res = newUser!!.initLOL(region, summonerName)
+            var textMessage = ""
+            textMessage = when (res) {
+                is CompleteResult.Error -> {
+                    res.errorText
+                }
+                is CompleteResult.Success -> {
+                    newUser.fireSaveData()
+                    "Пользователь ${user.lowDescriptor()} связан с учётной записью $region $summonerName"
+                }
             }
 
-            respond("Пользователь ${user.lowDescriptor()} связан с учётной записью $region $summonerName")
+            respond(textMessage)
         }
     }
 
-    slash("pkill", "Запишите того, кто сделал Пентакилл"){
+    slash("pkill", "Запишите того, кто сделал Пентакилл", Permissions(Permission.Administrator)){
         execute(UserArg("Who", "Кто сделал Пентакилл"), AutocompleteArg("hero", "За какого героя был сделан Пентакилл",
             type = AnyArg, autocomplete = {
                 LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }
@@ -102,21 +110,24 @@ fun arguments() = commands("Arguments") {
                 return@execute
             }
 
-            val findObjHero = LeagueMainObject.heroObjects.find { (it as InterfaceChampionBase).name == hero } as InterfaceChampionBase
-            val data = readPersonFile(guild)
-            data.addPersons(Person(userWho))
-            data.addPentaKill(userWho.id.value.toString(), findObjHero.key)
-            writePersonFile(guild, data)
+            val findObjHero = LeagueMainObject.findHeroForName(hero)
+
+            val person = FirePerson()
+            person.initKORD(userWho)
+            FirebaseService.addPerson(guild, person)
+            FirebaseService.addPentaKill(guild, person, FirePKill(FireChampion.catchFromDTO(findObjHero)))
+            val newUser = FirebaseService.getUser(guild, person.KORD_id)
+            val pentaData = FirebaseService.getArrayFromCollection<FirePKill>(newUser!!.toDocument().collection(F_PENTAKILLS))
 
             respondPublic {
                 title = "ПЕНТАКИЛЛ"
                 description = "Призыватель ${userWho.lowDescriptor()} сделал внезапную Пенту за чемпиона '$hero'. Поздравляем!"
-                footer("Всего пентакиллов: ${data.findForUUID(userWho.id.value.toString())!!.pentaKills.size}")
+                footer("Всего пентакиллов: ${pentaData.size}")
             }
         }
     }
 
-    slash("pstill", "Запишите того, кто сделал Пентастилл"){
+    slash("pstill", "Запишите того, кто сделал Пентастилл", Permissions(Permission.Administrator)){
         execute(
             AutocompleteArg("hero", "За какого героя был сделан Пентастилл", type = AnyArg, autocomplete = {
                 LeagueMainObject.heroObjects.filter { (it as InterfaceChampionBase).name.lowercase().contains(this.input.lowercase()) }.map { (it as InterfaceChampionBase).name }
@@ -147,35 +158,54 @@ fun arguments() = commands("Arguments") {
                 return@execute
             }
 
-            val findObjHero = LeagueMainObject.heroObjects.find { (it as InterfaceChampionBase).name == heroSteal } as InterfaceChampionBase
-            val data = readPersonFile(guild)
-            if (userWho.isBot()) data.addPersons(Person(userFromWhom))
-            else if (userFromWhom.isBot()) data.addPersons(Person(userWho))
+            val findObjHero = LeagueMainObject.findHeroForName(heroSteal)
+
+            val personWho = FirePerson()
+            val personFromWhom = FirePerson()
+            personWho.initKORD(userWho)
+            personFromWhom.initKORD(userFromWhom)
+
+            if (userWho.isBot()) {
+                FirebaseService.addPerson(guild, personFromWhom)
+            }
+            else if (userFromWhom.isBot()) {
+                FirebaseService.addPerson(guild, personWho)
+            }
             else {
-                data.addPersons(Person(userWho))
-                data.addPersons(Person(userFromWhom))
+                FirebaseService.addPerson(guild, personWho)
+                FirebaseService.addPerson(guild, personFromWhom)
             }
 
-            if (!userWho.isBot() && !userFromWhom.isBot()){
-                data.addPentaStill(userWho, userWho.toStringUID(), userFromWhom.toStringUID(), findObjHero.key)
-                data.addPentaStill(userFromWhom, userWho.toStringUID(), userFromWhom.toStringUID(), findObjHero.key)
-            } else {
-                data.addPentaStill(if (userWho.isBot()) userFromWhom else userWho, if (userWho.isBot()) "0" else userWho.toStringUID(), if (userFromWhom.isBot()) "0" else userFromWhom.toStringUID(), findObjHero.key)
-            }
-
-            writePersonFile(guild, data)
+            val psTeal = FirePSteal()
+            psTeal.hero = FireChampion.catchFromDTO(findObjHero)
 
             val description = if (userWho.isBot()) {
+                psTeal.whoSteal = null
+                psTeal.fromWhomSteal = FireKordPerson.initKORD(userFromWhom)
                 "Какой-то ноунейм за чемпиона '$heroSteal' состилил пенту у высокоуважаемого ${userFromWhom.lowDescriptor()}"
             } else if (userFromWhom.isBot()) {
+                psTeal.whoSteal = FireKordPerson.initKORD(userWho)
+                psTeal.fromWhomSteal = null
                 "Красавчик ${userWho.lowDescriptor()} за чемпиона '$heroSteal' состилил пенту у Щегола какого-то"
             } else {
+                psTeal.whoSteal = FireKordPerson.initKORD(userWho)
+                psTeal.fromWhomSteal = FireKordPerson.initKORD(userFromWhom)
                 "Соболезнуем, но ${userWho.lowDescriptor()} случайно состилил пенту за чемпиона '$heroSteal' у ${userFromWhom.lowDescriptor()}"
             }
 
-            val iUser = if (userWho.isBot()) userFromWhom else userWho
-            val textPStillWho = data.findForUUID(iUser.toStringUID())!!.pentaStills.filter { it.whoSteal == iUser.toStringUID() }.size
-            val textPStillWhom = data.findForUUID(iUser.toStringUID())!!.pentaStills.filter { it.fromWhomSteal == iUser.toStringUID() }.size
+            if (!userWho.isBot() && !userFromWhom.isBot()){
+                FirebaseService.addPentaSteal(guild, personWho, psTeal)
+                FirebaseService.addPentaSteal(guild, personFromWhom, psTeal)
+            } else {
+                FirebaseService.addPentaSteal(guild, if (userWho.isBot()) personFromWhom else personWho, psTeal)
+            }
+
+            val iUser = if (userWho.isBot()) personFromWhom else personWho
+            val newUser = FirebaseService.getUser(guild, iUser.KORD_id)
+            val stealData = FirebaseService.getArrayFromCollection<FirePSteal>(newUser!!.toDocument().collection(F_PENTASTILLS))
+
+            val textPStillWho = stealData.filter { it.whoSteal != null }.filter { it.whoSteal!!.snowflake == newUser.KORD_id }.size
+            val textPStillWhom = stealData.filter { it.fromWhomSteal != null }.filter { it.fromWhomSteal!!.snowflake == newUser.KORD_id }.size
 
             respondPublic {
                 title = "ПЕНТАСТИЛЛ"
