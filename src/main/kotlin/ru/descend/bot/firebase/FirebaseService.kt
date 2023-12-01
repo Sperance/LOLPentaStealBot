@@ -10,8 +10,10 @@ import dev.kord.core.entity.Guild
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.printLog
+import ru.descend.bot.toFormatDateTime
 import java.io.FileInputStream
 
 const val F_GUILDS = "GUILDS"
@@ -57,25 +59,14 @@ object FirebaseService {
         }
     }
 
-    suspend fun addMatchToUser(guild: Guild, user: FirePerson, match: MatchDTO) : CompleteResult {
+    suspend fun addMatchToGuild(guild: Guild, match: MatchDTO) : CompleteResult {
         val mId = match.metadata.matchId
 
-        if (user.matchIDs.contains(mId)) {
-            return CompleteResult.Success("In user ${user.LOL_puuid} match $mId already loaded")
+        if (!checkDataForCollection(collectionGuild(guild, F_MATCHES), mId)) {
+            printLog("[FirebaseService] Creating Match with GUILD ${guild.id.value} with Match $mId time: ${match.info.gameCreation.toFormatDateTime()}")
+            return setDataToCollection(collectionGuild(guild, F_MATCHES), FireMatch(match), mId)
         }
-
-        printLog("[FirebaseService] Creating Match with GUILD ${guild.id.value} with user ${user.KORD_id} with Match $mId")
-
-        val newMatch = FireMatch.initMatch(user.LOL_puuid, match)
-        return if (newMatch!= null) {
-            user.matchIDs.add(newMatch.matchId)
-            when (val saved = user.fireSaveData()){
-                is CompleteResult.Error -> CompleteResult.Error(saved.errorText)
-                is CompleteResult.Success -> setDataToCollection(collectionGuildUser(guild, user, F_MATCHES), newMatch, mId)
-            }
-        } else {
-            CompleteResult.Error("Not find match with id $mId")
-        }
+        return CompleteResult.Error("Match in guild ${guild.id.value} is exists with id: $mId")
     }
 
     suspend fun addPentaSteal(guild: Guild, user: FirePerson, obj: FirePSteal): CompleteResult {
@@ -97,18 +88,13 @@ object FirebaseService {
         }
     }
 
-    suspend fun checkDataForCollection(collection: CollectionReference, uid: String): Boolean {
-        val deferred = CompletableDeferred<Boolean>()
-        withContext(Dispatchers.IO) {
-            collection.get().get().documents.forEach {
-                if (it.id == uid) {
-                    deferred.complete(true)
-                    return@forEach
-                }
-            }
-            deferred.complete(false)
+    fun checkDataForCollection(collection: CollectionReference, uid: String): Boolean {
+        return try {
+            val docSnap = collection.document(uid).get().get()
+            (docSnap == null)
+        }catch (_: Exception) {
+            false
         }
-        return deferred.await()
     }
 
     inline fun <reified T> getArrayFromCollection(collection: CollectionReference): ArrayList<T> {
@@ -123,17 +109,16 @@ object FirebaseService {
     }
 
     inline fun <reified T> getDataFromCollection(collection: CollectionReference, uid: String): T? {
-        for (childSnapshot in collection.get().get().documents) {
-            if (childSnapshot.id == uid){
-                return try {
-                    childSnapshot.toObject(T::class.java)
-                } catch (e: Exception) {
-                    println("Error: ${e.localizedMessage}")
-                    null
-                }
+        return try {
+            val docSnap = collection.document(uid).get().get()
+            if ((!(docSnap == null || !docSnap.exists()))) {
+                return docSnap.toObject(T::class.java)
+            } else {
+                return null
             }
+        }catch (_: Exception) {
+            null
         }
-        return null
     }
 
     fun getUser(guild: Guild, uid: String) : FirePerson? {

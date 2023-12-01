@@ -48,10 +48,22 @@ class DataPersonTest {
         ind.add("3")
         ind.add("4")
         ind.add("5")
-        ind.forEach lit@ {
-            if (it == "2") return@lit
+        lit@ ind.forEach {
+            if (it == "2")
             println(it)
         }
+        println("end")
+    }
+
+    @Test
+    fun test_match_list() {
+        println("RES: " + LeagueMainObject.catchMatchID("aiLA3E9wdeoRpw-b3In28yDLN8fz0KT25m2jGhc0eDLgqGzY-EbGoJpjVrXZsI9nU3zLa0Vg_Ip8Ag"))
+    }
+
+    @Test
+    fun test_con() {
+        val res = FirebaseService.checkDataForCollection(FirebaseService.firestore.collection("GUILDS"), "11417301481949962952")
+        println("RES: $res")
     }
 
 //    @Test

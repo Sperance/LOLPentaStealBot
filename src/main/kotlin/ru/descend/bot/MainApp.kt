@@ -8,34 +8,34 @@ import dev.kord.common.entity.Snowflake
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
-import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
-import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.modify.UserMessageModifyBuilder
 import dev.kord.rest.builder.message.modify.embed
 import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.dsl.CommandException
 import me.jakejmattson.discordkt.dsl.ListenerException
 import me.jakejmattson.discordkt.dsl.bot
 import ru.descend.bot.data.Configuration
-import ru.descend.bot.firebase.CompleteResult
+import ru.descend.bot.firebase.F_MATCHES
 import ru.descend.bot.firebase.F_PENTAKILLS
 import ru.descend.bot.firebase.F_PENTASTILLS
 import ru.descend.bot.firebase.F_USERS
 import ru.descend.bot.firebase.FireGuild
+import ru.descend.bot.firebase.FireMatch
 import ru.descend.bot.firebase.FirePKill
 import ru.descend.bot.firebase.FirePSteal
+import ru.descend.bot.firebase.FireParticipant
 import ru.descend.bot.firebase.FirePerson
 import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.savedObj.DataBasic
 import java.awt.Color
 
@@ -77,8 +77,8 @@ fun main() {
             printLog("Bot ${this.properties.bot.name} started")
             println("Guilds: ")
             kord.guilds.toList().forEach {
-                FirebaseService.addGuild(it)
                 println("\t  ${it.name} [${it.id.value}]")
+                removeMessage(it)
                 showMainGuildMessage(it)
                 showLeagueHistory(it)
             }
@@ -86,26 +86,38 @@ fun main() {
     }
 }
 
+suspend fun removeMessage(guild: Guild) {
+    var guildData = FirebaseService.getGuild(guild)
+    if (guildData == null) {
+        FirebaseService.addGuild(guild)
+        guildData = FirebaseService.getGuild(guild)
+    }
+    if (guildData!!.botChannelId.isNotEmpty()) {
+        printLog("Clean channel start ${guild.id.value}")
+        val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
+        channelText.messages.collect {
+            val msgId = it.id.value.toString()
+            if (msgId == guildData.messageId || msgId == guildData.messageIdPentaData || msgId == guildData.messageIdGlobalStatisticData) {
+
+            } else {
+                it.delete()
+            }
+        }
+        printLog("Clean channel end ${guild.id.value}")
+    }
+}
+
 suspend fun showLeagueHistory(guild: Guild) {
     CoroutineScope(Dispatchers.IO).launch {
         while (true) {
-            val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS))
-            val listPUUID = ArrayList<String>()
-            allPersons.forEach {
-                listPUUID.add(it.LOL_puuid)
-            }
-
-            listPUUID.forEach { puuid ->
-                LeagueMainObject.catchMatchID(puuid).forEach { matchId ->
+            FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS)).forEach {
+                if (it.LOL_puuid == "") return@forEach
+                LeagueMainObject.catchMatchID(it.LOL_puuid).forEach { matchId ->
                     LeagueMainObject.catchMatch(matchId)?.let { match ->
-                        when (val res = FirebaseService.addMatchToUser(guild, allPersons.find { it.LOL_puuid == puuid }!!, match)) {
-                            is CompleteResult.Error -> println(res.errorText)
-                            is CompleteResult.Success -> null
-                        }
+                        FirebaseService.addMatchToGuild(guild, match)
                     }
                 }
             }
-
             delay(60 * 60 * 1000) //60min
         }
     }
@@ -113,79 +125,269 @@ suspend fun showLeagueHistory(guild: Guild) {
 
 suspend fun showMainGuildMessage(guild: Guild) {
     CoroutineScope(Dispatchers.IO).launch {
-        while (true) {
 
-            var guildData = FirebaseService.getGuild(guild)
-            if (guildData == null) {
-                FirebaseService.addGuild(guild)
-                guildData = FirebaseService.getGuild(guild)
-            }
+        var guildData = FirebaseService.getGuild(guild)
+        if (guildData == null) {
+            FirebaseService.addGuild(guild)
+            guildData = FirebaseService.getGuild(guild)
+        }
+
+        while (true) {
 
             if (guildData!!.botChannelId.isNotEmpty()) {
                 val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
 
-                val fieldDateStats = ArrayList<EmbedBuilder.Field>()
+                val basicData = catchAndParseDateFile(guild)
+                editMessageGlobal(channelText, guildData.messageId, {
+                    editMessageContent(it, basicData, guild)
+                }) {
+                    createMessage(channelText, basicData, guildData)
+                }
 
-                //Инициализация верхней шапки таблицы
-                initializeTitleTimeStats(fieldDateStats)
+                editMessageGlobal(channelText, guildData.messageIdPentaData, {
+                    editMessagePentaDataContent(it, guild)
+                }) {
+                    createMessagePentaData(channelText, guildData)
+                }
 
-                //Заполнение нижней части таблицы
-                catchAndParseDateFile(guild, fieldDateStats)
-
-                val builder = EmbedBuilder()
-                builder.fields = fieldDateStats
-
-                try {
-                    if (guildData.messageId.isNotEmpty()) {
-                        editMessage(channelText, fieldDateStats, guildData)
-                    } else {
-                        createMessage(channelText, fieldDateStats, guildData)
-                    }
-                } catch (e: Exception) {
-                    println("Error: ${e.message}")
+                editMessageGlobal(channelText, guildData.messageIdGlobalStatisticData, {
+                    editMessageGlobalStatisticContent(it, guild)
+                }) {
+                    createMessageGlobalStatistic(channelText, guildData)
                 }
             }
-            delay(5 * 60 * 1000) //10 min
+            delay(30 * 60 * 1000) //20 min
         }
     }
 }
 
-suspend fun editMessage(
+suspend fun editMessageGlobal(
     channelText: TextChannel,
-    fieldDateStats: ArrayList<EmbedBuilder.Field>,
+    messageId: String,
+    editBody: (UserMessageModifyBuilder) -> Unit,
+    createBody: suspend () -> Unit
+) {
+    if (messageId.isBlank()) {
+        createBody.invoke()
+    } else {
+        val message = channelText.getMessageOrNull(Snowflake(messageId))
+        if (message != null) {
+            message.edit { editBody.invoke(this) }
+        } else {
+            createBody.invoke()
+        }
+    }
+}
+
+suspend fun createMessagePentaData(
+    channelText: TextChannel,
     file: FireGuild
 ) {
-    val message = channelText.getMessageOrNull(Snowflake(file.messageId))
-    if (message != null) {
-        message.edit { editMessageContent(this, fieldDateStats) }
-    } else {
-        createMessage(channelText, fieldDateStats, file)
-    }
+    val message = channelText.createMessage("Initial Message")
+    channelText.getMessage(message.id).edit { editMessagePentaDataContent(this, message.getGuild()) }
+    file.messageIdPentaData = message.id.value.toString()
+    printLog(file.fireSaveData())
 }
 
 suspend fun createMessage(
     channelText: TextChannel,
-    fieldDateStats: ArrayList<EmbedBuilder.Field>,
+    fieldDateStats: ArrayList<DataBasic>,
     file: FireGuild
 ) {
     val message = channelText.createMessage("Initial Message")
-    channelText.getMessage(message.id).edit { editMessageContent(this, fieldDateStats) }
+    channelText.getMessage(message.id).edit { editMessageContent(this, fieldDateStats, message.getGuild()) }
     file.messageId = message.id.value.toString()
     printLog(file.fireSaveData())
 }
 
-fun editMessageContent(
-    builder: UserMessageModifyBuilder,
-    fieldDateStats: ArrayList<EmbedBuilder.Field>
+suspend fun createMessageGlobalStatistic(
+    channelText: TextChannel,
+    file: FireGuild
 ) {
-    builder.content = "Обновлено: ${System.currentTimeMillis().toFormatDateTime()}\n"
+    val message = channelText.createMessage("Initial Message")
+    channelText.getMessage(message.id).edit { editMessageGlobalStatisticContent(this, message.getGuild()) }
+    file.messageIdGlobalStatisticData = message.id.value.toString()
+    printLog(file.fireSaveData())
+}
+
+fun editMessageGlobalStatisticContent(
+    builder: UserMessageModifyBuilder,
+    guild: Guild
+) {
+
+    val allMatches = FirebaseService.getArrayFromCollection<FireMatch>(FirebaseService.collectionGuild(guild, F_MATCHES))
+    val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS))
+
+    val dataList = ArrayList<FireParticipant>()
+
+    allMatches.forEach {match ->
+        match.getParticipants(guild).forEach { perc ->
+            match.listPerc.find { perc.LOL_puuid == it.puuid }?.let {firePart ->
+                val findedObj = dataList.find { it.puuid == firePart.puuid }
+                if (findedObj == null) {
+                    if (firePart.win)
+                        firePart.statWins++
+                    firePart.statGames++
+
+                    dataList.add(firePart)
+                } else {
+                    findedObj.kills += firePart.kills
+                    findedObj.kills2 += firePart.kills2
+                    findedObj.kills3 += firePart.kills3
+                    findedObj.kills4 += firePart.kills4
+                    findedObj.kills5 += firePart.kills5
+                    findedObj.skillsCast += firePart.skillsCast
+                    findedObj.totalDmgToChampions += firePart.totalDmgToChampions
+
+                    if (firePart.win)
+                        findedObj.statWins++
+                    findedObj.statGames++
+                }
+            }
+        }
+    }
+
+    dataList.sortBy { it.puuid }
+
+    val list1 = dataList.map { obj -> allPersons.find { it.LOL_puuid == obj.puuid }!!.asUser(guild).lowDescriptor() }
+    val listkills = dataList.map { it.kills }
+//    val listkills2 = dataList.map { it.kills2 }
+    val listkills3 = dataList.map { it.kills3 }
+    val listkills4 = dataList.map { it.kills4 }
+    val listkills5 = dataList.map { it.kills5 }
+    val listskillsCast = dataList.map { it.skillsCast }
+//    val listtotalDmgToChampions = dataList.map { it.totalDmgToChampions }
+    val listGames = dataList.map { it.statGames }
+    val listWins = dataList.map { it.statWins }
+
+    builder.content = "Автоматическая статистика: ${System.currentTimeMillis().toFormatDateTime()}\n"
     builder.embed {
-        this.fields = fieldDateStats
+        field {
+            name = "User"
+            value = list1.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Games"
+            value = listGames.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Wins"
+            value = listWins.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Kill"
+            value = listkills.joinToString(separator = "\n")
+            inline = true
+        }
+//        field {
+//            name = "Kill2"
+//            value = listkills2.joinToString(separator = "\n")
+//            inline = true
+//        }
+        field {
+            name = "Kill3"
+            value = listkills3.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Kill4"
+            value = listkills4.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Kill5"
+            value = listkills5.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Skills"
+            value = listskillsCast.joinToString(separator = "\n")
+            inline = true
+        }
+//        field {
+//            name = "Damage"
+//            value = listtotalDmgToChampions.joinToString(separator = "\n")
+//            inline = true
+//        }
     }
 }
 
-fun catchAndParseDateFile(guild: Guild, field: ArrayList<EmbedBuilder.Field>) {
+fun editMessagePentaDataContent(
+    builder: UserMessageModifyBuilder,
+    guild: Guild
+) {
+
+    val allMatches = FirebaseService.getArrayFromCollection<FireMatch>(FirebaseService.collectionGuild(guild, F_MATCHES))
+    val dataList = ArrayList<DataBasic>()
+    allMatches.forEach {match ->
+        match.getParticipants(guild).forEach { perc ->
+            match.listPerc.find { perc.LOL_puuid == it.puuid }?.let {firePart ->
+                if (firePart.kills5 > 0) dataList.add(DataBasic(user = perc, text = "Сделал пентакилл за '${LeagueMainObject.findHeroForKey(firePart.championId.toString()).name}'", date = match.matchDate))
+            }
+        }
+    }
+
+    val list1 = dataList.map { it.user?.asUser(guild)?.lowDescriptor()?: "" }
+    val list2 = dataList.map { it.text }
+    val list3 = dataList.map { it.date.toFormatDate() }
+
+    builder.content = "Автоматическая статистика: ${System.currentTimeMillis().toFormatDateTime()}\n"
+    builder.embed {
+        field {
+            name = "Призыватель"
+            value = list1.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Суета"
+            value = list2.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Дата"
+            value = list3.joinToString(separator = "\n")
+            inline = true
+        }
+    }
+}
+
+fun editMessageContent(
+    builder: UserMessageModifyBuilder,
+    fieldDateStats: ArrayList<DataBasic>,
+    guild: Guild
+) {
+
+    val list1 = fieldDateStats.map { it.user?.asUser(guild)?.lowDescriptor()?: "" }
+    val list2 = fieldDateStats.map { it.text }
+    val list3 = fieldDateStats.map { it.date.toFormatDate() }
+
+    builder.content = "Обновлено: ${System.currentTimeMillis().toFormatDateTime()}\n"
+    builder.embed {
+        field {
+            name = "Призыватель"
+            value = list1.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Суета"
+            value = list2.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Дата"
+            value = list3.joinToString(separator = "\n")
+            inline = true
+        }
+    }
+}
+
+fun catchAndParseDateFile(guild: Guild) : ArrayList<DataBasic> {
     val basicData = ArrayList<DataBasic>()
+
+    var counter = 0
 
     val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS))
     allPersons.forEach {person ->
@@ -193,43 +395,28 @@ fun catchAndParseDateFile(guild: Guild, field: ArrayList<EmbedBuilder.Field>) {
             val textDate = "Сделал Пенту за героя '${pKill.hero?.name}'"
             basicData.add(DataBasic(user = person, text = textDate, date = pKill.SYS_CREATE_DATE))
         }
-        FirebaseService.getArrayFromCollection<FirePSteal>(person.toDocument().collection(F_PENTASTILLS)).forEach { pStill ->
+        FirebaseService.getArrayFromCollection<FirePSteal>(person.toDocument().collection(F_PENTASTILLS)).forEach ech2@ { pStill ->
             val textDate = if (pStill.whoSteal == null) {
-                "Ноунейм на '${pStill.hero?.name}' состилил пенту. Грусть"
+                "Ноунейм на '${pStill.hero?.name}' состилил пенту"
             } else if (pStill.fromWhomSteal == null) {
-                "За '${pStill.hero?.name}' состилил пенту у Ноунейма. Мосчь"
+                "За '${pStill.hero?.name}' состилил пенту у Ноунейма"
             } else {
                 if (pStill.whoSteal!!.snowflake == person.KORD_id)
-                    "Состилил пенту за '${pStill.hero?.name}' у ${pStill.fromWhomSteal!!.asUser(guild).lowDescriptor()}. Соболезнуем"
+                    "Состилил пенту у ${pStill.fromWhomSteal!!.asUser(guild).lowDescriptor()}"
                 else
-                    ""
+                    return@ech2
             }
             if (textDate.isNotEmpty())
                 basicData.add(DataBasic(user = person, text = textDate, date = pStill.SYS_CREATE_DATE))
         }
+        counter++
+        if (counter >= 20) {
+            return@forEach
+        }
     }
 
     basicData.sortByDescending { it.date }
-    basicData.forEach {
-        addLineTimeStats(field, it.user!!.asUser(guild), it.text, it.date)
-    }
-}
-
-fun initializeTitleTimeStats(field: ArrayList<EmbedBuilder.Field>) {
-    field.add(0, EmbedBuilder.Field().apply { name = "Призыватель"; value = ""; inline = true })
-    field.add(1, EmbedBuilder.Field().apply { name = "Суета"; value = ""; inline = true })
-    field.add(2, EmbedBuilder.Field().apply { name = "Дата"; value = ""; inline = true })
-}
-
-fun addLineTimeStats(
-    field: ArrayList<EmbedBuilder.Field>,
-    user: User,
-    mainText: String,
-    date: Long
-) {
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = user.lowDescriptor(); inline = true })
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = mainText; inline = true })
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = date.toFormatDate(); inline = true })
+    return basicData
 }
 
 fun initializeDataAPI() {

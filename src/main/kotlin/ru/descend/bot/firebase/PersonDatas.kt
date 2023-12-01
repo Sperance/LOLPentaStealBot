@@ -7,6 +7,7 @@ import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
+import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.printLog
 
 data class FireKordPerson(
@@ -31,9 +32,12 @@ data class FireKordPerson(
     }
 }
 
-data class FireMatch(
-    var matchId: String = "",
-    var hero: FireChampion? = null,
+data class FireParticipant(
+    var championId: Int = -1,
+    var summonerId: String = "",
+    var championName: String = "",
+    var summonerName: String = "",
+    var puuid: String = "",
     var kills5: Int = 0,
     var kills4: Int = 0,
     var kills3: Int = 0,
@@ -41,45 +45,74 @@ data class FireMatch(
     var kills: Int = 0,
     var assists: Int = 0,
     var deaths: Int = 0,
+    var goldEarned: Int = 0,
+    var skillsCast: Int = 0,
+    var totalDmgToChampions: Int = 0,
+    var minionsKills: Int = 0,
+    var team: Int = -1,
+    var win: Boolean = false,
+
+    @Exclude var statWins: Int = 0,
+    @Exclude var statGames: Int = 0,
+) {
+
+    constructor(participant: Participant) : this() {
+        val kill5 = participant.pentaKills
+        val kill4 = participant.quadraKills - kill5
+        val kill3 = participant.tripleKills - kill4
+        val kill2 = participant.doubleKills - kill3
+
+        this.championId = participant.championId
+        this.summonerId = participant.summonerId
+        this.championName = participant.championName
+        this.summonerName = participant.summonerName
+        this.puuid = participant.puuid
+        this.kills5 = kill5
+        this.kills4 = kill4
+        this.kills3 = kill3
+        this.kills2 = kill2
+        this.kills = participant.kills
+        this.assists = participant.assists
+        this.deaths = participant.deaths
+        this.goldEarned = participant.goldEarned
+        this.skillsCast = participant.spell1Casts + participant.spell2Casts + participant.spell3Casts + participant.spell4Casts
+        this.totalDmgToChampions = participant.totalDamageDealtToChampions
+        this.minionsKills = participant.totalMinionsKilled
+        this.team = participant.teamId
+        this.win = participant.win
+    }
+}
+
+data class FireMatch(
+    var matchId: String = "",
     var matchDate: Long = 0,
     var matchDuration: Long = 0,
     var matchMode: String = "",
     var matchGameVersion: String = "",
-    var listPerc: List<String>? = null,
-    var win: Boolean = false
+    var listPerc: ArrayList<FireParticipant> = ArrayList(),
 ) : FireBaseData() {
 
-    companion object {
-        @Exclude
-        fun initMatch(userUUID: String, match: MatchDTO) : FireMatch? {
-            val champ = match.info.getCurrentParticipant(userUUID)
-            if (champ == null) {
-                printLog("Not find hero $userUUID in match ${match.metadata.matchId}")
-                return null
+    constructor(match: MatchDTO) : this() {
+        this.matchId = match.metadata.matchId
+        this.matchDate = match.info.gameCreation
+        this.matchDuration = match.info.gameDuration.toLong()
+        this.matchMode = match.info.gameMode
+        this.matchGameVersion = match.info.gameVersion
+        val list = ArrayList<FireParticipant>()
+        match.info.participants.forEach { list.add(FireParticipant(it)) }
+        this.listPerc = list
+    }
+
+    @Exclude
+    fun getParticipants(guild: Guild) : ArrayList<FirePerson> {
+        val result = ArrayList<FirePerson>()
+        val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS))
+        listPerc.forEach { perc ->
+            allPersons.find { it.LOL_puuid == perc.puuid }?.let { fp ->
+                result.add(fp)
             }
-            val currentHero = FireChampion(key = champ.championId.toString(), name = champ.championName)
-            val kill5 = champ.pentaKills
-            val kill4 = champ.quadraKills - kill5
-            val kill3 = champ.tripleKills - kill4
-            val kill2 = champ.doubleKills - kill3
-            return FireMatch(
-                matchId = match.metadata.matchId,
-                hero = currentHero,
-                kills5 = kill5,
-                kills4 = kill4,
-                kills3 = kill3,
-                kills2 = kill2,
-                kills = champ.kills,
-                matchDate = match.info.gameCreation,
-                matchDuration = match.info.gameCreation,
-                matchMode = match.info.gameMode,
-                matchGameVersion = match.info.gameVersion,
-                listPerc = match.metadata.participants,
-                assists = champ.assists,
-                deaths = champ.deaths,
-                win = champ.win
-            )
         }
+        return result
     }
 }
 
@@ -92,11 +125,6 @@ data class FirePSteal(
 data class FirePKill(
     var hero: FireChampion? = null,
     var match: String? = null
-) : FireBaseData()
-
-data class FireQKill(
-    var match: String? = null,
-    var hero: FireChampion? = null
 ) : FireBaseData()
 
 data class FireChampion(

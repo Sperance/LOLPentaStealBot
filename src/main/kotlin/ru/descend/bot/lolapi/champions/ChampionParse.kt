@@ -2,10 +2,6 @@ package ru.descend.bot.lolapi.champions
 
 import com.google.gson.annotations.SerializedName
 
-data class DragonVersionDTO(
-    val versions: List<String>
-)
-
 data class ChampionsDTO(
     val type: String,
     val format: String,

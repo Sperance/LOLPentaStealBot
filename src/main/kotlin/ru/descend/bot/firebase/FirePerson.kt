@@ -19,9 +19,7 @@ data class FirePerson(
     var LOL_name: String = "",
     var LOL_profileIconId: Int? = null,
     var LOL_summonerLevel: Int = 1,
-    var LOL_region: String = "",
-
-    var matchIDs: ArrayList<String> = ArrayList()
+    var LOL_region: String = ""
 ): FireBaseData() {
 
     @Exclude
