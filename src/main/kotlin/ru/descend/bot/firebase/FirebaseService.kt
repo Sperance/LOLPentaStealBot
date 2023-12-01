@@ -10,7 +10,6 @@ import dev.kord.core.entity.Guild
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.printLog
 import ru.descend.bot.toFormatDateTime
@@ -74,12 +73,12 @@ object FirebaseService {
         return setDataToCollection(collectionGuildUser(guild, user, F_PENTASTILLS), obj)
     }
 
-    suspend fun addPentaKill(guild: Guild, user: FirePerson, obj: FirePKill): CompleteResult {
+    fun addPentaKill(guild: Guild, user: FirePerson, obj: FirePKill): CompleteResult {
         printLog("[FirebaseService] Creating PentaKill with GUILD ${guild.id.value} with user ${user.KORD_id}")
         return setDataToCollection(collectionGuildUser(guild, user, F_PENTAKILLS), obj)
     }
 
-    suspend fun addPerson(guild: Guild, obj: FirePerson): CompleteResult {
+    fun addPerson(guild: Guild, obj: FirePerson): CompleteResult {
         return if (checkDataForCollection(collectionGuild(guild, F_USERS), obj.KORD_id)) {
             CompleteResult.Error("User is exists with id: ${obj.KORD_id}")
         } else {
@@ -91,7 +90,7 @@ object FirebaseService {
     fun checkDataForCollection(collection: CollectionReference, uid: String): Boolean {
         return try {
             val docSnap = collection.document(uid).get().get()
-            (docSnap == null)
+            !(docSnap == null || !docSnap.exists())
         }catch (_: Exception) {
             false
         }
@@ -108,14 +107,11 @@ object FirebaseService {
         return dataList
     }
 
-    inline fun <reified T> getDataFromCollection(collection: CollectionReference, uid: String): T? {
+    private inline fun <reified T> getDataFromCollection(collection: CollectionReference, uid: String): T? {
         return try {
             val docSnap = collection.document(uid).get().get()
-            if ((!(docSnap == null || !docSnap.exists()))) {
-                return docSnap.toObject(T::class.java)
-            } else {
-                return null
-            }
+            if (docSnap != null) return docSnap.toObject(T::class.java)
+            else { return null }
         }catch (_: Exception) {
             null
         }
@@ -129,15 +125,13 @@ object FirebaseService {
         return getDataFromCollection<FireGuild>(firestore.collection(F_GUILDS), guild.id.value.toString())
     }
 
-    suspend fun setDataToCollection(
+    fun setDataToCollection(
         collection: CollectionReference,
         data: FireBaseData,
         docName: String? = null
     ): CompleteResult {
-        val deferred = CompletableDeferred<CompleteResult>()
         val newDocument = if (docName == null) collection.document() else collection.document(docName)
-        withContext(Dispatchers.IO) {
-            val result = firestore.runTransaction { transaction ->
+            return firestore.runTransaction { transaction ->
                 try {
                     data.SYS_UUID = newDocument.id
                     data.SYS_FIRE_PATH = newDocument.path
@@ -147,8 +141,7 @@ object FirebaseService {
                     CompleteResult.Error(e.message ?: "")
                 }
             }.get()
-            deferred.complete(result)
-        }
-        return deferred.await()
+//            deferred.complete(result)
+//        return deferred.await()
     }
 }

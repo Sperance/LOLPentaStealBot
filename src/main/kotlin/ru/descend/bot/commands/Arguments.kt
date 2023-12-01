@@ -67,7 +67,10 @@ fun arguments() = commands("Arguments") {
             if (newUser == null) {
                 val person = FirePerson()
                 person.initKORD(user)
-                FirebaseService.addPerson(guild, person)
+                when (val res = FirebaseService.addPerson(guild, person)){
+                    is CompleteResult.Error -> printLog(res.errorText)
+                    is CompleteResult.Success -> null
+                }
                 newUser = FirebaseService.getUser(guild, person.KORD_id)
             }
             val res = newUser!!.initLOL(region, summonerName)

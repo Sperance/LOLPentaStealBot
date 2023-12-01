@@ -37,7 +37,6 @@ fun catchToken(): List<String> {
         //TODO Write token
     }
     val array = decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
-    println("Descrypted token size: ${array.size}")
     return array
 }
 
@@ -54,6 +53,13 @@ suspend fun <T> Flow<T>.asList(): ArrayList<T> {
     val emptyList = ArrayList<T>()
     collect { emptyList.add(it) }
     return emptyList
+}
+
+fun formatInt(value: Int, items: Int) : String {
+    var str = value.toString()
+    while (str.length < items)
+        str = "0$str"
+    return str
 }
 
 fun User.isBotOwner(): Boolean {

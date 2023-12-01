@@ -26,6 +26,35 @@ class DataPersonTest {
     }
 
     @Test
+    fun test_format_number() {
+        var str = ""
+
+        val num1 = 4
+        val num2 = 53
+        val num3 = 0
+        val num4 = 483
+        val num5 = 11
+
+        val strSize = 3
+        val charS = "0"
+
+        str += catchStr(num1, 4) + "/"
+        str += catchStr(num2, 3) + "/"
+        str += catchStr(num3, 2) + "/"
+        str += catchStr(num4, 2) + "/"
+        str += catchStr(num5, 2)
+
+        println(str)
+    }
+
+    fun catchStr(value: Int, items: Int) : String {
+        var str = value.toString()
+        while (str.length < items)
+            str = "0$str"
+        return str
+    }
+
+    @Test
     fun test_connect_rito(){
         val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
         val ecex = leagueApi.leagueService.getBySummonerName("Атлант").execute()
