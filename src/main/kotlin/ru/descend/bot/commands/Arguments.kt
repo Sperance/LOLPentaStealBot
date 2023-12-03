@@ -120,7 +120,7 @@ fun arguments() = commands("Arguments") {
             FirebaseService.addPerson(guild, person)
             FirebaseService.addPentaKill(guild, person, FirePKill(FireChampion.catchFromDTO(findObjHero)))
             val newUser = FirebaseService.getUser(guild, person.KORD_id)
-            val pentaData = FirebaseService.getArrayFromCollection<FirePKill>(newUser!!.toDocument().collection(F_PENTAKILLS))
+            val pentaData = FirebaseService.getArrayFromCollection<FirePKill>(newUser!!.toDocument().collection(F_PENTAKILLS)).await()
 
             respondPublic {
                 title = "ПЕНТАКИЛЛ"
@@ -205,7 +205,7 @@ fun arguments() = commands("Arguments") {
 
             val iUser = if (userWho.isBot()) personFromWhom else personWho
             val newUser = FirebaseService.getUser(guild, iUser.KORD_id)
-            val stealData = FirebaseService.getArrayFromCollection<FirePSteal>(newUser!!.toDocument().collection(F_PENTASTILLS))
+            val stealData = FirebaseService.getArrayFromCollection<FirePSteal>(newUser!!.toDocument().collection(F_PENTASTILLS)).await()
 
             val textPStillWho = stealData.filter { it.whoSteal != null }.filter { it.whoSteal!!.snowflake == newUser.KORD_id }.size
             val textPStillWhom = stealData.filter { it.fromWhomSteal != null }.filter { it.fromWhomSteal!!.snowflake == newUser.KORD_id }.size

@@ -38,6 +38,7 @@ import ru.descend.bot.firebase.FirePerson
 import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.savedObj.DataBasic
+import ru.descend.bot.savedObj.LAST_LEAGUE_UPDATE
 import java.awt.Color
 
 @OptIn(PrivilegedIntent::class)
@@ -118,7 +119,7 @@ suspend fun removeMessage(guild: Guild) {
 suspend fun showLeagueHistory(guild: Guild) {
     CoroutineScope(Dispatchers.IO).launch {
         while (true) {
-            FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS)).forEach {
+            FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS)).await().forEach {
                 if (it.LOL_puuid == "") return@forEach
                 LeagueMainObject.catchMatchID(it.LOL_puuid).forEach { matchId ->
                     LeagueMainObject.catchMatch(matchId)?.let { match ->
@@ -126,7 +127,8 @@ suspend fun showLeagueHistory(guild: Guild) {
                     }
                 }
             }
-            delay(60 * 60 * 1000) //60min
+            LAST_LEAGUE_UPDATE = TimeStamp.now()
+            delay(120 * 60 * 1000) //120min
         }
     }
 }
@@ -136,18 +138,19 @@ suspend fun showMainGuildMessage(guild: Guild, guildData: FireGuild) {
         while (true) {
             if (guildData.botChannelId.isNotEmpty()) {
                 val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
-                val allMatches = FirebaseService.getArrayFromCollection<FireMatch>(FirebaseService.collectionGuild(guild, F_MATCHES))
+                val allMatches = FirebaseService.getArrayFromCollection<FireMatch>(FirebaseService.collectionGuild(guild, F_MATCHES)).await()
+                val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS)).await()
 
                 editMessageGlobal(channelText, guildData.messageIdPentaData, {
-                    editMessagePentaDataContent(it, allMatches, guild)
+                    editMessagePentaDataContent(it, allMatches, allPersons, guild)
                 }) {
-                    createMessagePentaData(channelText, allMatches, guildData)
+                    createMessagePentaData(channelText, allMatches, allPersons, guildData)
                 }
 
                 editMessageGlobal(channelText, guildData.messageIdGlobalStatisticData, {
-                    editMessageGlobalStatisticContent(it, allMatches, guild)
+                    editMessageGlobalStatisticContent(it, allMatches, allPersons, guild)
                 }) {
-                    createMessageGlobalStatistic(channelText, allMatches, guildData)
+                    createMessageGlobalStatistic(channelText, allMatches, allPersons, guildData)
                 }
             }
             delay(30 * 60 * 1000) //30 min
@@ -176,10 +179,11 @@ suspend fun editMessageGlobal(
 suspend fun createMessagePentaData(
     channelText: TextChannel,
     allMatches: ArrayList<FireMatch>,
+    allPersons: ArrayList<FirePerson>,
     file: FireGuild
 ) {
     val message = channelText.createMessage("Initial Message")
-    channelText.getMessage(message.id).edit { editMessagePentaDataContent(this, allMatches, message.getGuild()) }
+    channelText.getMessage(message.id).edit { editMessagePentaDataContent(this, allMatches, allPersons, message.getGuild()) }
     file.messageIdPentaData = message.id.value.toString()
     printLog(file.fireSaveData())
 }
@@ -187,10 +191,11 @@ suspend fun createMessagePentaData(
 suspend fun createMessageGlobalStatistic(
     channelText: TextChannel,
     allMatches: ArrayList<FireMatch>,
+    allPersons: ArrayList<FirePerson>,
     file: FireGuild
 ) {
     val message = channelText.createMessage("Initial Message")
-    channelText.getMessage(message.id).edit { editMessageGlobalStatisticContent(this, allMatches, message.getGuild()) }
+    channelText.getMessage(message.id).edit { editMessageGlobalStatisticContent(this, allMatches, allPersons, message.getGuild()) }
     file.messageIdGlobalStatisticData = message.id.value.toString()
     printLog(file.fireSaveData())
 }
@@ -198,14 +203,14 @@ suspend fun createMessageGlobalStatistic(
 fun editMessageGlobalStatisticContent(
     builder: UserMessageModifyBuilder,
     allMatches: ArrayList<FireMatch>,
+    allPersons: ArrayList<FirePerson>,
     guild: Guild
 ) {
-    val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS))
 
     val dataList = ArrayList<FireParticipant>()
 
     allMatches.forEach {match ->
-        match.getParticipants(guild).forEach { perc ->
+        match.getParticipants(allPersons).forEach { perc ->
             match.listPerc.find { perc.LOL_puuid == it.puuid }?.let {firePart ->
                 val findedObj = dataList.find { it.puuid == firePart.puuid }
                 if (findedObj == null) {
@@ -235,15 +240,11 @@ fun editMessageGlobalStatisticContent(
     val charStr = " / "
 
     val list1 = dataList.map { obj -> allPersons.find { it.LOL_puuid == obj.puuid }!!.asUser(guild).lowDescriptor() }
-//    val listkills = dataList.map { it.kills }
-//    val listkills3 = dataList.map { it.kills3 }
-//    val listkills4 = dataList.map { it.kills4 }
-//    val listkills5 = dataList.map { it.kills5 }
-//    val listskillsCast = dataList.map { it.skillsCast }
     val listGames = dataList.map { formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(it.skillsCast, 5) }
     val listAllKills = dataList.map { formatInt(it.kills, 4) + charStr + formatInt(it.kills2, 3) + charStr + formatInt(it.kills3, 2) + charStr + formatInt(it.kills4, 2) + charStr + formatInt(it.kills5, 2) }
 
-    builder.content = "Общая статистика: ${TimeStamp.now()}\n"
+    builder.content = "Общая статистика: ${TimeStamp.now()}\n" +
+            "Обновление данных: $LAST_LEAGUE_UPDATE\n"
     builder.embed {
         field {
             name = "User"
@@ -255,47 +256,23 @@ fun editMessageGlobalStatisticContent(
             value = listGames.joinToString(separator = "\n")
             inline = true
         }
-//        field {
-//            name = "Wins"
-//            value = listWins.joinToString(separator = "\n")
-//            inline = true
-//        }
         field {
             name = "K/2/3/4/5"
             value = listAllKills.joinToString(separator = "\n")
             inline = true
         }
-//        field {
-//            name = "Kill3"
-//            value = listkills3.joinToString(separator = "\n")
-//            inline = true
-//        }
-//        field {
-//            name = "Kill4"
-//            value = listkills4.joinToString(separator = "\n")
-//            inline = true
-//        }
-//        field {
-//            name = "Kill5"
-//            value = listkills5.joinToString(separator = "\n")
-//            inline = true
-//        }
-//        field {
-//            name = "Skills"
-//            value = listskillsCast.joinToString(separator = "\n")
-//            inline = true
-//        }
     }
 }
 
 fun editMessagePentaDataContent(
     builder: UserMessageModifyBuilder,
     allMatches: ArrayList<FireMatch>,
+    allPersons: ArrayList<FirePerson>,
     guild: Guild
 ) {
     val dataList = ArrayList<DataBasic>()
     allMatches.forEach {match ->
-        match.getParticipants(guild).forEach { perc ->
+        match.getParticipants(allPersons).forEach { perc ->
             match.listPerc.find { perc.LOL_puuid == it.puuid }?.let {firePart ->
                 if (firePart.kills5 > 0) dataList.add(DataBasic(user = perc, text = "Сделал пентакилл за '${LeagueMainObject.findHeroForKey(firePart.championId.toString()).name}'", date = match.matchDate))
             }
@@ -308,7 +285,8 @@ fun editMessagePentaDataContent(
     val list2 = dataList.map { it.text }
     val list3 = dataList.map { it.date.toFormatDate() }
 
-    builder.content = "Доска ПЕНТАКИЛЛОВ ${TimeStamp.now()}\n"
+    builder.content = "Доска ПЕНТАКИЛЛОВ ${TimeStamp.now()}\n" +
+            "Обновление данных: $LAST_LEAGUE_UPDATE\n"
     builder.embed {
         field {
             name = "Призыватель"

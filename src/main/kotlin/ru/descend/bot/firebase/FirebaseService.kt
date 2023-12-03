@@ -7,8 +7,10 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.FirestoreClient
 import dev.kord.core.entity.Guild
-import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.printLog
@@ -40,15 +42,24 @@ object FirebaseService {
     }
 
     fun collectionGuild(guild: Guild, collectionName: String): CollectionReference {
-        return firestore.collection(F_GUILDS).document(guild.id.value.toString()).collection(collectionName)
+        return firestore.collection(F_GUILDS).document(guild.id.value.toString())
+            .collection(collectionName)
     }
 
-    fun collectionGuildUser(guild: Guild, user: FirePerson, collectionName: String): CollectionReference {
+    fun collectionGuildUser(
+        guild: Guild,
+        user: FirePerson,
+        collectionName: String
+    ): CollectionReference {
         return collectionGuild(guild, F_USERS).document(user.KORD_id).collection(collectionName)
     }
 
-    suspend fun addGuild(guild: Guild): CompleteResult {
-        return if (checkDataForCollection(firestore.collection(F_GUILDS), guild.id.value.toString())) {
+    fun addGuild(guild: Guild): CompleteResult {
+        return if (checkDataForCollection(
+                firestore.collection(F_GUILDS),
+                guild.id.value.toString()
+            )
+        ) {
             CompleteResult.Error("User is exists with id: ${guild.id.value}")
         } else {
             val guildF = FireGuild()
@@ -58,7 +69,7 @@ object FirebaseService {
         }
     }
 
-    suspend fun addMatchToGuild(guild: Guild, match: MatchDTO) : CompleteResult {
+    fun addMatchToGuild(guild: Guild, match: MatchDTO): CompleteResult {
         val mId = match.metadata.matchId
 
         if (!checkDataForCollection(collectionGuild(guild, F_MATCHES), mId)) {
@@ -68,7 +79,7 @@ object FirebaseService {
         return CompleteResult.Error("Match in guild ${guild.id.value} is exists with id: $mId")
     }
 
-    suspend fun addPentaSteal(guild: Guild, user: FirePerson, obj: FirePSteal): CompleteResult {
+    fun addPentaSteal(guild: Guild, user: FirePerson, obj: FirePSteal): CompleteResult {
         printLog("[FirebaseService] Creating PentaSteal with GUILD ${guild.id.value} with user ${user.KORD_id}")
         return setDataToCollection(collectionGuildUser(guild, user, F_PENTASTILLS), obj)
     }
@@ -91,57 +102,67 @@ object FirebaseService {
         return try {
             val docSnap = collection.document(uid).get().get()
             !(docSnap == null || !docSnap.exists())
-        }catch (_: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
 
-    inline fun <reified T> getArrayFromCollection(collection: CollectionReference): ArrayList<T> {
-        val dataList = ArrayList<T>()
-        for (childSnapshot in collection.get().get().documents) {
-            try {
-                val data = childSnapshot.toObject(T::class.java)
-                dataList.add(data)
-            } catch (_: Exception) { }
+    inline fun <reified T> getArrayFromCollection(collection: CollectionReference): Deferred<ArrayList<T>> {
+        return CoroutineScope(Dispatchers.IO).async {
+            val dataList = ArrayList<T>()
+            for (childSnapshot in withContext(Dispatchers.IO) {
+                collection.get().get()
+            }.documents) {
+                try {
+                    val data = childSnapshot.toObject(T::class.java)
+                    dataList.add(data)
+                } catch (_: Exception) {
+                }
+            }
+            dataList
         }
-        return dataList
     }
 
-    private inline fun <reified T> getDataFromCollection(collection: CollectionReference, uid: String): T? {
+    private inline fun <reified T> getDataFromCollection(
+        collection: CollectionReference,
+        uid: String
+    ): T? {
         return try {
             val docSnap = collection.document(uid).get().get()
             if (docSnap != null) return docSnap.toObject(T::class.java)
-            else { return null }
-        }catch (_: Exception) {
+            else {
+                return null
+            }
+        } catch (_: Exception) {
             null
         }
     }
 
-    fun getUser(guild: Guild, uid: String) : FirePerson? {
+    fun getUser(guild: Guild, uid: String): FirePerson? {
         return getDataFromCollection<FirePerson>(collectionGuild(guild, F_USERS), uid)
     }
 
-    fun getGuild(guild: Guild) : FireGuild? {
-        return getDataFromCollection<FireGuild>(firestore.collection(F_GUILDS), guild.id.value.toString())
+    fun getGuild(guild: Guild): FireGuild? {
+        return getDataFromCollection<FireGuild>(
+            firestore.collection(F_GUILDS),
+            guild.id.value.toString()
+        )
     }
 
-    fun setDataToCollection(
+    private fun setDataToCollection(
         collection: CollectionReference,
         data: FireBaseData,
         docName: String? = null
     ): CompleteResult {
-        val newDocument = if (docName == null) collection.document() else collection.document(docName)
-            return firestore.runTransaction { transaction ->
-                try {
-                    data.SYS_UUID = newDocument.id
-                    data.SYS_FIRE_PATH = newDocument.path
-                    transaction.set(newDocument, data)
-                    CompleteResult.Success()
-                } catch (e: Exception) {
-                    CompleteResult.Error(e.message ?: "")
-                }
-            }.get()
-//            deferred.complete(result)
-//        return deferred.await()
+        val newDocument =
+            if (docName == null) collection.document() else collection.document(docName)
+        return try {
+            data.SYS_UUID = newDocument.id
+            data.SYS_FIRE_PATH = newDocument.path
+            collection.document(newDocument.id).set(data)
+            CompleteResult.Success()
+        } catch (e: Exception) {
+            CompleteResult.Error(e.message ?: "")
+        }
     }
 }

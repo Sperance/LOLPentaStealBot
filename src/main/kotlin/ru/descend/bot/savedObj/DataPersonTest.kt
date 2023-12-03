@@ -9,12 +9,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Test
 import ru.descend.bot.catchToken
+import ru.descend.bot.firebase.CompleteResult
 import ru.descend.bot.firebase.FirePKill
 import ru.descend.bot.firebase.FirePerson
 import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.getRandom
 import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.printLog
+import ru.descend.bot.toStringUID
 import java.io.FileInputStream
 
 class DataPersonTest {

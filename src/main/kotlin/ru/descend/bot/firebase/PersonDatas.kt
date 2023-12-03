@@ -104,11 +104,10 @@ data class FireMatch(
     }
 
     @Exclude
-    fun getParticipants(guild: Guild) : ArrayList<FirePerson> {
+    fun getParticipants(persons: ArrayList<FirePerson>) : ArrayList<FirePerson> {
         val result = ArrayList<FirePerson>()
-        val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS))
         listPerc.forEach { perc ->
-            allPersons.find { it.LOL_puuid == perc.puuid }?.let { fp ->
+            persons.find { it.LOL_puuid == perc.puuid }?.let { fp ->
                 result.add(fp)
             }
         }
