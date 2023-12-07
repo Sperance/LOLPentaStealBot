@@ -54,6 +54,7 @@ data class FireParticipant(
 
     @Exclude var statWins: Int = 0,
     @Exclude var statGames: Int = 0,
+    @Exclude var sortIndex: Int = 0
 ) {
 
     constructor(participant: Participant) : this() {

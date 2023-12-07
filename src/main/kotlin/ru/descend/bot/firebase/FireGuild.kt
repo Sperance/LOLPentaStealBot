@@ -13,7 +13,8 @@ data class FireGuild (
     var botChannelId: String = "",
     var messageId: String = "",
     var messageIdPentaData: String = "",
-    var messageIdGlobalStatisticData: String = ""
+    var messageIdGlobalStatisticData: String = "",
+    var messageIdMasteryData: String = ""
 ) : FireBaseData() {
     @Exclude
     fun initGuild(guild: Guild) {

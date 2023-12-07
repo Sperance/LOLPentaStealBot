@@ -13,6 +13,7 @@ import ru.descend.bot.firebase.CompleteResult
 import ru.descend.bot.firebase.FirePKill
 import ru.descend.bot.firebase.FirePerson
 import ru.descend.bot.firebase.FirebaseService
+import ru.descend.bot.format
 import ru.descend.bot.getRandom
 import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.lolapi.LeagueMainObject
@@ -70,6 +71,23 @@ class DataPersonTest {
     fun test_firebase(){
         val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
         println(leagueApi.leagueService.getMatchIDByPUUID("ML88UCuH67sUxzc7p9-E6UsF-s_AP6rlcXUeJ4O1jix-xUXOwCti9nHM7EhASAgEvkqPDdFGkh8Msg").execute().body())
+    }
+
+    @Test
+    fun test_del(){
+        val res = ((66.0 / 124.0) * 100).toInt()
+        println(res)
+    }
+
+    @Test
+    fun test_date() {
+        val curDate = getStrongDate(System.currentTimeMillis())
+        printLog("Hour: ${curDate.hours}")
+        when (curDate.hours){
+            in 1..11 -> {
+                printLog("Hour: ${curDate.hours} - continue")
+            }
+        }
     }
 
     @Test

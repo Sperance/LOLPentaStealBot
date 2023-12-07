@@ -2,6 +2,7 @@ package ru.descend.bot.lolapi
 
 import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
+import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 
 object LeagueMainObject {
@@ -40,6 +41,10 @@ object LeagueMainObject {
 
     fun catchMatch(matchId: String) : MatchDTO? {
         return leagueService.getMatchInfo(matchId).execute().body()
+    }
+
+    fun catchChampionMastery(puuid: String) : ChampionMasteryDto? {
+        return leagueService.getChampionMastery(puuid).execute().body()
     }
 
     fun findHeroForKey(key: String) : InterfaceChampionBase {

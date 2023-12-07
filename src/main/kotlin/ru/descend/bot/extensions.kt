@@ -18,9 +18,20 @@ fun printLog(message: Any){
     println("[$curDTime] $message")
 }
 
+fun printLog(guild: Guild, message: Any){
+    val curDTime = System.currentTimeMillis().toFormatDateTime()
+    println("[$curDTime] [${guild.id.value}] $message")
+}
+
 fun Long.toFormatDate() : String {
     return SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(this))
 }
+
+fun Long.toDate() : Date {
+    return Date(this)
+}
+
+fun Double.format(digits: Int) = "%.${digits}f".format(this)
 
 fun Long.toFormatDateTime() : String {
     return SimpleDateFormat("dd.MM.yy HH:mm:ss", Locale.getDefault()).format(Date(this))

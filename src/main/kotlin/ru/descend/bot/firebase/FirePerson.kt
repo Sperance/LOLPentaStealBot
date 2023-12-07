@@ -9,6 +9,8 @@ import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.LeagueApi
 
 data class FirePerson(
+    var personIndex: Int = 0,
+
     var KORD_id: String = "",
     var KORD_name: String = "",
     var KORD_discriminator: String = "",
@@ -18,7 +20,6 @@ data class FirePerson(
     var LOL_puuid: String = "",
     var LOL_name: String = "",
     var LOL_profileIconId: Int? = null,
-    var LOL_summonerLevel: Int = 1,
     var LOL_region: String = ""
 ): FireBaseData() {
 
@@ -38,7 +39,6 @@ data class FirePerson(
             this.LOL_puuid = it.puuid
             this.LOL_name = it.name
             this.LOL_profileIconId = it.profileIconId
-            this.LOL_summonerLevel = it.summonerLevel
             this.LOL_region = region
             return CompleteResult.Success()
         }
