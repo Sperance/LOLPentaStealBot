@@ -4,6 +4,7 @@ import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
+import ru.descend.bot.printLog
 
 object LeagueMainObject {
 
@@ -13,6 +14,10 @@ object LeagueMainObject {
 
     var heroObjects = ArrayList<Any>()
     var heroNames = ArrayList<String>()
+
+    var LOL_VERSION = ""
+    var LOL_HEROES = 0
+
     fun catchHeroNames(): ArrayList<String> {
 
         val versions = dragonService.getVersions().execute().body()!!
@@ -28,6 +33,12 @@ object LeagueMainObject {
             nameField.isAccessible = true
             namesAllHero.add(nameField.get(curData).toString())
         }
+
+        LOL_VERSION = champions.version
+        LOL_HEROES = namesAllHero.size
+
+        printLog("Version Data: ${champions.version} Heroes: ${namesAllHero.size}")
+
         return namesAllHero
     }
 

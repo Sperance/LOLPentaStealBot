@@ -45,7 +45,7 @@ import java.time.Duration
 @KordPreview
 fun main() {
     println("Initializing is Started")
-    initializeDataAPI()
+    LeagueMainObject.heroNames = LeagueMainObject.catchHeroNames()
     bot(catchToken()[0]) {
         prefix {
             Configuration.prefix
@@ -91,12 +91,12 @@ fun main() {
                 }
 
                 removeMessage(it)
-
                 arrayCurrentMatches[it.id.value.toString()] = ArrayList()
+
                 jobArray.add(CoroutineScope(Dispatchers.IO).launch {
                     while (true) {
                         showLeagueHistory(it, guildData!!)
-                        delay(Duration.ofMinutes(60).toMillis())
+                        delay(Duration.ofMinutes(30).toMillis())
                     }
                 })
             }
@@ -127,11 +127,11 @@ suspend fun removeMessage(guild: Guild) {
         val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
         channelText.messages.collect {
             val msgId = it.id.value.toString()
-            if (msgId == guildData.messageIdPentaData || msgId == guildData.messageIdGlobalStatisticData || msgId == guildData.messageIdMasteryData) {
-
-            } else {
+//            if (msgId == guildData.messageId || msgId == guildData.messageIdPentaData || msgId == guildData.messageIdGlobalStatisticData || msgId == guildData.messageIdMasteryData) {
+//
+//            } else {
                 it.delete()
-            }
+//            }
         }
         printLog("Clean channel end ${guild.id.value}")
     }
@@ -141,7 +141,7 @@ private val arrayCurrentMatches = HashMap<String, ArrayList<FireMatch>>()
 
 suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) {
     val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS)).await()
-    val mapUses = HashMap<String, ChampionMasteryDto>()
+    val mapUses = HashMap<FirePerson, ChampionMasteryDto>()
     var newMatch = 0
 
     if (arrayCurrentMatches[guild.id.value.toString()]!!.isEmpty()) {
@@ -164,36 +164,37 @@ suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) {
             }
         }
         LeagueMainObject.catchChampionMastery(it.LOL_puuid)?.let {mastery ->
-            mapUses[it.LOL_puuid] = mastery
+            mapUses[it] = mastery
         }
     }
 
-    val curMatches = ArrayList<FireMatch>()
-    curMatches.addAll(arrayCurrentMatches[guild.id.value.toString()]!!)
+    val curMatches: ArrayList<FireMatch> = arrayCurrentMatches[guild.id.value.toString()]!!.clone() as ArrayList<FireMatch>
 
     if (guildData.botChannelId.isNotEmpty()) {
         val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
 
         editMessageGlobal(channelText, guildData.messageIdPentaData, {
-            editMessagePentaDataContent(it, arrayCurrentMatches[guild.id.value.toString()]!!, allPersons, guild)
+            editMessagePentaDataContent(it, curMatches, allPersons, guild)
         }) {
-            createMessagePentaData(channelText, arrayCurrentMatches[guild.id.value.toString()]!!, allPersons, guildData)
+            createMessagePentaData(channelText, curMatches, allPersons, guildData)
         }
         editMessageGlobal(channelText, guildData.messageIdGlobalStatisticData, {
-            editMessageGlobalStatisticContent(it, arrayCurrentMatches[guild.id.value.toString()]!!, allPersons, guild)
+            editMessageGlobalStatisticContent(it, curMatches, allPersons, guild)
         }) {
-            createMessageGlobalStatistic(channelText, arrayCurrentMatches[guild.id.value.toString()]!!, allPersons, guildData)
+            createMessageGlobalStatistic(channelText, curMatches, allPersons, guildData)
         }
         editMessageGlobal(channelText, guildData.messageIdMasteryData, {
             editMessageMasteryContent(it, mapUses, allPersons, guild)
         }) {
             createMessageMastery(channelText, mapUses, allPersons, guildData)
         }
+        editMessageGlobal(channelText, guildData.messageId, {
+            editMessageSimpleContent(it, curMatches, allPersons)
+        }) {
+            createMessageSimple(channelText, curMatches, allPersons, guildData)
+        }
         mapUses.clear()
     }
-
-    arrayCurrentMatches[guild.id.value.toString()]!!.clear()
-    arrayCurrentMatches[guild.id.value.toString()]!!.addAll(curMatches)
 }
 
 suspend fun editMessageGlobal(
@@ -238,9 +239,21 @@ suspend fun createMessageGlobalStatistic(
     printLog(file.fireSaveData())
 }
 
+suspend fun createMessageSimple(
+    channelText: TextChannel,
+    map: ArrayList<FireMatch>,
+    allPersons: ArrayList<FirePerson>,
+    file: FireGuild
+) {
+    val message = channelText.createMessage("Initial Message")
+    channelText.getMessage(message.id).edit { editMessageSimpleContent(this, map, allPersons) }
+    file.messageId = message.id.value.toString()
+    printLog(file.fireSaveData())
+}
+
 suspend fun createMessageMastery(
     channelText: TextChannel,
-    map: HashMap<String, ChampionMasteryDto>,
+    map: HashMap<FirePerson, ChampionMasteryDto>,
     allPersons: ArrayList<FirePerson>,
     file: FireGuild
 ) {
@@ -252,15 +265,16 @@ suspend fun createMessageMastery(
 
 fun editMessageMasteryContent(
     builder: UserMessageModifyBuilder,
-    map: HashMap<String, ChampionMasteryDto>,
+    map: HashMap<FirePerson, ChampionMasteryDto>,
     allPersons: ArrayList<FirePerson>,
     guild: Guild
 ) {
 
+    val sortedMap = map.toSortedMap { p0, p1 -> p0.personIndex.compareTo(p1.personIndex) }
 
-    val list1 = map.map { obj -> allPersons.find { it.LOL_puuid == obj.key }!!.personIndex.toString() + "|" + allPersons.find { it.LOL_puuid == obj.key }!!.asUser(guild).lowDescriptor() }
-    val listHeroes = map.map { allPersons.find { per -> per.LOL_puuid == it.key }!!.personIndex.toString() + "|" + LeagueMainObject.findHeroForKey(it.value.getOrNull(0)?.championId.toString()).name + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(1)?.championId.toString()).name + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(2)?.championId.toString()).name }
-    val listPoints = map.map { allPersons.find { per -> per.LOL_puuid == it.key }!!.personIndex.toString() + "|" + it.value.getOrNull(0)?.championPoints.toString() + " / " + it.value.getOrNull(1)?.championPoints + " / " + it.value.getOrNull(2)?.championPoints }
+    val list1 = sortedMap.map { obj -> formatInt(allPersons.find { it.LOL_puuid == obj.key.LOL_puuid }!!.personIndex, 2) + "|" + allPersons.find { it.LOL_puuid == obj.key.LOL_puuid }!!.asUser(guild).lowDescriptor() }
+    val listHeroes = sortedMap.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.key.LOL_puuid }!!.personIndex, 2) + "| " + LeagueMainObject.findHeroForKey(it.value.getOrNull(0)?.championId.toString()).name + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(1)?.championId.toString()).name + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(2)?.championId.toString()).name }
+    val listPoints = sortedMap.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.key.LOL_puuid }!!.personIndex, 2) + "| " + it.value.getOrNull(0)?.championPoints.toString() + " / " + it.value.getOrNull(1)?.championPoints + " / " + it.value.getOrNull(2)?.championPoints }
 
     builder.content = "Статистика по Чемпионам: ${TimeStamp.now()}\n"
     builder.embed {
@@ -280,6 +294,18 @@ fun editMessageMasteryContent(
             inline = true
         }
     }
+}
+
+fun editMessageSimpleContent(
+    builder: UserMessageModifyBuilder,
+    map: ArrayList<FireMatch>,
+    allPersons: ArrayList<FirePerson>
+) {
+    builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
+            "Игр на сервере: ${map.size}\n" +
+            "Пользователей в базе: ${allPersons.size}\n" +
+            "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
+            "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
 }
 
 fun editMessageGlobalStatisticContent(
@@ -323,8 +349,12 @@ fun editMessageGlobalStatisticContent(
     val charStr = " / "
 
     val list1 = dataList.map { obj -> formatInt(allPersons.find { it.LOL_puuid == obj.puuid }!!.personIndex, 2) + "|" + allPersons.find { it.LOL_puuid == obj.puuid }!!.asUser(guild).lowDescriptor() }
-    val listGames = dataList.map { allPersons.find { per -> per.LOL_puuid == it.puuid }!!.personIndex.toString() + "|" + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" + charStr + formatInt(it.skillsCast, 5) }
-    val listAllKills = dataList.map { allPersons.find { per -> per.LOL_puuid == it.puuid }!!.personIndex.toString() + "|" + formatInt(it.kills, 4) + charStr + formatInt(it.kills2, 3) + charStr + formatInt(it.kills3, 2) + charStr + formatInt(it.kills4, 2) + charStr + formatInt(it.kills5, 2) }
+    val listGames = dataList.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.puuid }!!.personIndex, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" + charStr + formatInt(it.skillsCast, 5) }
+    val listAllKills = dataList.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.puuid }!!.personIndex, 2) + "| " + formatInt(it.kills, 4) + charStr + formatInt(it.kills2, 3) + charStr + formatInt(it.kills3, 2) + charStr + formatInt(it.kills4, 2) + charStr + formatInt(it.kills5, 2) }
+
+    dataList.forEach {
+        it.clearData()
+    }
 
     builder.content = "Общая статистика: ${TimeStamp.now()}\n"
     builder.embed {
@@ -363,7 +393,7 @@ fun editMessagePentaDataContent(
 
     dataList.sortByDescending { it.date }
 
-    val list1 = dataList.map { (it.user?.personIndex.toString() + "|" + it.user?.asUser(guild)?.lowDescriptor()) }
+    val list1 = dataList.map { (formatInt(it.user?.personIndex?:-1, 2) + "|" + it.user?.asUser(guild)?.lowDescriptor()) }
     val list2 = dataList.map { it.text }
     val list3 = dataList.map { it.date.toFormatDate() }
 
@@ -385,9 +415,4 @@ fun editMessagePentaDataContent(
             inline = true
         }
     }
-}
-
-fun initializeDataAPI() {
-    LeagueMainObject.heroNames = LeagueMainObject.catchHeroNames()
-    println("HEROES COUNT: ${LeagueMainObject.heroNames.size}")
 }

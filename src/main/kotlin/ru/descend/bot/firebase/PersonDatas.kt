@@ -57,6 +57,25 @@ data class FireParticipant(
     @Exclude var sortIndex: Int = 0
 ) {
 
+    @Exclude
+    fun clearData() {
+        kills5 = 0
+        kills4 = 0
+        kills3 = 0
+        kills2 = 0
+        kills = 0
+        assists = 0
+        deaths = 0
+        goldEarned = 0
+        skillsCast = 0
+        totalDmgToChampions = 0
+        minionsKills = 0
+
+        statWins = 0
+        statGames = 0
+        sortIndex = 0
+    }
+
     constructor(participant: Participant) : this() {
         val kill5 = participant.pentaKills
         val kill4 = participant.quadraKills - kill5
