@@ -10,28 +10,6 @@ import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.printLog
 
-data class FireKordPerson(
-    var snowflake: String = "",
-    var username: String = "",
-    var discriminator: String = ""
-) {
-    @Exclude
-    fun asUser(guild: Guild) : User {
-        return User(UserData(Snowflake(snowflake.toLong()), username, discriminator), guild.kord)
-    }
-
-    companion object {
-        @Exclude
-        fun initKORD(user: User) : FireKordPerson{
-            return FireKordPerson(
-                snowflake = user.id.value.toString(),
-                username = user.username,
-                discriminator = user.discriminator
-            )
-        }
-    }
-}
-
 data class FireParticipant(
     var championId: Int = -1,
     var summonerId: String = "",
@@ -132,31 +110,5 @@ data class FireMatch(
             }
         }
         return result
-    }
-}
-
-data class FirePSteal(
-    var whoSteal: FireKordPerson? = null,
-    var fromWhomSteal: FireKordPerson? = null,
-    var hero: FireChampion? = null
-) : FireBaseData()
-
-data class FirePKill(
-    var hero: FireChampion? = null,
-    var match: String? = null
-) : FireBaseData()
-
-data class FireChampion(
-    var key: String = "",
-    var name: String = "",
-) {
-    companion object {
-        @Exclude
-        fun catchFromDTO(champ: InterfaceChampionBase) : FireChampion {
-            return FireChampion(
-                key = champ.key,
-                name = champ.name
-            )
-        }
     }
 }

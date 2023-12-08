@@ -18,9 +18,4 @@ data class Info(
     val queueId: Int,
     val teams: List<Team>,
     val tournamentCode: String
-){
-
-    fun getCurrentParticipant(puuid: String) : Participant? {
-        return participants.find { it.puuid == puuid }
-    }
-}
+)

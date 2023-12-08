@@ -1,25 +1,15 @@
 package ru.descend.bot.savedObj
 
-import com.google.auth.oauth2.GoogleCredentials
-import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
-import com.google.firebase.cloud.FirestoreClient
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import Entity
+import column
+import databases.Database
 import org.junit.jupiter.api.Test
 import ru.descend.bot.catchToken
-import ru.descend.bot.firebase.CompleteResult
-import ru.descend.bot.firebase.FirePKill
-import ru.descend.bot.firebase.FirePerson
 import ru.descend.bot.firebase.FirebaseService
-import ru.descend.bot.format
 import ru.descend.bot.getRandom
 import ru.descend.bot.lolapi.LeagueApi
-import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.printLog
-import ru.descend.bot.toStringUID
-import java.io.FileInputStream
+import table
 
 class DataPersonTest {
     @Test
@@ -67,16 +57,25 @@ class DataPersonTest {
         println(response?.id + " " + response?.name + " " + response?.accountId + " " + response?.puuid + " " + response?.summonerLevel)
     }
 
-    @Test
-    fun test_firebase(){
-        val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
-        println(leagueApi.leagueService.getMatchIDByPUUID("ML88UCuH67sUxzc7p9-E6UsF-s_AP6rlcXUeJ4O1jix-xUXOwCti9nHM7EhASAgEvkqPDdFGkh8Msg").execute().body())
+    data class UserPost(
+        override var id: Int = 0,
+        var username: String = "",
+        var age: Int? = 18,
+    ) : Entity() {
+        override fun toString(): String {
+            return "UserPost(id=$id, username='$username', age=$age)"
+        }
     }
 
-    @Test
-    fun test_del(){
-        val res = ((66.0 / 124.0) * 100).toInt()
-        println(res)
+    val userTable = table<UserPost, Database> {
+        column(UserPost::username).unique()
+        check(UserPost::age) { it greaterEq 18 }
+
+        defaultEntities { listOf(
+            UserPost(username = "Mike", age = 21),
+            UserPost(username = "Sue", age = 35),
+            UserPost(username = "Bill", age = 27),
+        ) }
     }
 
     @Test
@@ -91,65 +90,8 @@ class DataPersonTest {
     }
 
     @Test
-    fun test_loop() {
-        val ind = ArrayList<String>()
-        ind.add("1")
-        ind.add("2")
-        ind.add("3")
-        ind.add("4")
-        ind.add("5")
-        lit@ ind.forEach {
-            if (it == "2")
-            println(it)
-        }
-        println("end")
-    }
-
-    @Test
-    fun test_match_list() {
-        println("RES: " + LeagueMainObject.catchMatchID("aiLA3E9wdeoRpw-b3In28yDLN8fz0KT25m2jGhc0eDLgqGzY-EbGoJpjVrXZsI9nU3zLa0Vg_Ip8Ag"))
-    }
-
-    @Test
     fun test_con() {
         val res = FirebaseService.checkDataForCollection(FirebaseService.firestore.collection("GUILDS"), "11417301481949962952")
         println("RES: $res")
     }
-
-//    @Test
-//    fun writeDataTest() {
-//        val data = DataPerson()
-//        data.addPersons(Person(123123123u, "Sample name"))
-//        data.addPersons(Person(1734573123u, "sadfsfd name").apply {
-//            this.pentaKills = 42
-//            this.pentaStills["41410924"] = 12
-//            this.pentaStills["64357734"] = 2
-//        })
-//        data.addPersons(Person(957656723u, "Descend"))
-//        data.addPersons(Person(53245346u, "Descend"))
-//        data.addPersons(Person(77547654656u, "Descend"))
-//        writeDataFile(data)
-//    }
-//
-//    @Test
-//    fun readDataTest() {
-//        val obj = readDataFile()
-//        println("Soze: ${obj.listPersons.size}")
-//        println(obj)
-//
-//        println("Find: ${obj.findForUUID("1734573123")?.pentaStills}")
-//    }
-//
-//    @Test
-//    fun testAddValues() {
-//        val obj = readDataFile()
-//
-//        println(obj.listPersons.joinToString { it.uid + " " + it.name })
-//
-//        obj.addPentaStill("957656723")
-//        obj.addPentaStill("957656723")
-//        obj.addPentaStill("957656723", "53245346")
-//        obj.addPentaStill("957656723", "53245346")
-//        writeDataFile(obj)
-//    }
 }

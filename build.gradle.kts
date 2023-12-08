@@ -4,9 +4,10 @@ description = "Unofficial Bot for League of Legends"
 
 plugins {
     application
+    id("java")
+
     kotlin("jvm") version "1.9.10"
     kotlin("plugin.serialization") version "1.9.10"
-    id("java")
 }
 
 application {
@@ -17,7 +18,7 @@ application {
 repositories {
     mavenCentral()
     google()
-    maven("https://jitpack.io")
+    maven("https://jitpack.io")//
 }
 
 dependencies {
@@ -31,8 +32,9 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation(kotlin("test"))
 
-//    implementation("com.google.firebase:firebase-database-ktx:23.0.0")
     implementation("com.google.firebase:firebase-admin:9.2.0")
+
+    implementation("com.github.SergeyHSE7:Kotlin-ORM:01c23e02a5ede73647c5f4fc1cdefb8014b700c1")
 }
 
 tasks {
@@ -60,7 +62,6 @@ tasks.withType<Jar> {
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    // To add all of the dependencies
     from(sourceSets.main.get().output)
 
     dependsOn(configurations.runtimeClasspath)

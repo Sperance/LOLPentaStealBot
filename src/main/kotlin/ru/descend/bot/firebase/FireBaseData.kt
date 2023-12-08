@@ -7,6 +7,13 @@ import com.google.cloud.firestore.annotation.Exclude
 sealed class CompleteResult {
     class Success(val successText: String? = null): CompleteResult()
     class Error(val errorText: String): CompleteResult()
+
+    fun printResult(printSuccess: Boolean = true){
+        when (val res = this) {
+            is Error -> println("[ERROR] ${res.errorText}")
+            is Success -> if (printSuccess) println("[SUCCESS] ${res.successText}")
+        }
+    }
 }
 
 open class FireBaseData (

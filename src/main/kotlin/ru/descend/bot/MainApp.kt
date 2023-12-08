@@ -36,10 +36,16 @@ import ru.descend.bot.firebase.FirePerson
 import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
+import ru.descend.bot.postgre.FireGuildTable
+import ru.descend.bot.postgre.PostgreSQL
+import ru.descend.bot.postgre.fireGuildTable
 import ru.descend.bot.savedObj.DataBasic
 import ru.descend.bot.savedObj.getStrongDate
+import save
 import java.awt.Color
 import java.time.Duration
+
+const val ENABLE_POSTGRESQL = false
 
 @OptIn(PrivilegedIntent::class)
 @KordPreview
@@ -77,7 +83,10 @@ fun main() {
         }
         onStart {
             printLog("Bot ${this.properties.bot.name} started")
+            println("PostgreSQL enabled: $ENABLE_POSTGRESQL")
             println("Guilds: ")
+
+            if (ENABLE_POSTGRESQL) PostgreSQL.initializePostgreSQL()
 
             val jobArray = ArrayList<Job>()
 
@@ -90,13 +99,32 @@ fun main() {
                     guildData = FirebaseService.getGuild(it)
                 }
 
+                if (ENABLE_POSTGRESQL) {
+                    if (guildData != null){
+                        val guildT = FireGuildTable()
+                        guildT.idGuild = guildData.id
+                        guildT.applicationId = guildData.applicationId
+                        guildT.name = guildData.name
+                        guildT.description = guildData.description
+                        guildT.botChannelId = guildData.botChannelId
+                        guildT.messageId = guildData.messageId
+                        guildT.messageIdGlobalStatisticData = guildData.messageIdGlobalStatisticData
+                        guildT.messageIdMasteryData = guildData.messageIdMasteryData
+                        guildT.messageIdPentaData = guildData.messageIdPentaData
+                        guildT.ownerId = guildData.ownerId
+                        guildT.save()
+                    }
+                    return@forEach
+                }
+
                 removeMessage(it)
                 arrayCurrentMatches[it.id.value.toString()] = ArrayList()
+                arrayCurrentUsers[it.id.value.toString()] = ArrayList()
 
                 jobArray.add(CoroutineScope(Dispatchers.IO).launch {
                     while (true) {
                         showLeagueHistory(it, guildData!!)
-                        delay(Duration.ofMinutes(30).toMillis())
+                        delay(Duration.ofMinutes(60).toMillis())
                     }
                 })
             }
@@ -127,31 +155,42 @@ suspend fun removeMessage(guild: Guild) {
         val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
         channelText.messages.collect {
             val msgId = it.id.value.toString()
-//            if (msgId == guildData.messageId || msgId == guildData.messageIdPentaData || msgId == guildData.messageIdGlobalStatisticData || msgId == guildData.messageIdMasteryData) {
-//
-//            } else {
+            if (msgId == guildData.messageId || msgId == guildData.messageIdPentaData || msgId == guildData.messageIdGlobalStatisticData || msgId == guildData.messageIdMasteryData) {
+
+            } else {
                 it.delete()
-//            }
+            }
         }
         printLog("Clean channel end ${guild.id.value}")
     }
 }
 
-private val arrayCurrentMatches = HashMap<String, ArrayList<FireMatch>>()
+val arrayCurrentMatches = HashMap<String, ArrayList<FireMatch>>()
+val arrayCurrentUsers = HashMap<String, ArrayList<FirePerson>>()
 
 suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) {
-    val allPersons = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS)).await()
-    val mapUses = HashMap<FirePerson, ChampionMasteryDto>()
-    var newMatch = 0
 
     if (arrayCurrentMatches[guild.id.value.toString()]!!.isEmpty()) {
         arrayCurrentMatches[guild.id.value.toString()]!!.addAll(FirebaseService.getArrayFromCollection<FireMatch>(FirebaseService.collectionGuild(guild, F_MATCHES)).await())
-        printLog("[${guild.id.value}] initalize matching size: " + arrayCurrentMatches[guild.id.value.toString()]!!.size)
+        val sizeC = arrayCurrentMatches[guild.id.value.toString()]!!.size
+        if (sizeC > 0) printLog(guild, "initalize matching size: $sizeC")
     }
 
-    allPersons.forEach {
+    if (arrayCurrentUsers[guild.id.value.toString()]!!.isEmpty()) {
+        arrayCurrentUsers[guild.id.value.toString()]!!.addAll(FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS)).await())
+        val sizeC = arrayCurrentUsers[guild.id.value.toString()]!!.size
+        if (sizeC > 0) printLog(guild, "initalize users size: $sizeC")
+    }
+
+    val mapUses = HashMap<FirePerson, ChampionMasteryDto>()
+    var newMatch = 0
+
+    val curPersons: ArrayList<FirePerson> = arrayCurrentUsers[guild.id.value.toString()]!!.clone() as ArrayList<FirePerson>
+    val curMatches: ArrayList<FireMatch> = arrayCurrentMatches[guild.id.value.toString()]!!.clone() as ArrayList<FireMatch>
+
+    curPersons.forEach {
         if (it.LOL_puuid == "") return@forEach
-        LeagueMainObject.catchMatchID(it.LOL_puuid).forEach { matchId ->
+        LeagueMainObject.catchMatchID(it.LOL_puuid, 5).forEach { matchId ->
             LeagueMainObject.catchMatch(matchId)?.let { match ->
                 when (FirebaseService.addMatchToGuild(guild, match)) {
                     is CompleteResult.Error -> null
@@ -168,30 +207,28 @@ suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) {
         }
     }
 
-    val curMatches: ArrayList<FireMatch> = arrayCurrentMatches[guild.id.value.toString()]!!.clone() as ArrayList<FireMatch>
-
     if (guildData.botChannelId.isNotEmpty()) {
         val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
 
         editMessageGlobal(channelText, guildData.messageIdPentaData, {
-            editMessagePentaDataContent(it, curMatches, allPersons, guild)
+            editMessagePentaDataContent(it, curMatches, curPersons, guild)
         }) {
-            createMessagePentaData(channelText, curMatches, allPersons, guildData)
+            createMessagePentaData(channelText, curMatches, curPersons, guildData)
         }
         editMessageGlobal(channelText, guildData.messageIdGlobalStatisticData, {
-            editMessageGlobalStatisticContent(it, curMatches, allPersons, guild)
+            editMessageGlobalStatisticContent(it, curMatches, curPersons, guild)
         }) {
-            createMessageGlobalStatistic(channelText, curMatches, allPersons, guildData)
+            createMessageGlobalStatistic(channelText, curMatches, curPersons, guildData)
         }
         editMessageGlobal(channelText, guildData.messageIdMasteryData, {
-            editMessageMasteryContent(it, mapUses, allPersons, guild)
+            editMessageMasteryContent(it, mapUses, curPersons, guild)
         }) {
-            createMessageMastery(channelText, mapUses, allPersons, guildData)
+            createMessageMastery(channelText, mapUses, curPersons, guildData)
         }
         editMessageGlobal(channelText, guildData.messageId, {
-            editMessageSimpleContent(it, curMatches, allPersons)
+            editMessageSimpleContent(it, curMatches, curPersons)
         }) {
-            createMessageSimple(channelText, curMatches, allPersons, guildData)
+            createMessageSimple(channelText, curMatches, curPersons, guildData)
         }
         mapUses.clear()
     }

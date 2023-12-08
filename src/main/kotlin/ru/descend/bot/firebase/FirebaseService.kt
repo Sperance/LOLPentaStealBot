@@ -79,16 +79,6 @@ object FirebaseService {
         return CompleteResult.Error("Match in guild ${guild.id.value} is exists with id: $mId")
     }
 
-    fun addPentaSteal(guild: Guild, user: FirePerson, obj: FirePSteal): CompleteResult {
-        printLog("[FirebaseService] Creating PentaSteal with GUILD ${guild.id.value} with user ${user.KORD_id}")
-        return setDataToCollection(collectionGuildUser(guild, user, F_PENTASTILLS), obj)
-    }
-
-    fun addPentaKill(guild: Guild, user: FirePerson, obj: FirePKill): CompleteResult {
-        printLog("[FirebaseService] Creating PentaKill with GUILD ${guild.id.value} with user ${user.KORD_id}")
-        return setDataToCollection(collectionGuildUser(guild, user, F_PENTAKILLS), obj)
-    }
-
     fun addPerson(guild: Guild, obj: FirePerson): CompleteResult {
         return if (checkDataForCollection(collectionGuild(guild, F_USERS), obj.KORD_id)) {
             CompleteResult.Error("User is exists with id: ${obj.KORD_id}")

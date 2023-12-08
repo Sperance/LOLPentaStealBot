@@ -42,9 +42,9 @@ object LeagueMainObject {
         return namesAllHero
     }
 
-    fun catchMatchID(puuid: String) : ArrayList<String> {
+    fun catchMatchID(puuid: String, count: Int) : ArrayList<String> {
         val result = ArrayList<String>()
-        leagueService.getMatchIDByPUUID(puuid).execute().body()?.forEach {
+        leagueService.getMatchIDByPUUID(puuid, count).execute().body()?.forEach {
             result.add(it)
         }
         return result
