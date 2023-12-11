@@ -12,6 +12,7 @@ import java.util.Base64
 import java.util.Date
 import java.util.Locale
 import java.util.Random
+import kotlin.math.pow
 
 fun printLog(message: Any){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
@@ -21,6 +22,21 @@ fun printLog(message: Any){
 fun printLog(guild: Guild, message: Any){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
     println("[$curDTime] [${guild.id.value}] $message")
+}
+
+fun Int.toFormatK() : String {
+    var index = 0
+    var ost = 0
+    var num = this
+    while (num >= 1000) {
+        num /= 1000
+        index++
+        ost = (this % (1000.0.pow(index.toDouble()))).toString().substring(0, 1).toInt()
+    }
+    var sumK = ""
+    for (i in 1..index){ sumK += "k" }
+    val strOst = if (ost != 0) ".$ost" else ""
+    return "$num$strOst$sumK"
 }
 
 fun Long.toFormatDate() : String {

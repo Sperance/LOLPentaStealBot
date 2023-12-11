@@ -127,6 +127,7 @@ fun main() {
                         delay(Duration.ofMinutes(60).toMillis())
                     }
                 })
+                printLog(it, "Saved Job: ${jobArray.last()} Hash: ${jobArray.last().hashCode()}")
             }
 
             CoroutineScope(Dispatchers.Default).launch {
@@ -134,7 +135,7 @@ fun main() {
                     delay(Duration.ofMinutes(10).toMillis())
                     jobArray.forEach { job ->
                         if (!job.isActive) {
-                            printLog("Job resetted")
+                            printLog("Job resetted: $job hash: ${job.hashCode()}")
                             job.start()
                         }
                     }
@@ -156,7 +157,7 @@ suspend fun removeMessage(guild: Guild) {
         channelText.messages.collect {
             val msgId = it.id.value.toString()
             if (msgId == guildData.messageId || msgId == guildData.messageIdPentaData || msgId == guildData.messageIdGlobalStatisticData || msgId == guildData.messageIdMasteryData) {
-
+                Unit
             } else {
                 it.delete()
             }
@@ -168,7 +169,7 @@ suspend fun removeMessage(guild: Guild) {
 val arrayCurrentMatches = HashMap<String, ArrayList<FireMatch>>()
 val arrayCurrentUsers = HashMap<String, ArrayList<FirePerson>>()
 
-suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) {
+suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) = CoroutineScope(Dispatchers.IO).launch {
 
     if (arrayCurrentMatches[guild.id.value.toString()]!!.isEmpty()) {
         arrayCurrentMatches[guild.id.value.toString()]!!.addAll(FirebaseService.getArrayFromCollection<FireMatch>(FirebaseService.collectionGuild(guild, F_MATCHES)).await())
@@ -188,50 +189,107 @@ suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) {
     val curPersons: ArrayList<FirePerson> = arrayCurrentUsers[guild.id.value.toString()]!!.clone() as ArrayList<FirePerson>
     val curMatches: ArrayList<FireMatch> = arrayCurrentMatches[guild.id.value.toString()]!!.clone() as ArrayList<FireMatch>
 
-    curPersons.forEach {
-        if (it.LOL_puuid == "") return@forEach
-        LeagueMainObject.catchMatchID(it.LOL_puuid, 5).forEach { matchId ->
-            LeagueMainObject.catchMatch(matchId)?.let { match ->
-                when (FirebaseService.addMatchToGuild(guild, match)) {
-                    is CompleteResult.Error -> null
-                    is CompleteResult.Success -> {
-                        newMatch++
-                        arrayCurrentMatches[guild.id.value.toString()]!!.add(FireMatch(match))
-                        printLog("[${guild.id.value}] match ++ Size: " + arrayCurrentMatches[guild.id.value.toString()]!!.size)
+    CoroutineScope(Dispatchers.IO).launch {
+        curPersons.forEach {
+            if (it.LOL_puuid == "") return@forEach
+            LeagueMainObject.catchMatchID(it.LOL_puuid, 5).forEach { matchId ->
+                LeagueMainObject.catchMatch(matchId)?.let { match ->
+                    when (FirebaseService.addMatchToGuild(guild, match)) {
+                        is CompleteResult.Error -> Unit
+                        is CompleteResult.Success -> {
+                            newMatch++
+                            arrayCurrentMatches[guild.id.value.toString()]!!.add(FireMatch(match))
+                        }
                     }
                 }
             }
+            LeagueMainObject.catchChampionMastery(it.LOL_puuid)?.let {mastery ->
+                mapUses[it] = mastery
+            }
         }
-        LeagueMainObject.catchChampionMastery(it.LOL_puuid)?.let {mastery ->
-            mapUses[it] = mastery
-        }
-    }
+    }.join()
+
+    val winStreakMap = catchWinStreak(arrayCurrentMatches[guild.id.value.toString()]!!, curPersons)
 
     if (guildData.botChannelId.isNotEmpty()) {
         val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
 
-        editMessageGlobal(channelText, guildData.messageIdPentaData, {
-            editMessagePentaDataContent(it, curMatches, curPersons, guild)
-        }) {
-            createMessagePentaData(channelText, curMatches, curPersons, guildData)
+        launch {
+            editMessageGlobal(channelText, guildData.messageIdPentaData, {
+                editMessagePentaDataContent(it, curMatches, curPersons, guild)
+            }) {
+                createMessagePentaData(channelText, curMatches, curPersons, guildData)
+            }
         }
-        editMessageGlobal(channelText, guildData.messageIdGlobalStatisticData, {
-            editMessageGlobalStatisticContent(it, curMatches, curPersons, guild)
-        }) {
-            createMessageGlobalStatistic(channelText, curMatches, curPersons, guildData)
+
+        launch {
+            editMessageGlobal(channelText, guildData.messageIdGlobalStatisticData, {
+                editMessageGlobalStatisticContent(it, curMatches, curPersons, guild, winStreakMap)
+            }) {
+                createMessageGlobalStatistic(channelText, curMatches, curPersons, guildData, winStreakMap)
+            }
         }
-        editMessageGlobal(channelText, guildData.messageIdMasteryData, {
-            editMessageMasteryContent(it, mapUses, curPersons, guild)
-        }) {
-            createMessageMastery(channelText, mapUses, curPersons, guildData)
+
+        launch {
+            editMessageGlobal(channelText, guildData.messageIdMasteryData, {
+                editMessageMasteryContent(it, mapUses, curPersons, guild)
+            }) {
+                createMessageMastery(channelText, mapUses, curPersons, guildData)
+            }
+            mapUses.clear()
         }
-        editMessageGlobal(channelText, guildData.messageId, {
-            editMessageSimpleContent(it, curMatches, curPersons)
-        }) {
-            createMessageSimple(channelText, curMatches, curPersons, guildData)
+
+        launch {
+            editMessageGlobal(channelText, guildData.messageId, {
+                editMessageSimpleContent(it, arrayCurrentMatches[guild.id.value.toString()]!!, curPersons)
+            }) {
+                createMessageSimple(channelText, arrayCurrentMatches[guild.id.value.toString()]!!, curPersons, guildData)
+            }
         }
-        mapUses.clear()
     }
+}
+
+fun catchWinStreak(allMatches: ArrayList<FireMatch>, allPersons: ArrayList<FirePerson>): HashMap<FirePerson, Int> {
+
+    val mapStreak = HashMap<FirePerson, ArrayList<FireMatch>>()
+    val mapResult = HashMap<FirePerson, Int>()
+
+    //Инициализация
+    allPersons.forEach {
+        mapStreak[it] = ArrayList()
+        mapResult[it] = 0
+    }
+
+    //Заполнение парами Игрок-Матчи
+    allMatches.forEach {match ->
+        match.getParticipants(allPersons).forEach {perc ->
+            if (mapStreak.containsKey(perc)) mapStreak[perc]!!.add(match)
+        }
+    }
+
+    //Сортировка мапа Игрок-Матчи по самому последнему его матчу
+    mapStreak.forEach { (firePerson, _) ->
+        mapStreak[firePerson]!!.sortBy { it.matchDate }
+    }
+
+    mapStreak.forEach { (firePerson, fireMatches) ->
+        var counter = 0
+        fireMatches.forEach { match ->
+            val objectPerson = match.listPerc.find { it.puuid == firePerson.LOL_puuid }
+            if (objectPerson != null) {
+                if (objectPerson.win) {
+                    if (counter < 0) counter = 0
+                    counter++
+                } else {
+                    if (counter > 0) counter = 0
+                    counter--
+                }
+            }
+        }
+        mapResult[firePerson] = counter
+    }
+
+    return mapResult
 }
 
 suspend fun editMessageGlobal(
@@ -268,10 +326,11 @@ suspend fun createMessageGlobalStatistic(
     channelText: TextChannel,
     allMatches: ArrayList<FireMatch>,
     allPersons: ArrayList<FirePerson>,
-    file: FireGuild
+    file: FireGuild,
+    mapWins: HashMap<FirePerson, Int>
 ) {
     val message = channelText.createMessage("Initial Message")
-    channelText.getMessage(message.id).edit { editMessageGlobalStatisticContent(this, allMatches, allPersons, message.getGuild()) }
+    channelText.getMessage(message.id).edit { editMessageGlobalStatisticContent(this, allMatches, allPersons, message.getGuild(), mapWins) }
     file.messageIdGlobalStatisticData = message.id.value.toString()
     printLog(file.fireSaveData())
 }
@@ -311,9 +370,9 @@ fun editMessageMasteryContent(
 
     val list1 = sortedMap.map { obj -> formatInt(allPersons.find { it.LOL_puuid == obj.key.LOL_puuid }!!.personIndex, 2) + "|" + allPersons.find { it.LOL_puuid == obj.key.LOL_puuid }!!.asUser(guild).lowDescriptor() }
     val listHeroes = sortedMap.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.key.LOL_puuid }!!.personIndex, 2) + "| " + LeagueMainObject.findHeroForKey(it.value.getOrNull(0)?.championId.toString()).name + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(1)?.championId.toString()).name + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(2)?.championId.toString()).name }
-    val listPoints = sortedMap.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.key.LOL_puuid }!!.personIndex, 2) + "| " + it.value.getOrNull(0)?.championPoints.toString() + " / " + it.value.getOrNull(1)?.championPoints + " / " + it.value.getOrNull(2)?.championPoints }
+    val listPoints = sortedMap.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.key.LOL_puuid }!!.personIndex, 2) + "| " + it.value.getOrNull(0)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(1)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(2)?.championPoints?.toFormatK() }
 
-    builder.content = "Статистика по Чемпионам: ${TimeStamp.now()}\n"
+    builder.content = "Статистика по Чемпионам\n"
     builder.embed {
         field {
             name = "User"
@@ -349,7 +408,8 @@ fun editMessageGlobalStatisticContent(
     builder: UserMessageModifyBuilder,
     allMatches: ArrayList<FireMatch>,
     allPersons: ArrayList<FirePerson>,
-    guild: Guild
+    guild: Guild,
+    mapWins: HashMap<FirePerson, Int>
 ) {
 
     val dataList = ArrayList<FireParticipant>()
@@ -385,28 +445,28 @@ fun editMessageGlobalStatisticContent(
     dataList.sortBy { it.sortIndex }
     val charStr = " / "
 
-    val list1 = dataList.map { obj -> formatInt(allPersons.find { it.LOL_puuid == obj.puuid }!!.personIndex, 2) + "|" + allPersons.find { it.LOL_puuid == obj.puuid }!!.asUser(guild).lowDescriptor() }
-    val listGames = dataList.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.puuid }!!.personIndex, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" + charStr + formatInt(it.skillsCast, 5) }
-    val listAllKills = dataList.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.puuid }!!.personIndex, 2) + "| " + formatInt(it.kills, 4) + charStr + formatInt(it.kills2, 3) + charStr + formatInt(it.kills3, 2) + charStr + formatInt(it.kills4, 2) + charStr + formatInt(it.kills5, 2) }
+    val list1 = dataList.map { obj -> formatInt(allPersons.find { it.LOL_puuid == obj.puuid }!!.personIndex, 2) + "|" + allPersons.find { it.LOL_puuid == obj.puuid }!!.asUser(guild).lowDescriptor() + " / " + mapWins[allPersons.find { it.LOL_puuid == obj.puuid }!!] }
+    val listGames = dataList.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.puuid }!!.personIndex, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" + charStr + it.skillsCast.toFormatK() }
+    val listAllKills = dataList.map { formatInt(allPersons.find { per -> per.LOL_puuid == it.puuid }!!.personIndex, 2) + "| " + it.kills.toFormatK() + charStr + formatInt(it.kills2, 3) + charStr + formatInt(it.kills3, 2) + charStr + formatInt(it.kills4, 2) + charStr + formatInt(it.kills5, 2) }
 
     dataList.forEach {
         it.clearData()
     }
 
-    builder.content = "Общая статистика: ${TimeStamp.now()}\n"
+    builder.content = "Статистика Общая\n"
     builder.embed {
         field {
-            name = "User"
+            name = "User/WinStreak"
             value = list1.joinToString(separator = "\n")
             inline = true
         }
         field {
-            name = "Games/Wins/WinRate/Skills"
+            name = "Game/Win/WinRate/Skills"
             value = listGames.joinToString(separator = "\n")
             inline = true
         }
         field {
-            name = "Kills/Double/Tripple/Quadra/Penta"
+            name = "Kill/Double/Triple/Quadr/Penta"
             value = listAllKills.joinToString(separator = "\n")
             inline = true
         }
@@ -423,7 +483,7 @@ fun editMessagePentaDataContent(
     allMatches.forEach {match ->
         match.getParticipants(allPersons).forEach { perc ->
             match.listPerc.find { perc.LOL_puuid == it.puuid }?.let {firePart ->
-                if (firePart.kills5 > 0) dataList.add(DataBasic(user = perc, text = "Сделал пентакилл за '${LeagueMainObject.findHeroForKey(firePart.championId.toString()).name}'", date = match.matchDate))
+                if (firePart.kills5 > 0 && dataList.size < 20) dataList.add(DataBasic(user = perc, text = "Пентакилл за '${LeagueMainObject.findHeroForKey(firePart.championId.toString()).name}'", date = match.matchDate))
             }
         }
     }
@@ -434,7 +494,7 @@ fun editMessagePentaDataContent(
     val list2 = dataList.map { it.text }
     val list3 = dataList.map { it.date.toFormatDate() }
 
-    builder.content = "Доска ПЕНТАКИЛЛОВ ${TimeStamp.now()}\n"
+    builder.content = "Статистика Пентакиллов\n"
     builder.embed {
         field {
             name = "Призыватель"
