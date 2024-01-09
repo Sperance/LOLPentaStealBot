@@ -2,35 +2,26 @@ package ru.descend.bot.commands
 
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
-import dev.kord.core.entity.Guild
-import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.TextChannel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.extensions.fullName
-import ru.descend.bot.MAIN_ROLE_NAME
-import ru.descend.bot.SECOND_ROLE_NAME
-import ru.descend.bot.arrayCurrentMatches
 import ru.descend.bot.arrayCurrentUsers
-import ru.descend.bot.checkPermission
-import ru.descend.bot.checkRoleForName
+import ru.descend.bot.asyncLaunch
 import ru.descend.bot.firebase.CompleteResult
 import ru.descend.bot.firebase.F_USERS
-import ru.descend.bot.firebase.FireMatch
 import ru.descend.bot.firebase.FirePerson
 import ru.descend.bot.firebase.FirebaseService
-import ru.descend.bot.isBotOwner
+import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.printLog
 import ru.descend.bot.toStringUID
-
-private suspend fun checkCommandsAccess(guild: Guild, author: User) : Boolean {
-    if (!author.checkRoleForName(guild, SECOND_ROLE_NAME) && !author.checkRoleForName(guild, MAIN_ROLE_NAME) && !author.checkPermission(guild, Permission.Administrator) && !author.isBotOwner()){
-        return false
-    }
-    return true
-}
 
 fun arguments() = commands("Arguments") {
 
@@ -64,13 +55,12 @@ fun arguments() = commands("Arguments") {
                 person.personIndex = FirebaseService.getArrayFromCollection<FirePerson>(FirebaseService.collectionGuild(guild, F_USERS)).await().size
                 when (val res = FirebaseService.addPerson(guild, person)){
                     is CompleteResult.Error -> printLog(res.errorText)
-                    is CompleteResult.Success -> null
+                    is CompleteResult.Success -> Unit
                 }
                 newUser = FirebaseService.getUser(guild, person.KORD_id)
             }
             val res = newUser!!.initLOL(region, summonerName)
-            var textMessage = ""
-            textMessage = when (res) {
+            var textMessage: String = when (res) {
                 is CompleteResult.Error -> {
                     res.errorText
                 }
@@ -83,19 +73,17 @@ fun arguments() = commands("Arguments") {
             arrayCurrentUsers[guild.id.value.toString()]!!.add(newUser)
             printLog(guild, "Array Users ++. Size: ${arrayCurrentUsers[guild.id.value.toString()]!!.size}")
 
-            var newMatches = 0
-            LeagueMainObject.catchMatchID(newUser.LOL_puuid, 50).forEach { matchId ->
-                LeagueMainObject.catchMatch(matchId)?.let { match ->
-                    when (FirebaseService.addMatchToGuild(guild, match)) {
-                        is CompleteResult.Error -> null
-                        is CompleteResult.Success -> {
-                            newMatches++
+            asyncLaunch {
+                LeagueMainObject.catchMatchID(newUser.LOL_puuid, 0,30).forEach { matchId ->
+                    LeagueMainObject.catchMatch(matchId)?.let { match ->
+                        when (FirebaseService.addMatchToGuild(guild, match)) {
+                            is CompleteResult.Error -> Unit
+                            is CompleteResult.Success -> Unit
                         }
                     }
                 }
             }
 
-            textMessage += "\nДобавлено $newMatches матчей игрока"
             respond(textMessage)
         }
     }

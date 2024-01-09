@@ -60,27 +60,3 @@ fun basics() = commands("Basics") {
 //        }
 //    }
 }
-
-fun initializeTitlePStill(field: ArrayList<EmbedBuilder.Field>) {
-    field.add(0, EmbedBuilder.Field().apply { name = "Призыватель"; value = ""; inline = true })
-    field.add(1, EmbedBuilder.Field().apply { name = "Состилил"; value = ""; inline = true })
-    field.add(2, EmbedBuilder.Field().apply { name = "Состилено"; value = ""; inline = true })
-}
-
-fun addLinePStill(field: ArrayList<EmbedBuilder.Field>, user: User, stealIn: Int, stealOut: Int) {
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = user.lowDescriptor(); inline = true })
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = stealIn.toString(); inline = true })
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = stealOut.toString(); inline = true })
-}
-
-fun initializeTitlePKill(field: ArrayList<EmbedBuilder.Field>) {
-    field.add(0, EmbedBuilder.Field().apply { name = "Призыватель"; value = ""; inline = true })
-    field.add(1, EmbedBuilder.Field().apply { name = "Пентакиллов"; value = ""; inline = true })
-    field.add(2, EmbedBuilder.Field().apply { name = "Дата последнего"; value = ""; inline = true })
-}
-
-fun addLinePKill(field: ArrayList<EmbedBuilder.Field>, user: User, pentaCount: Int, lastDate: String) {
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = user.lowDescriptor(); inline = true })
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = pentaCount.toString(); inline = true })
-    field.add(field.size, EmbedBuilder.Field().apply { name = ""; value = lastDate; inline = true })
-}

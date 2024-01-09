@@ -3,9 +3,15 @@ package ru.descend.bot
 import dev.kord.common.entity.Permission
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
-import ru.descend.bot.data.Configuration
+import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.extensions.descriptor
+import ru.descend.bot.firebase.CompleteResult
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Base64
@@ -17,6 +23,18 @@ import kotlin.math.pow
 fun printLog(message: Any){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
     println("[$curDTime] $message")
+}
+
+fun launch(block: suspend CoroutineScope.() -> Unit) {
+    CoroutineScope(Dispatchers.IO).launch {
+        block.invoke(this)
+    }
+}
+
+fun asyncLaunch(block: suspend CoroutineScope.() -> Unit) {
+    CoroutineScope(Dispatchers.IO).launch {
+        async { block.invoke(this) }
+    }
 }
 
 fun printLog(guild: Guild, message: Any){
@@ -89,10 +107,6 @@ fun formatInt(value: Int, items: Int) : String {
     return str
 }
 
-fun User.isBotOwner(): Boolean {
-    return id == Configuration.botOwnerId
-}
-
 fun getRandom(): Random {
     RAND_INT_SEED++
     return Random(System.currentTimeMillis() + RAND_INT_SEED)
@@ -105,12 +119,6 @@ fun getRandom(maxPos: Int) : Int {
 }
 
 fun User.toStringUID() = id.value.toString()
-
-fun User.isBot(): Boolean {
-    if (isBot) return true
-    if (id == Configuration.botCurrentId) return true
-    return false
-}
 
 suspend fun User.checkRoleForName(guild: Guild, name: String): Boolean {
     var result = false

@@ -12,8 +12,7 @@ object LeagueMainObject {
     private val dragonService = leagueApi.dragonService
     private val leagueService = leagueApi.leagueService
 
-    var heroObjects = ArrayList<Any>()
-    var heroNames = ArrayList<String>()
+    private var heroObjects = ArrayList<Any>()
 
     var LOL_VERSION = ""
     var LOL_HEROES = 0
@@ -42,27 +41,41 @@ object LeagueMainObject {
         return namesAllHero
     }
 
-    fun catchMatchID(puuid: String, count: Int) : ArrayList<String> {
+    fun catchMatchID(puuid: String, start: Int, count: Int) : ArrayList<String> {
         val result = ArrayList<String>()
-        leagueService.getMatchIDByPUUID(puuid, count).execute().body()?.forEach {
-            result.add(it)
+        return try {
+            val exec = leagueService.getMatchIDByPUUID(puuid, start, count).execute()
+            if (exec.isSuccessful) {
+                exec.body()?.forEach {
+                    result.add(it)
+                }
+            } else {
+                printLog("catchMatchID failure: ${exec.code()} ${exec.message()}")
+            }
+            result
+        }catch (_: Exception) {
+            result
         }
-        return result
     }
 
     fun catchMatch(matchId: String) : MatchDTO? {
-        return leagueService.getMatchInfo(matchId).execute().body()
+        return try {
+            val exec = leagueService.getMatchInfo(matchId).execute()
+            if (!exec.isSuccessful) {
+                printLog("catchMatch failure: ${exec.code()} ${exec.message()}")
+            }
+            exec.body()
+        }catch (_: Exception) {
+            null
+        }
     }
 
     fun catchChampionMastery(puuid: String) : ChampionMasteryDto? {
         return leagueService.getChampionMastery(puuid).execute().body()
     }
 
-    fun findHeroForKey(key: String) : InterfaceChampionBase {
-         return heroObjects.find { (it as InterfaceChampionBase).key == key } as InterfaceChampionBase
-    }
-
-    fun findHeroForName(name: String) : InterfaceChampionBase {
-         return heroObjects.find { (it as InterfaceChampionBase).name == name } as InterfaceChampionBase
+    fun findHeroForKey(key: String) : String {
+        val returnObj = heroObjects.find { (it as InterfaceChampionBase).key == key } as InterfaceChampionBase?
+        return returnObj?.name ?: "<Not Find>"
     }
 }

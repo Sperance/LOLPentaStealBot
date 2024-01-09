@@ -46,12 +46,9 @@ object FirebaseService {
             .collection(collectionName)
     }
 
-    fun collectionGuildUser(
-        guild: Guild,
-        user: FirePerson,
-        collectionName: String
-    ): CollectionReference {
-        return collectionGuild(guild, F_USERS).document(user.KORD_id).collection(collectionName)
+    fun collectionGuild(guild: String, collectionName: String): CollectionReference {
+        return firestore.collection(F_GUILDS).document(guild)
+            .collection(collectionName)
     }
 
     fun addGuild(guild: Guild): CompleteResult {
@@ -69,11 +66,21 @@ object FirebaseService {
         }
     }
 
+    fun addMatchToGuild(guild: String, match: MatchDTO): CompleteResult {
+        val mId = match.metadata.matchId
+
+        if (!checkDataForCollection(collectionGuild(guild, F_MATCHES), mId)) {
+            printLog("[FirebaseService] Creating Match with GUILD $guild with Match $mId ${match.info.gameMode} time: ${match.info.gameCreation.toFormatDateTime()}")
+            return setDataToCollection(collectionGuild(guild, F_MATCHES), FireMatch(match), mId)
+        }
+        return CompleteResult.Error("Match in guild $guild is exists with id: $mId")
+    }
+
     fun addMatchToGuild(guild: Guild, match: MatchDTO): CompleteResult {
         val mId = match.metadata.matchId
 
         if (!checkDataForCollection(collectionGuild(guild, F_MATCHES), mId)) {
-            printLog("[FirebaseService] Creating Match with GUILD ${guild.id.value} with Match $mId time: ${match.info.gameCreation.toFormatDateTime()}")
+            printLog("[FirebaseService] Creating Match with GUILD ${guild.id.value} with Match $mId ${match.info.gameMode} time: ${match.info.gameCreation.toFormatDateTime()}")
             return setDataToCollection(collectionGuild(guild, F_MATCHES), FireMatch(match), mId)
         }
         return CompleteResult.Error("Match in guild ${guild.id.value} is exists with id: $mId")
@@ -97,11 +104,12 @@ object FirebaseService {
         }
     }
 
-    inline fun <reified T> getArrayFromCollection(collection: CollectionReference): Deferred<ArrayList<T>> {
+    inline fun <reified T> getArrayFromCollection(collection: CollectionReference, limit: Int = 0): Deferred<ArrayList<T>> {
         return CoroutineScope(Dispatchers.IO).async {
             val dataList = ArrayList<T>()
             for (childSnapshot in withContext(Dispatchers.IO) {
-                collection.get().get()
+                if (limit == 0) collection.get().get()
+                else collection.limit(limit).get().get()
             }.documents) {
                 try {
                     val data = childSnapshot.toObject(T::class.java)

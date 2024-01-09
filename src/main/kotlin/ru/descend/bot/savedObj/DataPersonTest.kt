@@ -68,15 +68,6 @@ class DataPersonTest {
         return str
     }
 
-    @Test
-    fun test_connect_rito(){
-        val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
-        val ecex = leagueApi.leagueService.getBySummonerName("Атлант").execute()
-        println("exec: " + ecex.raw())
-        val response = ecex.body()
-        println(response?.id + " " + response?.name + " " + response?.accountId + " " + response?.puuid + " " + response?.summonerLevel)
-    }
-
     data class UserPost(
         override var id: Int = 0,
         var username: String = "",

@@ -13,8 +13,8 @@ interface LeagueService {
     @GET("/lol/summoner/v4/summoners/by-name/{summonerName}")
     fun getBySummonerName(@Path("summonerName") name: String) : Call<SummonerDTO>
 
-    @GET("https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0")
-    fun getMatchIDByPUUID(@Path("puuid") puuid: String, @Query("count") count: Int) : Call<List<String>>
+    @GET("https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids")
+    fun getMatchIDByPUUID(@Path("puuid") puuid: String, @Query("start") start: Int, @Query("count") count: Int) : Call<List<String>>
 
     @GET("https://europe.api.riotgames.com/lol/match/v5/matches/{matchId}")
     fun getMatchInfo(@Path("matchId") matchId: String) : Call<MatchDTO>

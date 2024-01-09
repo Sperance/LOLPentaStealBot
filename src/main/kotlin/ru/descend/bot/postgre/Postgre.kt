@@ -15,7 +15,7 @@ object PostgreSQL {
                 user = POSTGRES_USERNAME,
                 password = POSTGRES_PASSWORD
             )
-            setTables(::firePersonTable, ::fireGuildTable)
+            setTables(::fireGuildTable, ::firePersonTable, ::fireMatchTable, ::fireParticipantTable)
         }
         println("POSTGRE_SQL $POSTGRES_URL initialized")
     }

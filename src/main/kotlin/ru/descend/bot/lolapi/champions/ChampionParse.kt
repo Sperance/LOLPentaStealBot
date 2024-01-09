@@ -53,6 +53,7 @@ data class Data(
     @SerializedName("Gwen") val gwen: Gwen,
     @SerializedName("Hecarim") val hecarim: Hecarim,
     @SerializedName("Heimerdinger") val heimerdinger: Heimerdinger,
+    @SerializedName("Hwei") val hwei: Hwei,
     @SerializedName("Illaoi") val illaoi: Illaoi,
     @SerializedName("Irelia") val irelia: Irelia,
     @SerializedName("Ivern") val ivern: Ivern,
@@ -522,6 +523,14 @@ data class Hecarim(
 ) : InterfaceChampionBase
 
 data class Heimerdinger(
+    override val key: String,
+    override val name: String,
+    override val title: String,
+    override val blurb: String,
+    override val tags: List<String>
+) : InterfaceChampionBase
+
+data class Hwei(
     override val key: String,
     override val name: String,
     override val title: String,

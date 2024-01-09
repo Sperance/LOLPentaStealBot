@@ -29,7 +29,7 @@ dependencies {
     implementation("junit:junit:4.13.2")
     implementation("org.junit.jupiter:junit-jupiter:5.10.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0-RC")
     testImplementation(kotlin("test"))
 
     implementation("com.google.firebase:firebase-admin:9.2.0")
