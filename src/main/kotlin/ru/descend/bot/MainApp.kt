@@ -36,10 +36,16 @@ import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.postgre.FireGuildTable
+import ru.descend.bot.postgre.FireKORDPersonTable
 import ru.descend.bot.postgre.FireMatchTable
+import ru.descend.bot.postgre.FireParticipantTable
 import ru.descend.bot.postgre.LoadPostgreHistory
 import ru.descend.bot.postgre.PostgreSQL
 import ru.descend.bot.postgre.fireGuildTable
+import ru.descend.bot.postgre.fireKORDPersonTable
+import ru.descend.bot.postgre.fireLOLPersonTable
+import ru.descend.bot.postgre.fireMatchTable
+import ru.descend.bot.postgre.fireParticipantTable
 import ru.descend.bot.savedObj.DataBasic
 import ru.descend.bot.savedObj.getStrongDate
 import save
@@ -91,8 +97,6 @@ fun main() {
 
             if (ENABLE_POSTGRESQL) PostgreSQL.initializePostgreSQL()
 
-            val jobArray = ArrayList<Job>()
-
             kord.guilds.toList().forEach {
                 println("\t  ${it.name} [${it.id.value}]")
 
@@ -103,7 +107,7 @@ fun main() {
                 }
 
                 if (ENABLE_POSTGRESQL) {
-                    if (guildData != null && fireGuildTable.first { FireGuildTable::idGuild eq guildData.id } == null) {
+                    if (guildData != null && FireGuildTable.getForGuild(it) == null) {
                         FireGuildTable(
                             idGuild = guildData.id,
                             applicationId = guildData.applicationId,
@@ -114,7 +118,8 @@ fun main() {
                             messageIdGlobalStatisticData = guildData.messageIdGlobalStatisticData,
                             messageIdMasteryData = guildData.messageIdMasteryData,
                             messageIdPentaData = guildData.messageIdPentaData,
-                            ownerId = guildData.ownerId,).save()
+                            messageIdRealTimeData = guildData.messageIdRealTimeData,
+                            ownerId = guildData.ownerId).save()
                     }
                 }
 
@@ -123,27 +128,6 @@ fun main() {
                 arrayCurrentMatches[it.id.value.toString()] = ArrayList()
                 arrayCurrentUsers[it.id.value.toString()] = ArrayList()
                 sqlCurrentMatches[it.id.value.toString()] = ArrayList()
-
-                jobArray.add(CoroutineScope(Dispatchers.IO).launch {
-                    while (true) {
-                        globalLOLRequests = 0
-                        showLeagueHistory(it, guildData!!)
-                        delay((30).minutes)
-                    }
-                })
-                printLog(it, "Saved Job: ${jobArray.last()} Hash: ${jobArray.last().hashCode()}")
-            }
-
-            CoroutineScope(Dispatchers.Default).launch {
-                while (true) {
-                    delay((20).minutes)
-                    jobArray.forEach { job ->
-                        if (!job.isActive) {
-                            printLog("Job resetted: $job hash: ${job.hashCode()}")
-                            job.start()
-                        }
-                    }
-                }
             }
         }
     }
@@ -275,9 +259,9 @@ suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) =
             //Общая статистика по серверу
             launch {
                 editMessageGlobal(channelText, guildData.messageId, {
-                    editMessageSimpleContent(it, arrayCurrentMatches[guild.id.value.toString()]!!, curPersons)
+                    editMessageSimpleContent(guild, it)
                 }) {
-                    createMessageSimple(channelText, arrayCurrentMatches[guild.id.value.toString()]!!, curPersons, guildData)
+                    createMessageSimple(channelText, guildData)
                 }
             }
         }
@@ -360,9 +344,9 @@ suspend fun createMessageGlobalStatistic(channelText: TextChannel, allMatches: A
     printLog(file.fireSaveData())
 }
 
-suspend fun createMessageSimple(channelText: TextChannel, map: ArrayList<FireMatch>, allPersons: ArrayList<FirePerson>, file: FireGuild) {
+suspend fun createMessageSimple(channelText: TextChannel, file: FireGuild) {
     val message = channelText.createMessage("Initial Message")
-    channelText.getMessage(message.id).edit { editMessageSimpleContent(this, map, allPersons) }
+    channelText.getMessage(message.id).edit { editMessageSimpleContent(channelText.getGuild(),this) }
     file.messageId = message.id.value.toString()
     printLog(file.fireSaveData())
 }
@@ -402,10 +386,11 @@ fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<Fi
     }
 }
 
-fun editMessageSimpleContent(builder: UserMessageModifyBuilder, map: ArrayList<FireMatch>, allPersons: ArrayList<FirePerson>) {
+fun editMessageSimpleContent(guild: Guild, builder: UserMessageModifyBuilder) {
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
-            "Игр на сервере: ${map.size}\n" +
-            "Пользователей в базе: ${allPersons.size}\n" +
+            "Игр на сервере: ${FireMatchTable.getForGuild(guild).size}\n" +
+            "Игроков в базе: ${fireLOLPersonTable.size}\n" +
+            "Пользователей в базе: ${fireKORDPersonTable.count { FireKORDPersonTable::guild eq fireGuildTable.first { FireGuildTable::idGuild eq guild.id.value.toString() } }}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
             "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
 }

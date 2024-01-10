@@ -71,7 +71,7 @@ fun arguments() = commands("Arguments") {
 
             if (ENABLE_POSTGRESQL) {
                 val LOLp = FireLOLPersonTable(newUser).save()
-                val KORDp = FireKORDPersonTable(newUser).save()
+                val KORDp = FireKORDPersonTable(guild, newUser).save()
                 FireKORD_LOLPersonTable(KORDperson = KORDp, LOLperson = LOLp).save()
             }
 

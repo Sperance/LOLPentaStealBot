@@ -6,6 +6,8 @@ import databases.Database
 import dev.kord.core.entity.Guild
 import ru.descend.bot.firebase.FireMatch
 import ru.descend.bot.firebase.FirePerson
+import ru.descend.bot.printLog
+import ru.descend.bot.toFormatDateTime
 import save
 import table
 import update
@@ -23,13 +25,15 @@ data class FireGuildTable (
     var messageIdPentaData: String = "",
     var messageIdGlobalStatisticData: String = "",
     var messageIdMasteryData: String = "",
+    var messageIdRealTimeData: String = ""
 ): Entity() {
 
     val matches: List<FireMatchTable> by oneToMany(FireMatchTable::guild)
+    val KORDusers: List<FireKORDPersonTable> by oneToMany(FireKORDPersonTable::guild)
 
     companion object {
-        fun getForId(id: Int) : FireGuildTable? {
-            return fireGuildTable.first { FireGuildTable::id eq id }
+        fun getForGuild(guild: Guild) : FireGuildTable? {
+            return fireGuildTable.first { FireGuildTable::idGuild eq guild.id.value.toString() }
         }
     }
 
@@ -48,6 +52,8 @@ data class FireGuildTable (
         )
         pMatch.save()
 
+        printLog("[PostgreSQL Service] Creating Match witg GUILD $idGuild with Match ${it.matchId} ${it.matchMode} time: ${it.matchDate.toFormatDateTime()}")
+
         it.listPerc.forEach {part ->
             var curLOL = fireLOLPersonTable.first { FireLOLPersonTable::LOL_puuid eq part.puuid }
 
@@ -59,6 +65,8 @@ data class FireGuildTable (
                     LOL_summonerName = part.summonerName,
                     LOL_riotIdName = part.riotIdName,
                     LOL_riotIdTagline = part.riotIdTagline)
+
+                printLog("[PostgreSQL Service] Creating LOLPerson with PUUID ${part.puuid} NAME ${part.summonerName}")
             }
 
             //Вдруг что изменится в профиле игрока
@@ -66,6 +74,7 @@ data class FireGuildTable (
                 curLOL.LOL_summonerName = part.summonerName
                 curLOL.LOL_riotIdName = part.riotIdName
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
+                printLog("[PostgreSQL Service] Change LOLPerson with PUUID ${part.puuid} NAME ${part.summonerName}")
             }
             curLOL.save()
 

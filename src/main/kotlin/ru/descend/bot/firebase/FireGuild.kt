@@ -14,7 +14,8 @@ data class FireGuild (
     var messageId: String = "",
     var messageIdPentaData: String = "",
     var messageIdGlobalStatisticData: String = "",
-    var messageIdMasteryData: String = ""
+    var messageIdMasteryData: String = "",
+    var messageIdRealTimeData: String = ""
 ) : FireBaseData() {
     @Exclude
     fun initGuild(guild: Guild) {

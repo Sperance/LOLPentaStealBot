@@ -26,13 +26,7 @@ data class FireParticipantTable(
 
     var match: FireMatchTable? = null,
     var LOLperson: FireLOLPersonTable? = null
-) : Entity() {
-    companion object {
-        fun getForId(id: Int) : FireParticipantTable? {
-            return fireParticipantTable.first { FireParticipantTable::id eq id }
-        }
-    }
-}
+) : Entity()
 
 val fireParticipantTable = table<FireParticipantTable, Database>{
     column(FireParticipantTable::match).check { it neq 0 }

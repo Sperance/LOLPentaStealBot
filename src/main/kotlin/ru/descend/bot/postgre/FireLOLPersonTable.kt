@@ -22,12 +22,6 @@ data class FireLOLPersonTable(
         this.LOL_summonerId = user.LOL_accountId
         this.LOL_summonerName = user.LOL_name
     }
-
-    companion object {
-        fun getForId(id: Int) : FireLOLPersonTable? {
-            return fireLOLPersonTable.first { FireLOLPersonTable::id eq id }
-        }
-    }
 }
 
 val fireLOLPersonTable = table<FireLOLPersonTable, Database> {

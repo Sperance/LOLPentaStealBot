@@ -13,9 +13,6 @@ data class FireKORD_LOLPersonTable(
     var LOLperson: FireLOLPersonTable? = null
 ): Entity() {
     companion object {
-        fun getForId(id: Int) : FireKORD_LOLPersonTable? {
-            return fireKORD_LOLPersonTable.first { FireKORD_LOLPersonTable::id eq id }
-        }
 
         fun deleteForKORD(id: Int) {
             fireKORDPersonTable.getAll { FireKORDPersonTable::id eq id }.forEach {KORDpt ->

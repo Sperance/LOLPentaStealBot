@@ -1,6 +1,7 @@
 package ru.descend.bot.postgre
 
 import config
+import databases.PostgreSQL
 
 object PostgreSQL {
 
@@ -10,7 +11,7 @@ object PostgreSQL {
 
     fun initializePostgreSQL() {
         config {
-            database = databases.PostgreSQL(
+            database = PostgreSQL(
                 url = POSTGRES_URL,
                 user = POSTGRES_USERNAME,
                 password = POSTGRES_PASSWORD

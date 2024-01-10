@@ -3,6 +3,7 @@ package ru.descend.bot.postgre
 import Entity
 import column
 import databases.Database
+import dev.kord.core.entity.Guild
 import ru.descend.bot.firebase.FireMatch
 import save
 import table
@@ -22,8 +23,12 @@ data class FireMatchTable(
     val participants: List<FireParticipantTable> by oneToMany(FireParticipantTable::match)
 
     companion object {
-        fun getForId(id: Int) : FireMatchTable? {
-            return fireMatchTable.first { FireMatchTable::id eq id }
+        fun getForGuild(guild: Guild) : List<FireMatchTable> {
+            return fireMatchTable.getAll { FireMatchTable::guild eq fireGuildTable.first { FireGuildTable::idGuild eq guild.id.value.toString() } }
+        }
+
+        fun getForMatchId(matchId: String) : FireMatchTable? {
+            return fireMatchTable.first { FireMatchTable::matchId eq matchId }
         }
     }
 }

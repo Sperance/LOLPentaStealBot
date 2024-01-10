@@ -37,15 +37,9 @@ class PostgreTest {
 
     @Test
     fun testAddMethod() {
-
         fireKORDPersonTable.add(FireKORDPersonTable(KORD_id = "1"))
         fireKORDPersonTable.add(FireKORDPersonTable(KORD_id = "2"))
         fireKORDPersonTable.add(FireKORDPersonTable(KORD_id = "3"))
-
-        fireKORD_LOLPersonTable.add(FireKORD_LOLPersonTable(KORDperson = FireKORDPersonTable.getForId(1), LOLperson = FireLOLPersonTable.getForId(1)))
-        fireKORD_LOLPersonTable.add(FireKORD_LOLPersonTable(KORDperson = FireKORDPersonTable.getForId(2), LOLperson = FireLOLPersonTable.getForId(2)))
-        fireKORD_LOLPersonTable.add(FireKORD_LOLPersonTable(KORDperson = FireKORDPersonTable.getForId(2), LOLperson = FireLOLPersonTable.getForId(3)))
-        fireKORD_LOLPersonTable.add(FireKORD_LOLPersonTable(KORDperson = FireKORDPersonTable.getForId(1), LOLperson = FireLOLPersonTable.getForId(4)))
     }
 
     @Test
@@ -84,6 +78,7 @@ class PostgreTest {
 
         getArrayFromCollection<FirePerson>(collectionGuild(guildText, F_USERS)).await().forEach {fp ->
             val KORD = FireKORDPersonTable(
+                guild = fireGuildTable.first { FireGuildTable::idGuild eq guildText },
                 KORD_id = fp.KORD_id,
                 KORD_name = fp.KORD_name,
                 KORD_discriminator = fp.KORD_discriminator
