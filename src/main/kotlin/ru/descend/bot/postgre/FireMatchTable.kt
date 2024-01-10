@@ -14,36 +14,16 @@ data class FireMatchTable(
     var matchDuration: Long = 0,
     var matchMode: String = "",
     var matchGameVersion: String = "",
+    var gameName: String = "",
 
     var guild: FireGuildTable? = null
 ) : Entity() {
 
     val participants: List<FireParticipantTable> by oneToMany(FireParticipantTable::match)
 
-    fun addParticipants(match: FireMatch) {
-        match.listPerc.forEach {part ->
-            FireParticipantTable(
-                championId = part.championId,
-                summonerId = part.summonerId,
-                championName = part.championName,
-                summonerName = part.summonerName,
-                puuid = part.puuid,
-                riotIdTagline = part.riotIdTagline,
-                kills5 = part.kills5.toLong(),
-                kills4 = part.kills4.toLong(),
-                kills3 = part.kills3.toLong(),
-                kills2 = part.kills2.toLong(),
-                kills = part.kills.toLong(),
-                assists = part.assists.toLong(),
-                deaths = part.deaths.toLong(),
-                goldEarned = part.goldEarned.toLong(),
-                skillsCast = part.skillsCast.toLong(),
-                totalDmgToChampions = part.totalDmgToChampions.toLong(),
-                minionsKills = part.minionsKills.toLong(),
-                team = part.team,
-                win = part.win,
-                match = this
-            ).save()
+    companion object {
+        fun getForId(id: Int) : FireMatchTable? {
+            return fireMatchTable.first { FireMatchTable::id eq id }
         }
     }
 }

@@ -9,11 +9,7 @@ import table
 data class FireParticipantTable(
     override var id: Int = 0,
     var championId: Int = -1,
-    var summonerId: String = "",
     var championName: String = "",
-    var summonerName: String = "",
-    var puuid: String = "",
-    var riotIdTagline: String = "",
     var kills5: Long = 0,
     var kills4: Long = 0,
     var kills3: Long = 0,
@@ -28,8 +24,15 @@ data class FireParticipantTable(
     var team: Int = -1,
     var win: Boolean = false,
 
-    var match: FireMatchTable? = null
-) : Entity()
+    var match: FireMatchTable? = null,
+    var LOLperson: FireLOLPersonTable? = null
+) : Entity() {
+    companion object {
+        fun getForId(id: Int) : FireParticipantTable? {
+            return fireParticipantTable.first { FireParticipantTable::id eq id }
+        }
+    }
+}
 
 val fireParticipantTable = table<FireParticipantTable, Database>{
     column(FireParticipantTable::match).check { it neq 0 }

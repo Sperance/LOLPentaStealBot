@@ -45,6 +45,7 @@ import ru.descend.bot.savedObj.getStrongDate
 import save
 import java.awt.Color
 import java.time.Duration
+import java.util.Collections
 import kotlin.time.Duration.Companion.minutes
 
 const val ENABLE_POSTGRESQL = true
@@ -119,11 +120,9 @@ fun main() {
 
                 removeMessage(it)
 
-                guildSQL = LoadPostgreHistory.getGuild(it)
-                matchesSQL = LoadPostgreHistory.getMatches(it)
-
                 arrayCurrentMatches[it.id.value.toString()] = ArrayList()
                 arrayCurrentUsers[it.id.value.toString()] = ArrayList()
+                sqlCurrentMatches[it.id.value.toString()] = ArrayList()
 
                 jobArray.add(CoroutineScope(Dispatchers.IO).launch {
                     while (true) {
@@ -172,8 +171,8 @@ suspend fun removeMessage(guild: Guild) {
 }
 
 var globalLOLRequests = 0
-var guildSQL: FireGuildTable? = null
-var matchesSQL: List<FireMatchTable>? = null
+
+val sqlCurrentMatches  = HashMap<String, ArrayList<FireMatchTable>>()
 val arrayCurrentMatches = HashMap<String, ArrayList<FireMatch>>()
 val arrayCurrentUsers = HashMap<String, ArrayList<FirePerson>>()
 
@@ -181,6 +180,14 @@ suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) =
     CoroutineScope(Dispatchers.IO).launch {
 
         if (guildData.botChannelId.isNotEmpty()) {
+
+            if (ENABLE_POSTGRESQL) {
+                if (sqlCurrentMatches[guild.id.value.toString()]!!.isEmpty()) {
+                    sqlCurrentMatches[guild.id.value.toString()]!!.addAll(LoadPostgreHistory.getMatches(guild))
+                    val sizeC = sqlCurrentMatches[guild.id.value.toString()]!!.size
+                    if (sizeC > 0) printLog(guild, "initalize sql matching size: $sizeC")
+                }
+            }
 
             if (arrayCurrentMatches[guild.id.value.toString()]!!.isEmpty()) {
                 arrayCurrentMatches[guild.id.value.toString()]!!.addAll(FirebaseService.getArrayFromCollection<FireMatch>(FirebaseService.collectionGuild(guild, F_MATCHES)).await())
@@ -207,11 +214,12 @@ suspend fun showLeagueHistory(guild: Guild, guildData: FireGuild) =
                     LeagueMainObject.catchMatchID(it.LOL_puuid, 0,3).forEach ff@ { matchId ->
                         globalLOLRequests++
                         LeagueMainObject.catchMatch(matchId)?.let { match ->
-//                            if (ENABLE_POSTGRESQL) {
-//                                if (matchesSQL!!.find { sqlMch -> sqlMch.matchId == matchId } == null) {
-//                                    guildSQL!!.addMatchFire(FireMatch(match))
-//                                }
-//                            }
+                            if (ENABLE_POSTGRESQL) {
+                                if (sqlCurrentMatches[guild.id.value.toString()]!!.find { mch -> mch.matchId == matchId } == null) {
+                                    LoadPostgreHistory.getGuild(guild).addMatchFire(FireMatch(match))
+                                    sqlCurrentMatches[guild.id.value.toString()]!!.add(FireMatchTable(matchId = matchId))
+                                }
+                            }
                             if (arrayCurrentMatches[guild.id.value.toString()]!!.find { mch -> mch.matchId == matchId } == null){
                                 when (FirebaseService.addMatchToGuild(guild, match)) {
                                     is CompleteResult.Error -> Unit
@@ -480,9 +488,9 @@ fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, allMatches: A
 
     dataList.sortByDescending { it.date }
 
-    val list1 = dataList.map { (formatInt(it.user?.personIndex ?: -1, 2) + "|" + it.user?.asUser(guild)?.lowDescriptor()) }
-    val list2 = dataList.map { it.text }
-    val list3 = dataList.map { it.date.toFormatDate() }
+    val list1 = dataList.map { formatInt(it.user?.personIndex ?: -1, 2) + "|" + it.user?.asUser(guild)?.lowDescriptor() }
+    val list2 = dataList.map { formatInt(it.user?.personIndex ?: -1, 2) + "| " + it.text }
+    val list3 = dataList.map { formatInt(it.user?.personIndex ?: -1, 2) + "| " + it.date.toFormatDate() }
 
     builder.content = "Статистика Пентакиллов\n"
     builder.embed {

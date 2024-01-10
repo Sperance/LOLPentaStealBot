@@ -19,8 +19,8 @@ data class FirePerson(
     var LOL_accountId: String = "",
     var LOL_puuid: String = "",
     var LOL_name: String = "",
-    var LOL_profileIconId: Int? = null,
-    var LOL_region: String = ""
+    var LOL_region: String = "",
+    var LOL_profileIconId: Int? = null
 ): FireBaseData() {
 
     @Exclude

@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.extensions.descriptor
 import ru.descend.bot.firebase.CompleteResult
+import ru.descend.bot.firebase.FireMatch
+import ru.descend.bot.firebase.FirebaseService
+import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.postgre.LoadPostgreHistory
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Base64
@@ -119,6 +123,15 @@ fun getRandom(maxPos: Int) : Int {
 }
 
 fun User.toStringUID() = id.value.toString()
+
+fun reloadMatch(guild: Guild, puuid: String, startIndex: Int) {
+    LeagueMainObject.catchMatchID(puuid, startIndex,100).forEach mch@ { matchId ->
+        LeagueMainObject.catchMatch(matchId)?.let { match ->
+            FirebaseService.addMatchToGuild(guild, match)
+            if (ENABLE_POSTGRESQL) LoadPostgreHistory.getGuild(guild).addMatchFire(FireMatch(match))
+        }
+    }
+}
 
 suspend fun User.checkRoleForName(guild: Guild, name: String): Boolean {
     var result = false

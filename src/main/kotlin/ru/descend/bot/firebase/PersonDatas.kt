@@ -15,7 +15,8 @@ data class FireParticipant(
     var summonerId: String = "",
     var championName: String = "",
     var summonerName: String = "",
-    var riotIdTagline: String = "",
+    var riotIdName: String? = "",
+    var riotIdTagline: String? = "",
     var puuid: String = "",
     var kills5: Int = 0,
     var kills4: Int = 0,
@@ -65,6 +66,7 @@ data class FireParticipant(
         this.summonerId = participant.summonerId
         this.championName = participant.championName
         this.summonerName = participant.summonerName
+        this.riotIdName = participant.riotIdName
         this.riotIdTagline = participant.riotIdTagline
         this.puuid = participant.puuid
         this.kills5 = kill5
@@ -88,6 +90,9 @@ data class FireMatch(
     var matchDate: Long = 0,
     var matchDuration: Long = 0,
     var matchMode: String = "",
+    var gameName: String = "",
+    var gameId: Int = 0,
+    var gameType: String = "",
     var matchGameVersion: String = "",
     var listPerc: ArrayList<FireParticipant> = ArrayList(),
 ) : FireBaseData() {
@@ -97,9 +102,14 @@ data class FireMatch(
         this.matchDate = match.info.gameCreation
         this.matchDuration = match.info.gameDuration.toLong()
         this.matchMode = match.info.gameMode
+        this.gameName = match.info.gameName
+        this.gameType = match.info.gameType
+        this.gameId = match.info.gameId
         this.matchGameVersion = match.info.gameVersion
         val list = ArrayList<FireParticipant>()
-        match.info.participants.forEach { list.add(FireParticipant(it)) }
+        match.info.participants.forEach {
+            list.add(FireParticipant(it))
+        }
         this.listPerc = list
     }
 

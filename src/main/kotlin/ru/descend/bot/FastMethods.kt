@@ -1,5 +1,6 @@
 package ru.descend.bot
 
+import dev.kord.core.entity.Guild
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -9,9 +10,9 @@ import ru.descend.bot.firebase.FireMatch
 import ru.descend.bot.firebase.FirePerson
 import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.postgre.LoadPostgreHistory
 
 class FastMethods {
-
     /**
      * Прогрузка 300х последних игр по всем пользователям, зарегистрированных в боте
      */

@@ -8,6 +8,7 @@ import ru.descend.bot.firebase.FireMatch
 import ru.descend.bot.firebase.FirePerson
 import save
 import table
+import update
 
 data class FireGuildTable (
     override var id: Int = 0,
@@ -24,23 +25,12 @@ data class FireGuildTable (
     var messageIdMasteryData: String = "",
 ): Entity() {
 
-    val persons: List<FirePersonTable> by oneToMany(FirePersonTable::guild)
     val matches: List<FireMatchTable> by oneToMany(FireMatchTable::guild)
 
-    fun addPersonFire(it: FirePerson) {
-        FirePersonTable(
-            personIndex = it.personIndex,
-            KORD_id = it.KORD_id,
-            KORD_discriminator = it.KORD_discriminator,
-            KORD_name = it.KORD_name,
-            LOL_accountId = it.LOL_accountId,
-            LOL_id = it.LOL_id,
-            LOL_name = it.LOL_name,
-            LOL_profileIconId = it.LOL_profileIconId,
-            LOL_puuid = it.LOL_puuid,
-            LOL_region = it.LOL_region,
-            guild = this
-        ).save()
+    companion object {
+        fun getForId(id: Int) : FireGuildTable? {
+            return fireGuildTable.first { FireGuildTable::id eq id }
+        }
     }
 
     fun addMatchFire(it: FireMatch) {
@@ -53,10 +43,52 @@ data class FireGuildTable (
             matchDuration = it.matchDuration,
             matchMode = it.matchMode,
             matchGameVersion = it.matchGameVersion,
+            gameName = it.gameName,
             guild = this
         )
         pMatch.save()
-        pMatch.addParticipants(it)
+
+        it.listPerc.forEach {part ->
+            var curLOL = fireLOLPersonTable.first { FireLOLPersonTable::LOL_puuid eq part.puuid }
+
+            //Создаем нового игрока в БД
+            if (curLOL == null) {
+                curLOL = FireLOLPersonTable(
+                    LOL_puuid = part.puuid,
+                    LOL_summonerId = part.summonerId,
+                    LOL_summonerName = part.summonerName,
+                    LOL_riotIdName = part.riotIdName,
+                    LOL_riotIdTagline = part.riotIdTagline)
+            }
+
+            //Вдруг что изменится в профиле игрока
+            if ((curLOL.LOL_riotIdName.isNullOrEmpty() && curLOL.LOL_riotIdTagline.isNullOrEmpty()) || curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline) {
+                curLOL.LOL_summonerName = part.summonerName
+                curLOL.LOL_riotIdName = part.riotIdName
+                curLOL.LOL_riotIdTagline = part.riotIdTagline
+            }
+            curLOL.save()
+
+            FireParticipantTable(
+                championId = part.championId,
+                championName = part.championName,
+                kills5 = part.kills5.toLong(),
+                kills4 = part.kills4.toLong(),
+                kills3 = part.kills3.toLong(),
+                kills2 = part.kills2.toLong(),
+                kills = part.kills.toLong(),
+                assists = part.assists.toLong(),
+                deaths = part.deaths.toLong(),
+                goldEarned = part.goldEarned.toLong(),
+                skillsCast = part.skillsCast.toLong(),
+                totalDmgToChampions = part.totalDmgToChampions.toLong(),
+                minionsKills = part.minionsKills.toLong(),
+                team = part.team,
+                win = part.win,
+                match = pMatch,
+                LOLperson = curLOL
+            ).save()
+        }
     }
 
     fun initGuild(guild: Guild) {
