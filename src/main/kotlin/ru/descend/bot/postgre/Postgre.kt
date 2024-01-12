@@ -3,7 +3,7 @@ package ru.descend.bot.postgre
 import config
 import databases.PostgreSQL
 
-object PostgreSQL {
+object Postgre {
 
     private const val POSTGRES_URL = "jdbc:postgresql://localhost:5432/postgres"
     private const val POSTGRES_USERNAME = "postgres"
@@ -16,7 +16,7 @@ object PostgreSQL {
                 user = POSTGRES_USERNAME,
                 password = POSTGRES_PASSWORD
             )
-            setTables(::fireGuildTable, ::fireMatchTable, ::fireParticipantTable, ::fireKORDPersonTable, ::fireLOLPersonTable, ::fireKORD_LOLPersonTable)
+            setTables(::tableGuild, ::tableMatch, ::tableParticipant, ::tableKORDPerson, ::tableLOLPerson, ::tableKORDLOL, ::tableMessage)
         }
         println("POSTGRE_SQL $POSTGRES_URL initialized")
     }

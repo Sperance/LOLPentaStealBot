@@ -4,10 +4,7 @@ import Entity
 import column
 import databases.Database
 import org.junit.jupiter.api.Test
-import ru.descend.bot.catchToken
-import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.getRandom
-import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.printLog
 import table
 import kotlin.math.pow
@@ -98,11 +95,5 @@ class DataPersonTest {
                 printLog("Hour: ${curDate.hours} - continue")
             }
         }
-    }
-
-    @Test
-    fun test_con() {
-        val res = FirebaseService.checkDataForCollection(FirebaseService.firestore.collection("GUILDS"), "11417301481949962952")
-        println("RES: $res")
     }
 }

@@ -3,19 +3,14 @@ package ru.descend.bot
 import dev.kord.common.entity.Permission
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.extensions.descriptor
-import ru.descend.bot.firebase.CompleteResult
-import ru.descend.bot.firebase.FireMatch
-import ru.descend.bot.firebase.FirebaseService
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.postgre.LoadPostgreHistory
+import ru.descend.bot.postgre.PostgreSQL
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Base64
@@ -29,16 +24,12 @@ fun printLog(message: Any){
     println("[$curDTime] $message")
 }
 
-fun launch(block: suspend CoroutineScope.() -> Unit) {
-    CoroutineScope(Dispatchers.IO).launch {
-        block.invoke(this)
-    }
+fun launch(block: suspend CoroutineScope.() -> Unit) = CoroutineScope(Dispatchers.IO).launch {
+    block.invoke(this)
 }
 
-fun asyncLaunch(block: suspend CoroutineScope.() -> Unit) {
-    CoroutineScope(Dispatchers.IO).launch {
-        async { block.invoke(this) }
-    }
+fun asyncLaunch(block: suspend CoroutineScope.() -> Unit) = CoroutineScope(Dispatchers.IO).launch {
+    async { block.invoke(this) }
 }
 
 fun printLog(guild: Guild, message: Any){
@@ -104,6 +95,13 @@ suspend fun <T> Flow<T>.asList(): ArrayList<T> {
     return emptyList
 }
 
+fun formatInt(value: Long, items: Int) : String {
+    var str = value.toString()
+    while (str.length < items)
+        str = "0$str"
+    return str
+}
+
 fun formatInt(value: Int, items: Int) : String {
     var str = value.toString()
     while (str.length < items)
@@ -124,11 +122,12 @@ fun getRandom(maxPos: Int) : Int {
 
 fun User.toStringUID() = id.value.toString()
 
-fun reloadMatch(guild: Guild, puuid: String, startIndex: Int) {
+suspend fun reloadMatch(guild: Guild, puuid: String, startIndex: Int) {
     LeagueMainObject.catchMatchID(puuid, startIndex,100).forEach mch@ { matchId ->
-        LeagueMainObject.catchMatch(matchId)?.let { match ->
-            FirebaseService.addMatchToGuild(guild, match)
-            if (ENABLE_POSTGRESQL) LoadPostgreHistory.getGuild(guild).addMatchFire(FireMatch(match))
+        if (sqlCurrentMatches[guild.id.value.toString()]!!.find { mch -> mch.matchId == matchId } == null) {
+            LeagueMainObject.catchMatch(matchId)?.let { match ->
+                PostgreSQL.getGuild(guild).addMatch(match)
+            }
         }
     }
 }

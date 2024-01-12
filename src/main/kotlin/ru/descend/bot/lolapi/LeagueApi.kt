@@ -44,6 +44,8 @@ class LeagueApi(private val apiKey: String, region: String) {
             requestBuilder.header("Content-Type", "application/json")
             requestBuilder.header("Origin", "https://developer.riotgames.com")
             requestBuilder.header("X-Riot-Token", apiKey)
+            requestBuilder.header("X-RateLimit-Limit", "100")
+            requestBuilder.header("X-RateLimit-Period", "120")
             it.proceed(requestBuilder.build())
         }
         return newOkHttpBuilder.build()

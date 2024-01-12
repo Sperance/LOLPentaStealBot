@@ -1,7 +1,5 @@
 package ru.descend.bot.lolapi.leaguedata.match_dto
 
-import ru.descend.bot.firebase.FirePerson
-
 data class Info(
     val gameCreation: Long,
     val gameDuration: Int,
