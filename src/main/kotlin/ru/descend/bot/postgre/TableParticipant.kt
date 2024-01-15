@@ -91,4 +91,5 @@ data class TableParticipant(
 
 val tableParticipant = table<TableParticipant, Database>{
     column(TableParticipant::match).check { it neq 0 }
+    column(TableParticipant::LOLperson).check { it neq null }
 }

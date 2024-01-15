@@ -23,29 +23,27 @@ enum class EnumMessageType(val codeMessage: Int, val nameMessage: String) {
 data class TableMessage(
     override var id: Int = 0,
     var messageInnerId: String = "",
-    var dateTimeCreated: Long = 0,
     var dateTimeSended: Long = 0,
-    var text: String = "",
     var key: Int = 0,
     var sended: Boolean = false,
 
     var guild: TableGuild? = null,
-    var KORD_LOL: TableKORD_LOL? = null
+    var KORD_LOL: TableKORD_LOL? = null,
+    var match: TableMatch? = null
 ) : Entity() {
-    constructor(message: String, type: EnumMessageType, guild: TableGuild, addKey: String, KORD_LOL: TableKORD_LOL? = null) : this() {
-        this.dateTimeCreated = System.currentTimeMillis()
-        this.text = message
+    constructor(type: EnumMessageType, guild: TableGuild, KORD_LOL: TableKORD_LOL? = null, match: TableMatch) : this() {
         this.key = type.codeMessage
         this.guild = guild
         this.KORD_LOL = KORD_LOL
-        this.messageInnerId = catchMessageID(addKey)
+        this.messageInnerId = catchMessageID(match.matchId)
+        this.match = match
     }
 
     private fun catchMessageID(addKey: String) : String {
         return guild?.idGuild + "#" + key + "#" + addKey + "#" + KORD_LOL?.id
     }
 
-    suspend fun sendMessage(guildDiscord: Guild) {
+    suspend fun sendMessage(text: String, guildDiscord: Guild) {
         if (guild == null) return
         if (sended == true) return
         launch {
@@ -54,7 +52,7 @@ data class TableMessage(
                 content = text
             }
         }.invokeOnCompletion {
-            update {
+            update(TableMessage::sended, TableMessage::dateTimeSended){
                 sended = true
                 dateTimeSended = System.currentTimeMillis()
             }
@@ -64,4 +62,6 @@ data class TableMessage(
 
 val tableMessage = table<TableMessage, Database> {
     column(TableMessage::messageInnerId).unique()
+    column(TableMessage::guild).check { it neq null }
+    column(TableMessage::KORD_LOL).check { it neq null }
 }

@@ -19,7 +19,7 @@ data class TableLOLPerson(
 ): Entity() {
     val KORDpersons: List<TableKORDPerson> by manyToMany(TableKORD_LOL::LOLperson, TableKORD_LOL::KORDperson)
 
-    fun initLOL(region: String, summonerName: String) {
+    constructor(region: String, summonerName: String) : this() {
         val leagueApi = LeagueApi(catchToken()[1], region)
         leagueApi.leagueService.getBySummonerName(summonerName).execute().body()?.let {
             this.LOL_puuid = it.puuid
@@ -28,8 +28,14 @@ data class TableLOLPerson(
             this.LOL_region = region
         }
     }
+
+    fun isBot() : Boolean {
+        return LOL_puuid == "BOT" || LOL_summonerId == "BOT"
+    }
 }
 
 val tableLOLPerson = table<TableLOLPerson, Database> {
     column(TableLOLPerson::LOL_puuid).unique()
+    column(TableLOLPerson::LOL_puuid).check { it neq "BOT" }
+    column(TableLOLPerson::LOL_summonerId).check { it neq "BOT" }
 }

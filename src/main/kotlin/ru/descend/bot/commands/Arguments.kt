@@ -35,7 +35,7 @@ fun arguments() = commands("Arguments") {
 
             printLog("Start command '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
 
-            getGuild(guild).update {
+            getGuild(guild).update(TableGuild::botChannelId) {
                 this.botChannelId = channel.id.value.toString()
             }
 
@@ -49,7 +49,7 @@ fun arguments() = commands("Arguments") {
 
             printLog("Start command '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
 
-            getGuild(guild).update {
+            getGuild(guild).update(TableGuild::messageIdStatus) {
                 this.messageIdStatus = channel.id.value.toString()
             }
 
@@ -83,25 +83,26 @@ fun arguments() = commands("Arguments") {
             printLog("Start command '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'")
 
             val KORD = TableKORDPerson(guild, user).save()
-            val LOL = TableLOLPerson()
-            LOL.initLOL(region, summonerName)
-            LOL.save()
+            val LOL = TableLOLPerson(region, summonerName).save()
             val KORDLOL = TableKORD_LOL(KORDperson = KORD, LOLperson = LOL).save()
 
             sqlCurrentUsers[guild.id.value.toString()]!!.add(KORDLOL!!)
             printLog(guild, "Array Users ++. Size: ${sqlCurrentUsers[guild.id.value.toString()]!!.size}")
 
             asyncLaunch {
-                LeagueMainObject.catchMatchID(LOL.LOL_puuid, 0,50).forEach { matchId ->
+                LeagueMainObject.catchMatchID(LOL!!.LOL_puuid, 0,50).forEach { matchId ->
                     LeagueMainObject.catchMatch(matchId)?.let { match ->
                         getGuild(guild).addMatch(match)
                     }
                 }
             }.invokeOnCompletion {
-                launch {
-                    val channelText = guild.getChannelOf<TextChannel>(Snowflake(PostgreSQL.getGuild(guild).botChannelId))
-                    channelText.createMessage("[COMMAND ${hashCode()} COMPLETED]")
-                }
+//                launch {
+//                    val guildMy = getGuild(guild)
+//                    if (!guildMy.botChannelId.isEmpty()){
+//                        val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildMy.botChannelId))
+//                        channelText.createMessage("[COMMAND ${hashCode()} COMPLETED]")
+//                    }
+//                }
             }
 
             respond("Запущен процесс добавления пользователя и игрока в базу [${hashCode()}]")

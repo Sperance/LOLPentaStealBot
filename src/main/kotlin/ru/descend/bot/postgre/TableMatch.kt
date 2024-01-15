@@ -19,9 +19,20 @@ data class TableMatch(
     var guild: TableGuild? = null
 ) : Entity() {
 
+    val messages: List<TableMessage> by oneToMany(TableMessage::match)
     val participants: List<TableParticipant> by oneToMany(TableParticipant::match)
+
+    fun isHaveBots() : Boolean {
+        participants.forEach {
+            if (it.LOLperson?.isBot() == true) {
+                return true
+            }
+        }
+        return false
+    }
 }
 
 val tableMatch = table<TableMatch, Database> {
     column(TableMatch::matchId).unique()
+    column(TableMatch::guild).check { it neq null }
 }

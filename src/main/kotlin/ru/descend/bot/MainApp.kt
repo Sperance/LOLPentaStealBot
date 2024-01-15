@@ -14,12 +14,8 @@ import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.builder.message.modify.UserMessageModifyBuilder
 import dev.kord.rest.builder.message.modify.embed
 import dev.kord.x.emoji.Emojis
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import me.jakejmattson.discordkt.dsl.CommandException
 import me.jakejmattson.discordkt.dsl.ListenerException
 import me.jakejmattson.discordkt.dsl.bot
@@ -39,7 +35,6 @@ import ru.descend.bot.postgre.TableMessage
 import ru.descend.bot.postgre.TableParticipant
 import ru.descend.bot.postgre.tableKORDLOL
 import ru.descend.bot.postgre.tableKORDPerson
-import ru.descend.bot.postgre.tableLOLPerson
 import ru.descend.bot.postgre.tableMatch
 import ru.descend.bot.postgre.tableMessage
 import ru.descend.bot.postgre.tableParticipant
@@ -105,6 +100,7 @@ fun main() {
                 launch {
                     while (true) {
                         showLeagueHistory(it, guildSQL)
+                        showGuildStatMessage(it, guildSQL)
                         delay((10).minutes)
                         globalLOLRequests = 0
                     }
@@ -118,7 +114,6 @@ suspend fun removeMessage(guild: Guild, guildSQL: TableGuild) {
     if (guildSQL.botChannelId.isNotEmpty()) {
         val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildSQL.botChannelId))
         channelText.messages.collect {
-            printLog(guild, "Delete message: ${it.id}")
             val msgId = it.id.value.toString()
             if (msgId == guildSQL.messageId || msgId == guildSQL.messageIdPentaData || msgId == guildSQL.messageIdGlobalStatisticData || msgId == guildSQL.messageIdMasteryData) {
                 Unit
@@ -142,18 +137,23 @@ var sqlAllParticipants = ArrayList<TableParticipant>()
 
 var isWorkMainThread = HashMap<Guild, Boolean>()
 
-//suspend fun showGuildStatMessage(guild: Guild, guildData: TableGuild?) {
-//    if (guildData == null) {
-//        printLog(guild, "Guild not found in SQL")
-//        return
-//    }
-//
-//    if (guildData.messageIdStatus.isNotEmpty()) {
-//        sqlCurrentMessages[guild.id.value.toString()]!!.forEach {
-//            it.sendMessage(guild)
-//        }
-//    }
-//}
+suspend fun showGuildStatMessage(guild: Guild, guildData: TableGuild?) {
+    if (guildData == null) {
+        printLog(guild, "Guild not found in SQL")
+        return
+    }
+
+    if (guildData.messageIdStatus.isNotEmpty()) {
+        sqlCurrentMessages[guild.id.value.toString()]!!.forEach {
+            val kordLOL = sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { kl -> kl.id == it.KORD_LOL?.id }!!
+            val currentPart = sqlAllParticipants.find { part -> part.LOLperson?.LOL_puuid == kordLOL.LOLperson?.LOL_puuid && part.match?.matchId == it.match?.matchId }
+            val currentMatch = sqlCurrentMatches[guild.id.value.toString()]!!.find { match -> match.matchId == it.match?.matchId }!!
+            val killedChamps = sqlAllParticipants.filter { part -> part.match?.matchId == it.match?.matchId && currentPart?.team != part.team }.joinToString { par -> LeagueMainObject.findHeroForKey(par.championId.toString()) }
+            val textSended = "Поздравляем!!!\n${kordLOL.asUser(guild).lowDescriptor()} сделал Пентакилл за чемпиона ${LeagueMainObject.findHeroForKey(currentPart?.championId.toString())} убив: $killedChamps\nДата: ${currentMatch.matchDate.toFormatDateTime()} Матч: ${currentMatch.matchId}"
+            it.sendMessage(textSended, guild)
+        }
+    }
+}
 //
 //suspend fun showMasteryHistory(guild: Guild, guildData: TableGuild?) {
 //    printLog("111")
@@ -214,6 +214,7 @@ suspend fun showLeagueHistory(guild: Guild, guildData: TableGuild?) {
         sqlAllParticipants.clear()
         sqlAllParticipants.addAll(tableParticipant.getAll { TableParticipant::id greaterEq 0 })
         sqlAllParticipants.sortByDescending { par -> par.match!!.matchDate }
+        printLog(guild, "participants size: ${sqlAllParticipants.size}")
 
         if (sqlCurrentUsers[guild.id.value.toString()]!!.isEmpty()) {
             sqlCurrentUsers[guild.id.value.toString()]!!.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildData })
@@ -226,19 +227,25 @@ suspend fun showLeagueHistory(guild: Guild, guildData: TableGuild?) {
             if (sizeC > 0) printLog(guild, "initalize sql matching size: $sizeC")
         }
 
+        sqlCurrentMessages[guild.id.value.toString()]!!.clear()
         sqlCurrentMessages[guild.id.value.toString()]!!.addAll(tableMessage.getAll { TableMessage::guild eq guildData })
+
+        sqlCurrentKORDLOL[guild.id.value.toString()]!!.clear()
         sqlCurrentKORDLOL[guild.id.value.toString()]!!.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildData })
+
+        sqlCurrentKORD[guild.id.value.toString()]!!.clear()
         sqlCurrentKORD[guild.id.value.toString()]!!.addAll(tableKORDPerson.getAll { TableKORDPerson::guild eq guildData })
+
+        sqlCurrentLOL[guild.id.value.toString()]!!.clear()
         sqlCurrentKORD[guild.id.value.toString()]!!.forEach {
             sqlCurrentLOL[guild.id.value.toString()]!!.addAll(it.LOLpersons)
         }
-        val mapUses = HashMap<TableKORD_LOL, ChampionMasteryDto>()
+//        val mapUses = HashMap<TableKORD_LOL, ChampionMasteryDto>()
 
         launch {
             sqlCurrentKORDLOL[guild.id.value.toString()]!!.forEach {
                 if (it.LOLperson == null) return@forEach
                 if (it.LOLperson?.LOL_puuid == "") return@forEach
-                printLog("\t[REQUESTS STARTED] FOR: ${it.LOLperson?.LOL_summonerName} ${it.LOLperson?.LOL_puuid}")
                 LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,3).forEach ff@ { matchId ->
                     if (sqlCurrentMatches[guild.id.value.toString()]!!.find { mch -> mch.matchId == matchId } == null) {
                         LeagueMainObject.catchMatch(matchId)?.let { match ->
@@ -249,7 +256,6 @@ suspend fun showLeagueHistory(guild: Guild, guildData: TableGuild?) {
 //                LeagueMainObject.catchChampionMastery(it.LOLperson!!.LOL_puuid)?.let { mastery ->
 //                    mapUses[it] = mastery
 //                }
-                printLog("\t[REQUESTS ENDED] FOR: ${it.LOLperson?.LOL_summonerName} ${it.LOLperson?.LOL_puuid}")
             }
         }.join()
 
@@ -347,38 +353,35 @@ suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, editB
         createBody.invoke()
     } else {
         val message = channelText.getMessageOrNull(Snowflake(messageId))
-        if (message != null) {
-            message.edit { editBody.invoke(this) }
-        } else {
-            createBody.invoke()
-        }
+        if (message != null) message.edit { editBody.invoke(this) }
+        else createBody.invoke()
     }
 }
 
 suspend fun createMessagePentaData(channelText: TextChannel, file: TableGuild) {
-    val message = channelText.createMessage("Initial Message")
+    val message = channelText.createMessage("Initial Message PentaData")
     channelText.getMessage(message.id).edit { editMessagePentaDataContent(this, message.getGuild(), file) }
-    file.update { messageIdPentaData = message.id.value.toString() }
+    file.update (TableGuild::messageIdPentaData) { messageIdPentaData = message.id.value.toString() }
 }
 
 suspend fun createMessageGlobalStatistic(channelText: TextChannel, allMatches: ArrayList<TableMatch>, file: TableGuild, mapWins: HashMap<TableKORD_LOL, Int>) {
-    val message = channelText.createMessage("Initial Message")
+    val message = channelText.createMessage("Initial Message GlobalStatistic")
     channelText.getMessage(message.id).edit {
         editMessageGlobalStatisticContent(this, allMatches, message.getGuild(), mapWins)
     }
-    file.update { messageIdGlobalStatisticData = message.id.value.toString() }
+    file.update (TableGuild::messageIdGlobalStatisticData) { messageIdGlobalStatisticData = message.id.value.toString() }
 }
 
 suspend fun createMessageSimple(channelText: TextChannel, file: TableGuild) {
-    val message = channelText.createMessage("Initial Message")
+    val message = channelText.createMessage("Initial Message Simple")
     channelText.getMessage(message.id).edit { editMessageSimpleContent(channelText.getGuild(),this) }
-    file.update { messageId = message.id.value.toString() }
+    file.update (TableGuild::messageId) { messageId = message.id.value.toString() }
 }
 
 suspend fun createMessageMastery(channelText: TextChannel, map: HashMap<TableKORD_LOL, ChampionMasteryDto>, file: TableGuild) {
-    val message = channelText.createMessage("Initial Message")
+    val message = channelText.createMessage("Initial Message Mastery")
     channelText.getMessage(message.id).edit { editMessageMasteryContent(this, map, message.getGuild()) }
-    file.update { messageIdMasteryData = message.id.value.toString() }
+    file.update (TableGuild::messageIdMasteryData) { messageIdMasteryData = message.id.value.toString() }
 }
 
 fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<TableKORD_LOL, ChampionMasteryDto>, guild: Guild) {
@@ -389,7 +392,7 @@ fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<Ta
     val listHeroes = sortedMap.map { formatInt(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { per -> per.LOLperson == it.key.LOLperson }!!.id, 2) + "| " + LeagueMainObject.findHeroForKey(it.value.getOrNull(0)?.championId.toString()) + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(1)?.championId.toString()) + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(2)?.championId.toString()) }
     val listPoints = sortedMap.map { formatInt(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { per -> per.LOLperson == it.key.LOLperson }!!.id, 2) + "| " + it.value.getOrNull(0)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(1)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(2)?.championPoints?.toFormatK() }
 
-    builder.content = "Статистика по Чемпионам\n"
+    builder.content = "Статистика по Чемпионам: ${TimeStamp.now()}\n"
     builder.embed {
         field {
             name = "User"
@@ -412,10 +415,11 @@ fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<Ta
 fun editMessageSimpleContent(guild: Guild, builder: UserMessageModifyBuilder) {
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
             "Игр на сервере: ${sqlCurrentMatches[guild.id.value.toString()]!!.size}\n" +
-            "Игроков в базе: ${tableLOLPerson.size}\n" +
-            "Пользователей в базе: ${tableKORDPerson.count { TableKORDPerson::guild eq getGuild(guild) }}\n" +
+            "Пользователей в базе: ${sqlCurrentLOL[guild.id.value.toString()]!!.size}\n" +
+            "Игроков в базе: ${sqlAllParticipants.size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
             "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
+    printLog("load completed")
 }
 
 fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, allMatches: ArrayList<TableMatch>, guild: Guild, mapWins: HashMap<TableKORD_LOL, Int>) {
@@ -458,7 +462,7 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, allMatc
         it.clearData()
     }
 
-    builder.content = "Статистика Общая\n"
+    builder.content = "Статистика Общая ${TimeStamp.now()}\n"
     builder.embed {
         field {
             name = "User/WinStreak"
@@ -490,18 +494,19 @@ fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, guild: Guild,
     }
 
     dataList.sortByDescending { it.date }
-//    dataList.forEach {
-//        val textMessage = "Поздравляем!!!\n\nПризыватель ${it.user?.asUser(guild)?.lowDescriptor()} сделал Пентакилл за чемпиона ${it.text.replace("Пентакилл за ", "")}.\nВыражаем поздравления от всего сервера!!! "
-//        val tMessage = TableMessage(message = textMessage, type = EnumMessageType.PENTA, guild = tableGuild, addKey = it.match.matchId, KORD_LOL = it.user)
-//        if (sqlCurrentMessages[guild.id.value.toString()]!!.find { curMsg -> curMsg.messageInnerId == tMessage.messageInnerId } == null)
-//            tMessage.save()
-//    }
+    dataList.forEach {
+        val tMessage = TableMessage(type = EnumMessageType.PENTA, guild = tableGuild, KORD_LOL = it.user, match = it.match)
+        if (sqlCurrentMessages[guild.id.value.toString()]!!.find { curMsg -> curMsg.messageInnerId == tMessage.messageInnerId } == null && !it.match.isHaveBots()) {
+            tMessage.save()
+            sqlCurrentMessages[guild.id.value.toString()]!!.add(tMessage)
+        }
+    }
 
     val list1 = dataList.map { formatInt(it.user?.id ?: -1, 2) + "|" + it.user?.asUser(guild)?.lowDescriptor() }
     val list2 = dataList.map { formatInt(it.user?.id ?: -1, 2) + "| " + it.text }
     val list3 = dataList.map { formatInt(it.user?.id ?: -1, 2) + "| " + it.date.toFormatDate() }
 
-    builder.content = "Статистика Пентакиллов\n"
+    builder.content = "Статистика Пентакиллов: ${TimeStamp.now()}\n"
     builder.embed {
         field {
             name = "Призыватель"

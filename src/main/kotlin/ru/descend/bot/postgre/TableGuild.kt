@@ -33,6 +33,7 @@ data class TableGuild (
     val KORDLOL: List<TableKORD_LOL> by oneToMany(TableKORD_LOL::guild)
 
     fun addMatch(match: MatchDTO) : TableMatch {
+
         val pMatch = TableMatch(
             matchId = match.metadata.matchId,
             matchDate = match.info.gameCreation,
@@ -43,6 +44,11 @@ data class TableGuild (
             guild = this
         )
         pMatch.save()
+
+        if (match.info.participants.find { it.puuid == "BOT" || it.summonerId == "BOT" } != null) {
+            printLog("[PostgreSQL Service] Creating Match(BOT) witg GUILD $idGuild with Match ${pMatch.matchId} ${pMatch.matchMode} time: ${pMatch.matchDate.toFormatDateTime()}")
+            return pMatch
+        }
 
         printLog("[PostgreSQL Service] Creating Match witg GUILD $idGuild with Match ${pMatch.matchId} ${pMatch.matchMode} time: ${pMatch.matchDate.toFormatDateTime()}")
 

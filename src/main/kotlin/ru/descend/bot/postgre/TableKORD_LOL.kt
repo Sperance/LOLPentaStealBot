@@ -1,6 +1,7 @@
 package ru.descend.bot.postgre
 
 import Entity
+import column
 import databases.Database
 import delete
 import dev.kord.common.entity.Snowflake
@@ -49,4 +50,8 @@ data class TableKORD_LOL(
     }
 }
 
-val tableKORDLOL = table<TableKORD_LOL, Database>()
+val tableKORDLOL = table<TableKORD_LOL, Database> {
+    column(TableKORD_LOL::guild).check { it neq null }
+    column(TableKORD_LOL::LOLperson).check { it neq null }
+    column(TableKORD_LOL::LOLperson).check { it neq null }
+}

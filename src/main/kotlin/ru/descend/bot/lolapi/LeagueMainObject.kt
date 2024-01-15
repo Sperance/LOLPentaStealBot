@@ -51,42 +51,33 @@ object LeagueMainObject {
 
     suspend fun catchMatchID(puuid: String, start: Int, count: Int) : ArrayList<String> {
         val result = ArrayList<String>()
-        return try {
-            globalLOLRequests++
-            delay(checkRiotQuota())
-            printLog("[catchMatchID::$globalLOLRequests] started with puuid: $puuid start: $start count: $count")
-            val exec = leagueService.getMatchIDByPUUID(puuid, start, count).execute()
-            reloadRiotQuota()
-            if (exec.isSuccessful) {
-                exec.body()?.forEach {
-                    result.add(it)
-                }
-            } else {
-                statusLOLRequests = 1
-                printLog("catchMatchID failure: ${exec.code()} ${exec.message()}")
+        globalLOLRequests++
+        delay(checkRiotQuota())
+        printLog("[catchMatchID::$globalLOLRequests] started with puuid: $puuid start: $start count: $count")
+        val exec = leagueService.getMatchIDByPUUID(puuid, start, count).execute()
+        reloadRiotQuota()
+        if (exec.isSuccessful) {
+            exec.body()?.forEach {
+                result.add(it)
             }
-            result
-        }catch (e: Exception) {
-            printLog("[ERROR::catchMatchID] ${e.message}")
-            result
+        } else {
+            statusLOLRequests = 1
+            printLog("catchMatchID failure: ${exec.code()} ${exec.message()}")
         }
+        return result
     }
 
     suspend fun catchMatch(matchId: String) : MatchDTO? {
-        return try {
-            globalLOLRequests++
-            delay(checkRiotQuota())
-            printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
-            val exec = leagueService.getMatchInfo(matchId).execute()
-            reloadRiotQuota()
-            if (!exec.isSuccessful) {
-                statusLOLRequests = 1
-                printLog("catchMatch failure: ${exec.code()} ${exec.message()}")
-            }
-            exec.body()
-        }catch (_: Exception) {
-            null
+        globalLOLRequests++
+        delay(checkRiotQuota())
+        printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
+        val exec = leagueService.getMatchInfo(matchId).execute()
+        reloadRiotQuota()
+        if (!exec.isSuccessful) {
+            statusLOLRequests = 1
+            printLog("catchMatch failure: ${exec.code()} ${exec.message()}")
         }
+        return exec.body()
     }
 
     suspend fun catchChampionMastery(puuid: String) : ChampionMasteryDto? {
@@ -94,11 +85,11 @@ object LeagueMainObject {
         delay(checkRiotQuota())
         printLog("[catchChampionMastery::$globalLOLRequests] started with puuid: $puuid")
         val exec = leagueService.getChampionMastery(puuid).execute()
+        reloadRiotQuota()
         if (!exec.isSuccessful){
             statusLOLRequests = 1
             printLog("catchChampionMastery failure: ${exec.code()} ${exec.message()}")
         }
-        reloadRiotQuota()
         return exec.body()
     }
 
@@ -107,7 +98,7 @@ object LeagueMainObject {
      * 100 запросов за 2 минуты
      */
     private fun checkRiotQuota(): kotlin.time.Duration {
-        if (statusLOLRequests != 0 || globalLOLRequests >= 100) {
+        if (statusLOLRequests != 0 || globalLOLRequests >= 99) {
             statusLOLRequests = 1
             printLog("[leagueApi] checkRiotQuota globalLOLRequests: $globalLOLRequests")
             return ((2).minutes + (5).seconds) //+5 сек на всякий случай
