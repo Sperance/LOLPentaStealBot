@@ -12,6 +12,7 @@ import ru.descend.bot.launch
 import ru.descend.bot.postgre.PostgreSQL.getGuild
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.DataPersonTest
+import ru.descend.bot.sendMessage
 import table
 import update
 
@@ -39,6 +40,10 @@ data class TableMessage(
         this.match = match
     }
 
+    fun getEnumKey() : EnumMessageType {
+        return EnumMessageType.entries.first { it.codeMessage == key }
+    }
+
     private fun catchMessageID(addKey: String) : String {
         return guild?.idGuild + "#" + key + "#" + addKey + "#" + KORD_LOL?.id
     }
@@ -46,12 +51,7 @@ data class TableMessage(
     suspend fun sendMessage(text: String, guildDiscord: Guild) {
         if (guild == null) return
         if (sended == true) return
-        launch {
-            val channelText = guildDiscord.getChannelOf<TextChannel>(Snowflake(guild!!.messageIdStatus))
-            channelText.createMessage {
-                content = text
-            }
-        }.invokeOnCompletion {
+        guildDiscord.sendMessage(guild!!.messageIdStatus, text){
             update(TableMessage::sended, TableMessage::dateTimeSended){
                 sended = true
                 dateTimeSended = System.currentTimeMillis()

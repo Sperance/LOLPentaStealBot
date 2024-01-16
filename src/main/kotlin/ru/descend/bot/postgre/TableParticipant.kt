@@ -3,6 +3,7 @@ package ru.descend.bot.postgre
 import Entity
 import column
 import databases.Database
+import dev.kord.core.entity.Guild
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import table
 
@@ -45,6 +46,7 @@ data class TableParticipant(
     var item6: Int = -1,
     var team: Int = -1,
     var profileIcon: Int = -1,
+    var guildUid: String = "",
     var win: Boolean = false,
 
     var match: TableMatch? = null,
@@ -58,6 +60,7 @@ data class TableParticipant(
 
         this.match = match
         this.LOLperson = LOLperson
+        this.guildUid = match.guild!!.idGuild
 
         this.championId = participant.championId
         this.championName = participant.championName

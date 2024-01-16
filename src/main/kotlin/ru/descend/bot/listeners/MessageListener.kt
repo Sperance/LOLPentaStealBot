@@ -10,18 +10,22 @@ import dev.kord.core.event.role.RoleDeleteEvent
 import dev.kord.core.event.role.RoleUpdateEvent
 import me.jakejmattson.discordkt.dsl.listeners
 import me.jakejmattson.discordkt.extensions.descriptor
-import org.w3c.dom.events.MutationEvent
+import ru.descend.bot.lowDescriptor
 import ru.descend.bot.printLog
+import ru.descend.bot.postgre.PostgreSQL.getGuild
+import ru.descend.bot.sendMessage
 
 fun listeners() = listeners {
 
     on<MemberJoinEvent> {
         val memberUser = member.asUser().descriptor()
         printLog(guild.asGuild(), "{Joined to server} $memberUser All: ${guild.asGuild().memberCount}")
+        guild.asGuild().sendMessage(getGuild(guild.asGuild()).messageIdDebug, "{Joined to server} ${member.asUser().lowDescriptor()}")
     }
     on<MemberLeaveEvent> {
         val member = user.descriptor()
         printLog(guild.asGuild(), "{Leave from server} $member All: ${guild.asGuild().memberCount}")
+        guild.asGuild().sendMessage(getGuild(guild.asGuild()).messageIdDebug, "{Leave from server} ${user.lowDescriptor()}")
     }
     on<MemberUpdateEvent> {
         val member = member.asUser().descriptor()
@@ -30,6 +34,7 @@ fun listeners() = listeners {
 
     on<BanAddEvent>{
         printLog(getGuild(), "{Ban add} ${user.descriptor()} ${getBan().getUser().descriptor()} reason: ${getBan().reason}")
+        guild.asGuild().sendMessage(getGuild(guild.asGuild()).messageIdDebug, "{Ban add} from ${user.lowDescriptor()} to ${getBan().getUser().lowDescriptor()} reason: ${getBan().reason}")
     }
     on<BanRemoveEvent>{
         printLog(getGuild(), "{Ban remove} ${user.descriptor()}")
@@ -37,9 +42,11 @@ fun listeners() = listeners {
 
     on<RoleCreateEvent> {
         printLog(getGuild(), "{Create Role} ${role.name} ${role.id.value} ${role.permissions.code.value}")
+        guild.asGuild().sendMessage(getGuild(guild.asGuild()).messageIdDebug, "{Create Role} ${role.name} ${role.id.value}")
     }
     on<RoleDeleteEvent> {
         printLog(getGuild(), "{Delete Role} ${role?.name} ${role?.id?.value} ${role?.permissions?.code?.value}")
+        guild.asGuild().sendMessage(getGuild(guild.asGuild()).messageIdDebug, "{Delete Role} ${role?.name} ${role?.id?.value} ${role?.permissions?.code?.value}")
     }
     on<RoleUpdateEvent> {
         printLog(getGuild(), "{Update Role} ${role.name} ${role.id.value} ${role.permissions.code.value}")

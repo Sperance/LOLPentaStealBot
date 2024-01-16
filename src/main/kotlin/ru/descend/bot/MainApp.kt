@@ -39,10 +39,12 @@ import ru.descend.bot.postgre.tableMatch
 import ru.descend.bot.postgre.tableMessage
 import ru.descend.bot.postgre.tableParticipant
 import ru.descend.bot.savedObj.DataBasic
+import ru.descend.bot.savedObj.toLocalDate
 import save
 import update
 import java.awt.Color
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(PrivilegedIntent::class)
 @KordPreview
@@ -66,13 +68,7 @@ fun main() {
             defaultPermissions = Permissions(Permission.UseApplicationCommands)
         }
         onException {
-            if (exception is IllegalArgumentException)
-                return@onException
-
-            when (this) {
-                is CommandException -> println("Exception '${exception::class.simpleName}' in command ${event.command?.name}")
-                is ListenerException -> println("Exception '${exception::class.simpleName}' in listener ${event::class.simpleName}")
-            }
+            println("Exception '${exception::class.simpleName}': ${exception.message}")
         }
         presence {
             this.status = PresenceStatus.Online
@@ -88,25 +84,60 @@ fun main() {
                 println("\t  ${it.name} [${it.id.value}]")
 
                 isWorkMainThread[it] = true
-                sqlCurrentUsers[it.id.value.toString()] = ArrayList()
-                sqlCurrentMatches[it.id.value.toString()] = ArrayList()
-                sqlCurrentKORD[it.id.value.toString()] = ArrayList()
-                sqlCurrentLOL[it.id.value.toString()] = ArrayList()
-                sqlCurrentKORDLOL[it.id.value.toString()] = ArrayList()
-                sqlCurrentMessages[it.id.value.toString()] = ArrayList()
+
+                sqlCurrentUsers[it] = ArrayList()
+                currentLoadTick[it] = 1
+                sqlCurrentParticipants[it] = ArrayList()
+                sqlCurrentMatches[it] = ArrayList()
+                sqlCurrentKORD[it] = ArrayList()
+                sqlCurrentLOL[it] = ArrayList()
+                sqlCurrentKORDLOL[it] = ArrayList()
+                sqlCurrentMessages[it] = ArrayList()
+
                 val guildSQL = getGuild(it)
                 removeMessage(it, guildSQL)
-
                 launch {
                     while (true) {
+                        printLog(it, "Load main history started (${currentLoadTick[it]})")
+                        loadSQLData(it, guildSQL)
                         showLeagueHistory(it, guildSQL)
                         showGuildStatMessage(it, guildSQL)
+                        printLog(it, "Load main history ended (${currentLoadTick[it]})")
                         delay((10).minutes)
+                        currentLoadTick[it] = currentLoadTick[it]!!.plus(1)
                         globalLOLRequests = 0
                     }
                 }
             }
         }
+    }
+}
+
+private fun loadSQLData(guild: Guild, guildSQL: TableGuild) {
+
+    if (guildSQL.botChannelId.isEmpty()) return
+
+    sqlCurrentUsers[guild]!!.clear()
+    sqlCurrentUsers[guild]!!.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildSQL })
+
+    sqlCurrentMatches[guild]!!.clear()
+    sqlCurrentMatches[guild]!!.addAll(tableMatch.getAll { TableMatch::guild eq guildSQL })
+
+    sqlCurrentParticipants[guild]!!.clear()
+    sqlCurrentParticipants[guild]!!.addAll(tableParticipant.getAll { TableParticipant::guildUid eq guildSQL.idGuild })
+
+    sqlCurrentMessages[guild]!!.clear()
+    sqlCurrentMessages[guild]!!.addAll(tableMessage.getAll { TableMessage::guild eq guildSQL })
+
+    sqlCurrentKORDLOL[guild]!!.clear()
+    sqlCurrentKORDLOL[guild]!!.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildSQL })
+
+    sqlCurrentKORD[guild]!!.clear()
+    sqlCurrentKORD[guild]!!.addAll(tableKORDPerson.getAll { TableKORDPerson::guild eq guildSQL })
+
+    sqlCurrentLOL[guild]!!.clear()
+    sqlCurrentKORD[guild]!!.forEach {
+        sqlCurrentLOL[guild]!!.addAll(it.LOLpersons)
     }
 }
 
@@ -127,13 +158,14 @@ suspend fun removeMessage(guild: Guild, guildSQL: TableGuild) {
 var globalLOLRequests = 0
 var statusLOLRequests = 0
 
-val sqlCurrentUsers  = HashMap<String, ArrayList<TableKORD_LOL>>()
-val sqlCurrentMatches  = HashMap<String, ArrayList<TableMatch>>()
-val sqlCurrentKORD  = HashMap<String, ArrayList<TableKORDPerson>>()
-val sqlCurrentLOL  = HashMap<String, ArrayList<TableLOLPerson>>()
-val sqlCurrentKORDLOL  = HashMap<String, ArrayList<TableKORD_LOL>>()
-val sqlCurrentMessages  = HashMap<String, ArrayList<TableMessage>>()
-var sqlAllParticipants = ArrayList<TableParticipant>()
+val sqlCurrentUsers  = HashMap<Guild, ArrayList<TableKORD_LOL>>()
+val sqlCurrentMatches  = HashMap<Guild, ArrayList<TableMatch>>()
+val sqlCurrentKORD  = HashMap<Guild, ArrayList<TableKORDPerson>>()
+val sqlCurrentLOL  = HashMap<Guild, ArrayList<TableLOLPerson>>()
+val sqlCurrentKORDLOL  = HashMap<Guild, ArrayList<TableKORD_LOL>>()
+val sqlCurrentMessages  = HashMap<Guild, ArrayList<TableMessage>>()
+val sqlCurrentParticipants = HashMap<Guild, ArrayList<TableParticipant>>()
+val currentLoadTick = HashMap<Guild, Int>()
 
 var isWorkMainThread = HashMap<Guild, Boolean>()
 
@@ -144,58 +176,51 @@ suspend fun showGuildStatMessage(guild: Guild, guildData: TableGuild?) {
     }
 
     if (guildData.messageIdStatus.isNotEmpty()) {
-        sqlCurrentMessages[guild.id.value.toString()]!!.forEach {
-            val kordLOL = sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { kl -> kl.id == it.KORD_LOL?.id }!!
-            val currentPart = sqlAllParticipants.find { part -> part.LOLperson?.LOL_puuid == kordLOL.LOLperson?.LOL_puuid && part.match?.matchId == it.match?.matchId }
-            val currentMatch = sqlCurrentMatches[guild.id.value.toString()]!!.find { match -> match.matchId == it.match?.matchId }!!
-            val killedChamps = sqlAllParticipants.filter { part -> part.match?.matchId == it.match?.matchId && currentPart?.team != part.team }.joinToString { par -> LeagueMainObject.findHeroForKey(par.championId.toString()) }
-            val textSended = "Поздравляем!!!\n${kordLOL.asUser(guild).lowDescriptor()} сделал Пентакилл за чемпиона ${LeagueMainObject.findHeroForKey(currentPart?.championId.toString())} убив: $killedChamps\nДата: ${currentMatch.matchDate.toFormatDateTime()} Матч: ${currentMatch.matchId}"
-            it.sendMessage(textSended, guild)
+        sqlCurrentMessages[guild]!!.forEach {
+            if (it.getEnumKey() == EnumMessageType.PENTA) {
+                val kordLOL = sqlCurrentKORDLOL[guild]!!.find { kl -> kl.id == it.KORD_LOL?.id }!!
+                val currentPart = sqlCurrentParticipants[guild]!!.find { part -> part.LOLperson?.LOL_puuid == kordLOL.LOLperson?.LOL_puuid && part.match?.matchId == it.match?.matchId }
+                val currentMatch = sqlCurrentMatches[guild]!!.find { match -> match.matchId == it.match?.matchId }!!
+                val killedChamps = sqlCurrentParticipants[guild]!!.filter { part -> part.match?.matchId == it.match?.matchId && currentPart?.team != part.team }.joinToString { par -> LeagueMainObject.findHeroForKey(par.championId.toString()) }
+                val textSended = "Поздравляем!!!\n${kordLOL.asUser(guild).lowDescriptor()} сделал Пентакилл за чемпиона ${LeagueMainObject.findHeroForKey(currentPart?.championId.toString())} убив: $killedChamps\nДата: ${currentMatch.matchDate.toFormatDateTime()} Матч: ${currentMatch.matchId}"
+                it.sendMessage(textSended, guild)
+            }
         }
     }
 }
-//
-//suspend fun showMasteryHistory(guild: Guild, guildData: TableGuild?) {
-//    printLog("111")
-//    if (isWorkMainThread[guild]!! == false) {
-//        printLog(guild, "[MainApp] isWorkMainThread false")
-//        return
-//    }
-//    printLog("222")
-//    if (guildData == null) {
-//        printLog(guild, "Guild not found in SQL")
-//        return
-//    }
-//
-//    printLog("333")
-//    if (guildData.botChannelId.isNotEmpty()) {
-//        printLog("444")
-//        val mapUses = HashMap<TableKORD_LOL, ChampionMasteryDto>()
-//        printLog("1mapUses: ${mapUses.size}")
-//
-//        sqlCurrentKORDLOL[guild.id.value.toString()]!!.forEach {
-//            if (it.LOLperson == null) return@forEach
-//            if (it.LOLperson?.LOL_puuid == "") return@forEach
-//            LeagueMainObject.catchChampionMastery(it.LOLperson!!.LOL_puuid)?.let { mastery ->
-//                mapUses[it] = mastery
-//            }
-//        }
-//        printLog("2mapUses: ${mapUses.size}")
-//        printLog("3mapUses: $mapUses")
-//        printLog("555")
-//        val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
-//        //Таблица по очкам чемпионам
-//        launch {
-//            printLog("666")
-//            editMessageGlobal(channelText, guildData.messageIdMasteryData, {
-//                editMessageMasteryContent(it, mapUses, guild)
-//            }) {
-//                createMessageMastery(channelText, mapUses, guildData)
-//            }
-//            mapUses.clear()
-//        }.join()
-//    }
-//}
+
+suspend fun showMasteryHistory(guild: Guild, guildData: TableGuild?) {
+    if (isWorkMainThread[guild]!! == false) {
+        printLog(guild, "[MainApp] isWorkMainThread false")
+        return
+    }
+    if (guildData == null) {
+        printLog(guild, "Guild not found in SQL")
+        return
+    }
+
+    if (guildData.botChannelId.isNotEmpty()) {
+        val mapUses = HashMap<TableKORD_LOL, ChampionMasteryDto>()
+
+        sqlCurrentKORDLOL[guild]!!.forEach {
+            if (it.LOLperson == null) return@forEach
+            if (it.LOLperson?.LOL_puuid == "") return@forEach
+            LeagueMainObject.catchChampionMastery(it.LOLperson!!.LOL_puuid)?.let { mastery ->
+                mapUses[it] = mastery
+            }
+        }
+        val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
+        //Таблица по очкам чемпионам
+        launch {
+            editMessageGlobal(channelText, guildData.messageIdMasteryData, {
+                editMessageMasteryContent(it, mapUses, guild)
+            }) {
+                createMessageMastery(channelText, mapUses, guildData)
+            }
+            mapUses.clear()
+        }.join()
+    }
+}
 
 suspend fun showLeagueHistory(guild: Guild, guildData: TableGuild?) {
 
@@ -210,56 +235,22 @@ suspend fun showLeagueHistory(guild: Guild, guildData: TableGuild?) {
     }
 
     if (guildData.botChannelId.isNotEmpty()) {
-
-        sqlAllParticipants.clear()
-        sqlAllParticipants.addAll(tableParticipant.getAll { TableParticipant::id greaterEq 0 })
-        sqlAllParticipants.sortByDescending { par -> par.match!!.matchDate }
-        printLog(guild, "participants size: ${sqlAllParticipants.size}")
-
-        if (sqlCurrentUsers[guild.id.value.toString()]!!.isEmpty()) {
-            sqlCurrentUsers[guild.id.value.toString()]!!.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildData })
-            val sizeC = sqlCurrentUsers[guild.id.value.toString()]!!.size
-            if (sizeC > 0) printLog(guild, "initalize sql KORD users size: $sizeC")
-        }
-        if (sqlCurrentMatches[guild.id.value.toString()]!!.isEmpty()) {
-            sqlCurrentMatches[guild.id.value.toString()]!!.addAll(tableMatch.getAll { TableMatch::guild eq guildData })
-            val sizeC = sqlCurrentMatches[guild.id.value.toString()]!!.size
-            if (sizeC > 0) printLog(guild, "initalize sql matching size: $sizeC")
-        }
-
-        sqlCurrentMessages[guild.id.value.toString()]!!.clear()
-        sqlCurrentMessages[guild.id.value.toString()]!!.addAll(tableMessage.getAll { TableMessage::guild eq guildData })
-
-        sqlCurrentKORDLOL[guild.id.value.toString()]!!.clear()
-        sqlCurrentKORDLOL[guild.id.value.toString()]!!.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildData })
-
-        sqlCurrentKORD[guild.id.value.toString()]!!.clear()
-        sqlCurrentKORD[guild.id.value.toString()]!!.addAll(tableKORDPerson.getAll { TableKORDPerson::guild eq guildData })
-
-        sqlCurrentLOL[guild.id.value.toString()]!!.clear()
-        sqlCurrentKORD[guild.id.value.toString()]!!.forEach {
-            sqlCurrentLOL[guild.id.value.toString()]!!.addAll(it.LOLpersons)
-        }
-//        val mapUses = HashMap<TableKORD_LOL, ChampionMasteryDto>()
-
         launch {
-            sqlCurrentKORDLOL[guild.id.value.toString()]!!.forEach {
+            sqlCurrentKORDLOL[guild]!!.forEach {
                 if (it.LOLperson == null) return@forEach
                 if (it.LOLperson?.LOL_puuid == "") return@forEach
                 LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,3).forEach ff@ { matchId ->
-                    if (sqlCurrentMatches[guild.id.value.toString()]!!.find { mch -> mch.matchId == matchId } == null) {
+                    if (sqlCurrentMatches[guild]!!.find { mch -> mch.matchId == matchId } == null) {
                         LeagueMainObject.catchMatch(matchId)?.let { match ->
-                            sqlCurrentMatches[guild.id.value.toString()]!!.add(guildData.addMatch(match))
+                            guild.sendMessage(guildData.messageIdDebug, "Добавлен матч $matchId дата ${match.info.gameCreation.toLocalDate()} по пользователю ${it.asUser(guild).lowDescriptor()} игроку ${it.LOLperson?.LOL_summonerName}")
+                            sqlCurrentMatches[guild]!!.add(guildData.addMatch(guild, match))
                         }
                     }
                 }
-//                LeagueMainObject.catchChampionMastery(it.LOLperson!!.LOL_puuid)?.let { mastery ->
-//                    mapUses[it] = mastery
-//                }
             }
         }.join()
 
-        val winStreakMap = catchWinStreak(sqlCurrentMatches[guild.id.value.toString()]!!, guild)
+        val winStreakMap = catchWinStreak(sqlCurrentMatches[guild]!!, guild)
         val channelText = guild.getChannelOf<TextChannel>(Snowflake(guildData.botChannelId))
 
         //Таблица Пентакиллов
@@ -273,9 +264,9 @@ suspend fun showLeagueHistory(guild: Guild, guildData: TableGuild?) {
         //Таблица по играм\винрейту\сериям убийств
         launch {
             editMessageGlobal(channelText, guildData.messageIdGlobalStatisticData, {
-                editMessageGlobalStatisticContent(it, sqlCurrentMatches[guild.id.value.toString()]!!, guild, winStreakMap)
+                editMessageGlobalStatisticContent(it, sqlCurrentMatches[guild]!!, guild, winStreakMap)
             }) {
-                createMessageGlobalStatistic(channelText, sqlCurrentMatches[guild.id.value.toString()]!!, guildData, winStreakMap)
+                createMessageGlobalStatistic(channelText, sqlCurrentMatches[guild]!!, guildData, winStreakMap)
             }
         }.join()
         //Таблица по очкам чемпионам
@@ -304,7 +295,7 @@ fun catchWinStreak(allMatches: ArrayList<TableMatch>, guild: Guild): HashMap<Tab
     val mapResult = HashMap<TableKORD_LOL, Int>()
 
     //Инициализация
-    sqlCurrentKORDLOL[guild.id.value.toString()]!!.forEach {
+    sqlCurrentKORDLOL[guild]!!.forEach {
         mapStreak[it] = ArrayList()
         mapResult[it] = 0
     }
@@ -312,9 +303,9 @@ fun catchWinStreak(allMatches: ArrayList<TableMatch>, guild: Guild): HashMap<Tab
     //Заполнение парами Игрок-Матчи
     allMatches.sortBy { it.matchDate }
     allMatches.forEach {match ->
-        sqlAllParticipants.filter { part -> part.match?.matchId == match.matchId }.forEach {part ->
-            if (mapStreak.containsKey(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { it.LOLperson == part.LOLperson }))
-                mapStreak[sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { it.LOLperson == part.LOLperson }]!!.add(match)
+        sqlCurrentParticipants[guild]!!.filter { part -> part.match?.matchId == match.matchId }.forEach {part ->
+            if (mapStreak.containsKey(sqlCurrentKORDLOL[guild]!!.find { it.LOLperson == part.LOLperson }))
+                mapStreak[sqlCurrentKORDLOL[guild]!!.find { it.LOLperson == part.LOLperson }]!!.add(match)
         }
     }
 
@@ -331,7 +322,7 @@ fun catchWinStreak(allMatches: ArrayList<TableMatch>, guild: Guild): HashMap<Tab
     mapStreak.forEach { (firePerson, fireMatches) ->
         var counter = 0
         fireMatches.forEach { match ->
-            val objectPerson = sqlAllParticipants.find { it.match?.matchId == match.matchId && it.LOLperson?.LOL_puuid == firePerson.LOLperson?.LOL_puuid }
+            val objectPerson = sqlCurrentParticipants[guild]!!.find { it.match?.matchId == match.matchId && it.LOLperson?.LOL_puuid == firePerson.LOLperson?.LOL_puuid }
             if (objectPerson != null) {
                 if (objectPerson.win) {
                     if (counter < 0) counter = 0
@@ -388,9 +379,9 @@ fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<Ta
 
     val sortedMap = map.toSortedMap { p0, p1 -> p0.id.compareTo(p1.id) }
 
-    val list1 = sortedMap.map { obj -> formatInt(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { it.LOLperson == obj.key.LOLperson }!!.id, 2) + "|" + sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { it.LOLperson == obj.key.LOLperson }!!.asUser(guild).lowDescriptor() }
-    val listHeroes = sortedMap.map { formatInt(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { per -> per.LOLperson == it.key.LOLperson }!!.id, 2) + "| " + LeagueMainObject.findHeroForKey(it.value.getOrNull(0)?.championId.toString()) + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(1)?.championId.toString()) + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(2)?.championId.toString()) }
-    val listPoints = sortedMap.map { formatInt(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { per -> per.LOLperson == it.key.LOLperson }!!.id, 2) + "| " + it.value.getOrNull(0)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(1)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(2)?.championPoints?.toFormatK() }
+    val list1 = sortedMap.map { obj -> formatInt(sqlCurrentKORDLOL[guild]!!.find { it.LOLperson == obj.key.LOLperson }!!.id, 2) + "|" + sqlCurrentKORDLOL[guild]!!.find { it.LOLperson == obj.key.LOLperson }!!.asUser(guild).lowDescriptor() }
+    val listHeroes = sortedMap.map { formatInt(sqlCurrentKORDLOL[guild]!!.find { per -> per.LOLperson == it.key.LOLperson }!!.id, 2) + "| " + LeagueMainObject.findHeroForKey(it.value.getOrNull(0)?.championId.toString()) + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(1)?.championId.toString()) + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(2)?.championId.toString()) }
+    val listPoints = sortedMap.map { formatInt(sqlCurrentKORDLOL[guild]!!.find { per -> per.LOLperson == it.key.LOLperson }!!.id, 2) + "| " + it.value.getOrNull(0)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(1)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(2)?.championPoints?.toFormatK() }
 
     builder.content = "Статистика по Чемпионам: ${TimeStamp.now()}\n"
     builder.embed {
@@ -414,12 +405,11 @@ fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<Ta
 
 fun editMessageSimpleContent(guild: Guild, builder: UserMessageModifyBuilder) {
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
-            "Игр на сервере: ${sqlCurrentMatches[guild.id.value.toString()]!!.size}\n" +
-            "Пользователей в базе: ${sqlCurrentLOL[guild.id.value.toString()]!!.size}\n" +
-            "Игроков в базе: ${sqlAllParticipants.size}\n" +
+            "Игр на сервере: ${sqlCurrentMatches[guild]!!.size}\n" +
+            "Пользователей в базе: ${sqlCurrentLOL[guild]!!.size}\n" +
+            "Игроков в базе: ${sqlCurrentParticipants[guild]!!.size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
             "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
-    printLog("load completed")
 }
 
 fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, allMatches: ArrayList<TableMatch>, guild: Guild, mapWins: HashMap<TableKORD_LOL, Int>) {
@@ -427,7 +417,7 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, allMatc
     val dataList = ArrayList<TableParticipantData>()
 
     allMatches.forEach {match ->
-        sqlAllParticipants.filter { part -> part.match?.matchId == match.matchId && sqlCurrentLOL[guild.id.value.toString()]!!.find { it.LOL_puuid == part.LOLperson?.LOL_puuid } != null }.forEach {part ->
+        sqlCurrentParticipants[guild]!!.filter { part -> part.match?.matchId == match.matchId && sqlCurrentLOL[guild]!!.find { it.LOL_puuid == part.LOLperson?.LOL_puuid } != null }.forEach {part ->
             val firePartData = TableParticipantData()
             val findedObj = dataList.find { it.part?.LOLperson?.LOL_puuid == part.LOLperson?.LOL_puuid }
             if (findedObj == null) {
@@ -454,9 +444,9 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, allMatc
     dataList.sortBy { it.part?.LOLperson?.id }
     val charStr = " / "
 
-    val list1 = dataList.map { obj -> formatInt(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { it.LOLperson == obj.part!!.LOLperson }!!.id, 2) + "|" + sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { it.LOLperson == obj.part!!.LOLperson }!!.asUser(guild).lowDescriptor() + ":" + mapWins[sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { it.LOLperson == obj.part!!.LOLperson }!!] }
-    val listGames = dataList.map { formatInt(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { per -> per.LOLperson == it.part!!.LOLperson }!!.id, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" }
-    val listAllKills = dataList.map { formatInt(sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { per -> per.LOLperson == it.part!!.LOLperson }!!.id, 2) + "| " + it.part!!.kills.toFormatK() + charStr + formatInt(it.part!!.kills3, 2) + charStr + formatInt(it.part!!.kills4, 2) + charStr + formatInt(it.part!!.kills5, 2) }
+    val list1 = dataList.map { obj -> formatInt(sqlCurrentKORDLOL[guild]!!.find { it.LOLperson == obj.part!!.LOLperson }!!.id, 2) + "|" + sqlCurrentKORDLOL[guild]!!.find { it.LOLperson == obj.part!!.LOLperson }!!.asUser(guild).lowDescriptor() + ":" + mapWins[sqlCurrentKORDLOL[guild]!!.find { it.LOLperson == obj.part!!.LOLperson }!!] }
+    val listGames = dataList.map { formatInt(sqlCurrentKORDLOL[guild]!!.find { per -> per.LOLperson == it.part!!.LOLperson }!!.id, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" }
+    val listAllKills = dataList.map { formatInt(sqlCurrentKORDLOL[guild]!!.find { per -> per.LOLperson == it.part!!.LOLperson }!!.id, 2) + "| " + it.part!!.kills.toFormatK() + charStr + formatInt(it.part!!.kills3, 2) + charStr + formatInt(it.part!!.kills4, 2) + charStr + formatInt(it.part!!.kills5, 2) }
 
     dataList.forEach {
         it.clearData()
@@ -485,10 +475,10 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, allMatc
 fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, guild: Guild, tableGuild: TableGuild) {
     val dataList = ArrayList<DataBasic>()
 
-    sqlAllParticipants.forEach {part ->
-        if (sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { part.LOLperson == it.LOLperson } != null){
-            if (part.kills5 > 0 && dataList.size < 20) dataList.add(
-                DataBasic(user = sqlCurrentKORDLOL[guild.id.value.toString()]!!.find { it.LOLperson == part.LOLperson }, text = "Пентакилл за '${LeagueMainObject.findHeroForKey(part.championId.toString())}'", date = part.match!!.matchDate, match = part.match!!)
+    sqlCurrentParticipants[guild]!!.forEach {part ->
+        if (sqlCurrentKORDLOL[guild]!!.find { part.LOLperson == it.LOLperson } != null){
+            if (!part.match!!.isHaveBots(sqlCurrentParticipants[guild]!!) && part.kills5 > 0 && dataList.size < 20) dataList.add(
+                DataBasic(user = sqlCurrentKORDLOL[guild]!!.find { it.LOLperson == part.LOLperson }, text = "Пентакилл за '${LeagueMainObject.findHeroForKey(part.championId.toString())}'", date = part.match!!.matchDate, match = part.match!!)
             )
         }
     }
@@ -496,9 +486,9 @@ fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, guild: Guild,
     dataList.sortByDescending { it.date }
     dataList.forEach {
         val tMessage = TableMessage(type = EnumMessageType.PENTA, guild = tableGuild, KORD_LOL = it.user, match = it.match)
-        if (sqlCurrentMessages[guild.id.value.toString()]!!.find { curMsg -> curMsg.messageInnerId == tMessage.messageInnerId } == null && !it.match.isHaveBots()) {
+        if (sqlCurrentMessages[guild]!!.find { curMsg -> curMsg.messageInnerId == tMessage.messageInnerId } == null) {
             tMessage.save()
-            sqlCurrentMessages[guild.id.value.toString()]!!.add(tMessage)
+            sqlCurrentMessages[guild]!!.add(tMessage)
         }
     }
 

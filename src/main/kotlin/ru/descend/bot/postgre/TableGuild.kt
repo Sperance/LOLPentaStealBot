@@ -4,8 +4,13 @@ import Entity
 import column
 import databases.Database
 import dev.kord.core.entity.Guild
+import ru.descend.bot.asyncLaunch
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
+import ru.descend.bot.lowDescriptor
 import ru.descend.bot.printLog
+import ru.descend.bot.sendMessage
+import ru.descend.bot.sqlCurrentLOL
 import ru.descend.bot.toFormatDateTime
 import save
 import table
@@ -21,6 +26,7 @@ data class TableGuild (
     var botChannelId: String = "",
     var messageId: String = "",
     var messageIdStatus: String = "",
+    var messageIdDebug: String = "",
     var messageIdPentaData: String = "",
     var messageIdGlobalStatisticData: String = "",
     var messageIdMasteryData: String = "",
@@ -32,7 +38,7 @@ data class TableGuild (
     val KORDusers: List<TableKORDPerson> by oneToMany(TableKORDPerson::guild)
     val KORDLOL: List<TableKORD_LOL> by oneToMany(TableKORD_LOL::guild)
 
-    fun addMatch(match: MatchDTO) : TableMatch {
+    fun addMatch(guild: Guild, match: MatchDTO) : TableMatch {
 
         val pMatch = TableMatch(
             matchId = match.metadata.matchId,
@@ -52,8 +58,32 @@ data class TableGuild (
 
         printLog("[PostgreSQL Service] Creating Match witg GUILD $idGuild with Match ${pMatch.matchId} ${pMatch.matchMode} time: ${pMatch.matchDate.toFormatDateTime()}")
 
+        var isEnablePenta = true
+        match.info.participants.forEach {part ->
+            if (part.summonerId == "BOT" || part.puuid == "BOT") {
+                isEnablePenta = false
+                return@forEach
+            }
+        }
+
         match.info.participants.forEach {part ->
             var curLOL = tableLOLPerson.first { TableLOLPerson::LOL_puuid eq part.puuid }
+
+            if (isEnablePenta && curLOL != null) {
+                if (part.pentaKills > 0) {
+                    tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let { tKL ->
+                        asyncLaunch {
+                            guild.sendMessage(messageIdDebug, "Сделан Пентакилл за ${LeagueMainObject.findHeroForKey(part.championId.toString())} Игрок: ${curLOL!!.LOL_summonerName} ${tKL.asUser(guild).lowDescriptor()} матч: ${match.metadata.matchId}")
+                        }
+                    }
+                } else if (part.quadraKills - part.pentaKills > 0) {
+                    tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let { tKL ->
+                        asyncLaunch {
+                            guild.sendMessage(messageIdDebug, "Сделан Квадракилл за ${LeagueMainObject.findHeroForKey(part.championId.toString())} Игрок: ${curLOL!!.LOL_summonerName} ${tKL.asUser(guild).lowDescriptor()} матч: ${match.metadata.matchId}")
+                        }
+                    }
+                }
+            }
 
             //Создаем нового игрока в БД
             if (curLOL == null) {
@@ -75,7 +105,6 @@ data class TableGuild (
                 printLog("[PostgreSQL Service] Change LOLPerson with PUUID ${part.puuid} NAME ${part.summonerName}")
             }
             curLOL.save()
-
             TableParticipant(part, pMatch, curLOL).save()
         }
 

@@ -9,6 +9,7 @@ import org.junit.Test
 import ru.descend.bot.launch
 import ru.descend.bot.printLog
 import save
+import update
 import kotlin.time.Duration.Companion.seconds
 
 class PostgreTest {
@@ -37,6 +38,15 @@ class PostgreTest {
         tableKORDPerson.add(TableKORDPerson(KORD_id = "1"))
         tableKORDPerson.add(TableKORDPerson(KORD_id = "2"))
         tableKORDPerson.add(TableKORDPerson(KORD_id = "3"))
+    }
+
+    @Test
+    fun resetTableData() {
+        tableParticipant.getAll().forEach {
+            it.update(TableParticipant::guildUid){
+                guildUid = "1141730148194996295"
+            }
+        }
     }
 
     @Test

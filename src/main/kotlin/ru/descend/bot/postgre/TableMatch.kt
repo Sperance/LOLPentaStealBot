@@ -22,11 +22,9 @@ data class TableMatch(
     val messages: List<TableMessage> by oneToMany(TableMessage::match)
     val participants: List<TableParticipant> by oneToMany(TableParticipant::match)
 
-    fun isHaveBots() : Boolean {
-        participants.forEach {
-            if (it.LOLperson?.isBot() == true) {
-                return true
-            }
+    fun isHaveBots(arrayParts: ArrayList<TableParticipant>) : Boolean {
+        arrayParts.filter { it.match!!.matchId == matchId }.forEach {
+            if (it.LOLperson!!.isBot()) return true
         }
         return false
     }

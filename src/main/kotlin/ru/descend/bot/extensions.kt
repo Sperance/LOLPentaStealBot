@@ -1,8 +1,12 @@
 package ru.descend.bot
 
 import dev.kord.common.entity.Permission
+import dev.kord.common.entity.Snowflake
+import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
+import dev.kord.core.entity.channel.TextChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -11,6 +15,7 @@ import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.extensions.descriptor
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.PostgreSQL
+import ru.descend.bot.postgre.TableMessage
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Base64
@@ -22,6 +27,25 @@ import kotlin.math.pow
 fun printLog(message: Any){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
     println("[$curDTime] $message")
+}
+
+suspend fun Guild?.sendMessage(messageId: String, message: String, afterLaunchBody: (() -> Unit)? = null) {
+    if (this == null) return
+    if (messageId.isEmpty()) return
+    if (message.isEmpty()) return
+    launch {
+        try {
+            val channelText = getChannelOf<TextChannel>(Snowflake(messageId))
+            channelText.createMessage {
+                content = message
+            }
+            printLog(this@sendMessage, "Send message $message for channel $messageId")
+        }catch (e: Exception) {
+            printLog(this@sendMessage, "Not sended message $message for channel $messageId. Error: ${e.message}")
+        }
+    }.invokeOnCompletion {
+        afterLaunchBody?.invoke()
+    }
 }
 
 fun launch(block: suspend CoroutineScope.() -> Unit) = CoroutineScope(Dispatchers.IO).launch {
@@ -124,9 +148,9 @@ fun User.toStringUID() = id.value.toString()
 
 suspend fun reloadMatch(guild: Guild, puuid: String, startIndex: Int) {
     LeagueMainObject.catchMatchID(puuid, startIndex,100).forEach mch@ { matchId ->
-        if (sqlCurrentMatches[guild.id.value.toString()]!!.find { mch -> mch.matchId == matchId } == null) {
+        if (sqlCurrentMatches[guild]!!.find { mch -> mch.matchId == matchId } == null) {
             LeagueMainObject.catchMatch(matchId)?.let { match ->
-                PostgreSQL.getGuild(guild).addMatch(match)
+                PostgreSQL.getGuild(guild).addMatch(guild, match)
             }
         }
     }
