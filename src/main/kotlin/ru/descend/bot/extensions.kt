@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.extensions.descriptor
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.PostgreSQL
-import ru.descend.bot.postgre.TableMessage
+import ru.descend.bot.postgre.SQLData
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Base64
@@ -146,11 +146,11 @@ fun getRandom(maxPos: Int) : Int {
 
 fun User.toStringUID() = id.value.toString()
 
-suspend fun reloadMatch(guild: Guild, puuid: String, startIndex: Int) {
+suspend fun reloadMatch(sqlData: SQLData, puuid: String, startIndex: Int) {
     LeagueMainObject.catchMatchID(puuid, startIndex,100).forEach mch@ { matchId ->
-        if (sqlCurrentMatches[guild]!!.find { mch -> mch.matchId == matchId } == null) {
+        if (!sqlData.isHaveMatchId(matchId)) {
             LeagueMainObject.catchMatch(matchId)?.let { match ->
-                PostgreSQL.getGuild(guild).addMatch(guild, match)
+                sqlData.addMatch(match)
             }
         }
     }

@@ -3,29 +3,25 @@ package ru.descend.bot.commands
 import delete
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
-import dev.kord.common.entity.Snowflake
-import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.channel.TextChannel
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.extensions.fullName
 import ru.descend.bot.asyncLaunch
-import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.isWorkMainThread
 import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
+import ru.descend.bot.mainMapData
 import ru.descend.bot.postgre.TableKORDPerson
 import ru.descend.bot.postgre.TableKORD_LOL
 import ru.descend.bot.postgre.TableLOLPerson
-import ru.descend.bot.postgre.PostgreSQL
 import ru.descend.bot.postgre.PostgreSQL.getGuild
 import ru.descend.bot.postgre.TableGuild
 import ru.descend.bot.printLog
 import ru.descend.bot.reloadMatch
 import ru.descend.bot.sendMessage
 import ru.descend.bot.showLeagueHistory
-import ru.descend.bot.sqlCurrentUsers
 import save
 import update
 
@@ -69,7 +65,7 @@ fun arguments() = commands("Arguments") {
             printLog("Start command '$name' from ${author.fullName}")
             asyncLaunch {
                 launch {
-                    showLeagueHistory(guild, getGuild(guild))
+                    showLeagueHistory(mainMapData[guild])
                     isWorkMainThread[guild] = false
                 }.invokeOnCompletion {
                     launch {
@@ -93,13 +89,14 @@ fun arguments() = commands("Arguments") {
             val LOL = TableLOLPerson(region, summonerName).save()
             val KORDLOL = TableKORD_LOL(KORDperson = KORD, LOLperson = LOL).save()
 
-            sqlCurrentUsers[guild]!!.add(KORDLOL!!)
-            printLog(guild, "Array Users ++. Size: ${sqlCurrentUsers[guild]!!.size}")
+            mainMapData[guild]?.addCurrentKORD(KORD)
+            mainMapData[guild]?.addCurrentLOL(LOL)
+            mainMapData[guild]?.addCurrentKORDLOL(KORDLOL)
 
             val curGuild = getGuild(guild)
 
             asyncLaunch {
-                guild.sendMessage(curGuild.messageIdDebug, "Запущен процесс прогрузки матчей для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
+                guild.sendMessage(curGuild.messageIdDebug, "Запущен процесс прогрузки матчей для пользователя ${KORDLOL?.asUser(guild)?.lowDescriptor()}")
                 LeagueMainObject.catchMatchID(LOL!!.LOL_puuid, 0,50).forEach { matchId ->
                     LeagueMainObject.catchMatch(matchId)?.let { match ->
                         curGuild.addMatch(guild, match)
@@ -107,7 +104,7 @@ fun arguments() = commands("Arguments") {
                 }
             }.invokeOnCompletion {
                 launch {
-                    guild.sendMessage(curGuild.messageIdDebug, "Матчи успешно загружены для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
+                    guild.sendMessage(curGuild.messageIdDebug, "Матчи успешно загружены для пользователя ${KORDLOL?.asUser(guild)?.lowDescriptor()}")
                 }
             }
 
@@ -149,7 +146,7 @@ fun arguments() = commands("Arguments") {
                 asyncLaunch {
                     dataUser.second.forEach {
                         if (it.LOLperson == null) return@forEach
-                        reloadMatch(guild, it.LOLperson!!.LOL_puuid, startIndex)
+                        reloadMatch(mainMapData[guild]!!, it.LOLperson!!.LOL_puuid, startIndex)
                     }
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Прогрузка матчей (с $startIndex в количестве 100) для пользователя ${user.lowDescriptor()} завершена")
                 }

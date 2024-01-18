@@ -9,6 +9,7 @@ import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
+import java.net.SocketTimeoutException
 import java.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -54,16 +55,23 @@ object LeagueMainObject {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchMatchID::$globalLOLRequests] started with puuid: $puuid start: $start count: $count")
-        val exec = leagueService.getMatchIDByPUUID(puuid, start, count).execute()
-        reloadRiotQuota()
-        if (exec.isSuccessful) {
-            exec.body()?.forEach {
-                result.add(it)
+        try {
+            val exec = leagueService.getMatchIDByPUUID(puuid, start, count).execute()
+            reloadRiotQuota()
+            if (exec.isSuccessful) {
+                exec.body()?.forEach {
+                    result.add(it)
+                }
+            } else {
+                statusLOLRequests = 1
+                printLog("catchMatchID failure: ${exec.code()} ${exec.message()}")
             }
-        } else {
+        }catch (e: SocketTimeoutException) {
             statusLOLRequests = 1
-            printLog("catchMatchID failure: ${exec.code()} ${exec.message()}")
+            printLog("catchMatchID failure: puuid: $puuid start: $start count: $count error: ${e.localizedMessage}")
+            return catchMatchID(puuid, start, count)
         }
+
         return result
     }
 

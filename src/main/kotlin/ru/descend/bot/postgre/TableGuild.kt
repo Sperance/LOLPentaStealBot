@@ -7,10 +7,11 @@ import dev.kord.core.entity.Guild
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
+import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.lowDescriptor
+import ru.descend.bot.mainMapData
 import ru.descend.bot.printLog
 import ru.descend.bot.sendMessage
-import ru.descend.bot.sqlCurrentLOL
 import ru.descend.bot.toFormatDateTime
 import save
 import table
@@ -34,11 +35,18 @@ data class TableGuild (
 ): Entity() {
 
     val matches: List<TableMatch> by oneToMany(TableMatch::guild)
-    val messages: List<TableMessage> by oneToMany(TableMessage::guild)
     val KORDusers: List<TableKORDPerson> by oneToMany(TableKORDPerson::guild)
     val KORDLOL: List<TableKORD_LOL> by oneToMany(TableKORD_LOL::guild)
 
     fun addMatch(guild: Guild, match: MatchDTO) : TableMatch {
+
+        var isBots = false
+        match.info.participants.forEach {
+            if (it.summonerId == "BOT" || it.puuid == "BOT") {
+                isBots = true
+                return@forEach
+            }
+        }
 
         val pMatch = TableMatch(
             matchId = match.metadata.matchId,
@@ -47,9 +55,12 @@ data class TableGuild (
             matchMode = match.info.gameMode,
             matchGameVersion = match.info.gameVersion,
             gameName = match.info.gameName,
-            guild = this
+            guild = this,
+            bots = isBots
         )
-        pMatch.save()
+        pMatch.save()?.let {
+            mainMapData[guild]?.addCurrentMatch(it)
+        }
 
         if (match.info.participants.find { it.puuid == "BOT" || it.summonerId == "BOT" } != null) {
             printLog("[PostgreSQL Service] Creating Match(BOT) witg GUILD $idGuild with Match ${pMatch.matchId} ${pMatch.matchMode} time: ${pMatch.matchDate.toFormatDateTime()}")
@@ -58,33 +69,26 @@ data class TableGuild (
 
         printLog("[PostgreSQL Service] Creating Match witg GUILD $idGuild with Match ${pMatch.matchId} ${pMatch.matchMode} time: ${pMatch.matchDate.toFormatDateTime()}")
 
-        var isEnablePenta = true
+        val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->
-            if (part.summonerId == "BOT" || part.puuid == "BOT") {
-                isEnablePenta = false
-                return@forEach
-            }
+            arrayHeroName.add(part)
         }
 
         match.info.participants.forEach {part ->
             var curLOL = tableLOLPerson.first { TableLOLPerson::LOL_puuid eq part.puuid }
 
-            if (isEnablePenta && curLOL != null) {
+            if (!isBots && curLOL != null) {
                 if (part.pentaKills > 0) {
-                    tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let { tKL ->
+                    tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let {
                         asyncLaunch {
-                            guild.sendMessage(messageIdDebug, "Сделан Пентакилл за ${LeagueMainObject.findHeroForKey(part.championId.toString())} Игрок: ${curLOL!!.LOL_summonerName} ${tKL.asUser(guild).lowDescriptor()} матч: ${match.metadata.matchId}")
-                        }
-                    }
-                } else if (part.quadraKills - part.pentaKills > 0) {
-                    tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let { tKL ->
-                        asyncLaunch {
-                            guild.sendMessage(messageIdDebug, "Сделан Квадракилл за ${LeagueMainObject.findHeroForKey(part.championId.toString())} Игрок: ${curLOL!!.LOL_summonerName} ${tKL.asUser(guild).lowDescriptor()} матч: ${match.metadata.matchId}")
+                            val currentTeam = part.teamId
+                            guild.sendMessage(messageIdStatus, "Поздравляем!!!\n${it.asUser(guild).lowDescriptor()} cделал Пентакилл за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != currentTeam }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
                         }
                     }
                 }
             }
 
+            var isNewPerson = false
             //Создаем нового игрока в БД
             if (curLOL == null) {
                 curLOL = TableLOLPerson(
@@ -94,18 +98,26 @@ data class TableGuild (
                     LOL_riotIdName = part.riotIdName,
                     LOL_riotIdTagline = part.riotIdTagline)
 
+                isNewPerson = true
                 printLog("[PostgreSQL Service] Creating LOLPerson with PUUID ${part.puuid} NAME ${part.summonerName}")
             }
 
             //Вдруг что изменится в профиле игрока
-            if ((curLOL.LOL_riotIdName.isNullOrEmpty() && curLOL.LOL_riotIdTagline.isNullOrEmpty()) || curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline) {
+            if (curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId) {
+                printLog("[PostgreSQL Service] Change LOLPerson with PUUID ${part.puuid} summonerName ${curLOL.LOL_summonerName} - ${part.summonerName} riotIdTagline ${curLOL.LOL_riotIdTagline} - ${part.riotIdTagline} summonerId ${curLOL.LOL_summonerId} - ${part.summonerId}")
                 curLOL.LOL_summonerName = part.summonerName
-                curLOL.LOL_riotIdName = part.riotIdName
+                curLOL.LOL_summonerId = part.summonerId
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
-                printLog("[PostgreSQL Service] Change LOLPerson with PUUID ${part.puuid} NAME ${part.summonerName}")
             }
             curLOL.save()
-            TableParticipant(part, pMatch, curLOL).save()
+
+            if (isNewPerson) {
+                mainMapData[guild]?.addCurrentLOL(curLOL)
+            }
+
+            TableParticipant(part, pMatch, curLOL).save()?.let {
+                mainMapData[guild]?.addCurrentParticipant(it)
+            }
         }
 
         return pMatch

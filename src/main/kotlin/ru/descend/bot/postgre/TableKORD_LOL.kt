@@ -18,7 +18,6 @@ data class TableKORD_LOL(
     var LOLperson: TableLOLPerson? = null,
     var guild: TableGuild? = null
 ): Entity() {
-    val messages: List<TableMessage> by oneToMany(TableMessage::KORD_LOL)
 
     companion object {
 

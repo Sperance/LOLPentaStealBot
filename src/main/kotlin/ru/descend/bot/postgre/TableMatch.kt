@@ -15,11 +15,11 @@ data class TableMatch(
     var matchMode: String = "",
     var matchGameVersion: String = "",
     var gameName: String = "",
+    var bots: Boolean = false,
 
     var guild: TableGuild? = null
 ) : Entity() {
 
-    val messages: List<TableMessage> by oneToMany(TableMessage::match)
     val participants: List<TableParticipant> by oneToMany(TableParticipant::match)
 
     fun isHaveBots(arrayParts: ArrayList<TableParticipant>) : Boolean {
