@@ -1,5 +1,6 @@
 package ru.descend.bot.postgre
 
+import dev.kord.core.entity.Guild
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -7,8 +8,12 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
 import ru.descend.bot.launch
+import ru.descend.bot.postgre.PostgreSQL.getGuild
 import ru.descend.bot.printLog
+import ru.descend.bot.toFormatDateTime
 import save
+import statements.select
+import statements.selectAll
 import update
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,6 +43,24 @@ class PostgreTest {
         tableKORDPerson.add(TableKORDPerson(KORD_id = "1"))
         tableKORDPerson.add(TableKORDPerson(KORD_id = "2"))
         tableKORDPerson.add(TableKORDPerson(KORD_id = "3"))
+    }
+
+    @Test
+    fun getMatchematick() {
+        tableParticipant.selectAll().orderByDescending(TableParticipant::match).limit(10).getEntities().forEach {
+            printLog("Match: ${it.match?.matchId} ${it.match?.matchDate?.toFormatDateTime()} MMR: ${it.getMMR()} ${it.LOLperson?.LOL_summonerName}")
+        }
+    }
+
+    @Test
+    fun testSelecting() {
+        tableParticipant.getAll().forEach {
+            if (it.LOLperson?.LOL_puuid == "BOT" || it.LOLperson?.LOL_summonerId == "BOT" && it.match?.bots == false){
+                it.match?.update(TableMatch::bots){
+                    bots = true
+                }
+            }
+        }
     }
 
     @Test

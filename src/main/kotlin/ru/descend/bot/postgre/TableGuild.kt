@@ -14,6 +14,7 @@ import ru.descend.bot.printLog
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toFormatDateTime
 import save
+import statements.select
 import table
 
 data class TableGuild (
@@ -48,26 +49,41 @@ data class TableGuild (
             }
         }
 
-        val pMatch = TableMatch(
-            matchId = match.metadata.matchId,
-            matchDate = match.info.gameCreation,
-            matchDuration = match.info.gameDuration,
-            matchMode = match.info.gameMode,
-            matchGameVersion = match.info.gameVersion,
-            gameName = match.info.gameName,
-            guild = this,
-            bots = isBots
-        )
-        pMatch.save()?.let {
-            mainMapData[guild]?.addCurrentMatch(it)
+        val pMatch: TableMatch
+        val findMatchId = tableMatch.findIdOf { TableMatch::matchId eq match.metadata.matchId }
+        if (findMatchId != null && findMatchId > 0){
+            pMatch = TableMatch(
+                id = findMatchId,
+                matchId = match.metadata.matchId,
+                matchDate = match.info.gameCreation,
+                matchDuration = match.info.gameDuration,
+                matchMode = match.info.gameMode,
+                matchGameVersion = match.info.gameVersion,
+                gameName = match.info.gameName,
+                guild = this,
+                bots = isBots
+            )
+        } else {
+            pMatch = TableMatch(
+                matchId = match.metadata.matchId,
+                matchDate = match.info.gameCreation,
+                matchDuration = match.info.gameDuration,
+                matchMode = match.info.gameMode,
+                matchGameVersion = match.info.gameVersion,
+                gameName = match.info.gameName,
+                guild = this,
+                bots = isBots
+            ).save()!!
+            asyncLaunch {
+                guild.sendMessage(messageIdDebug, "Добавлен матч ${pMatch.matchId}(${pMatch.id})(BOTS = $isBots)\nНачало: ${match.info.gameStartTimestamp.toFormatDateTime()} Конец: ${match.info.gameEndTimestamp.toFormatDateTime()}\nMode: ${match.info.gameMode} ${match.info.gameName}")
+            }
         }
 
-        if (match.info.participants.find { it.puuid == "BOT" || it.summonerId == "BOT" } != null) {
-            printLog("[PostgreSQL Service] Creating Match(BOT) witg GUILD $idGuild with Match ${pMatch.matchId} ${pMatch.matchMode} time: ${pMatch.matchDate.toFormatDateTime()}")
+        val findParticipants = tableParticipant.select().where { TableParticipant::guildUid eq guild.id.value.toString() }.where { TableParticipant::match eq pMatch}.getEntities()
+        if (findParticipants.isNotEmpty()){
+            printLog("[PostgreSQL Service] Match(${pMatch.id})${pMatch.matchId} already have ${findParticipants.size} participants")
             return pMatch
         }
-
-        printLog("[PostgreSQL Service] Creating Match witg GUILD $idGuild with Match ${pMatch.matchId} ${pMatch.matchMode} time: ${pMatch.matchDate.toFormatDateTime()}")
 
         val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->
@@ -82,7 +98,8 @@ data class TableGuild (
                     tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let {
                         asyncLaunch {
                             val currentTeam = part.teamId
-                            guild.sendMessage(messageIdStatus, "Поздравляем!!!\n${it.asUser(guild).lowDescriptor()} cделал Пентакилл за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != currentTeam }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
+                            val textPentas = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
+                            guild.sendMessage(messageIdStatus, "Поздравляем!!!\n${it.asUser(guild).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != currentTeam }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
                         }
                     }
                 }
@@ -97,14 +114,11 @@ data class TableGuild (
                     LOL_summonerName = part.summonerName,
                     LOL_riotIdName = part.riotIdName,
                     LOL_riotIdTagline = part.riotIdTagline)
-
                 isNewPerson = true
-                printLog("[PostgreSQL Service] Creating LOLPerson with PUUID ${part.puuid} NAME ${part.summonerName}")
             }
 
             //Вдруг что изменится в профиле игрока
             if (curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId) {
-                printLog("[PostgreSQL Service] Change LOLPerson with PUUID ${part.puuid} summonerName ${curLOL.LOL_summonerName} - ${part.summonerName} riotIdTagline ${curLOL.LOL_riotIdTagline} - ${part.riotIdTagline} summonerId ${curLOL.LOL_summonerId} - ${part.summonerId}")
                 curLOL.LOL_summonerName = part.summonerName
                 curLOL.LOL_summonerId = part.summonerId
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
@@ -112,7 +126,7 @@ data class TableGuild (
             curLOL.save()
 
             if (isNewPerson) {
-                mainMapData[guild]?.addCurrentLOL(curLOL)
+                mainMapData[guild]?.addAllLOL(curLOL)
             }
 
             TableParticipant(part, pMatch, curLOL).save()?.let {

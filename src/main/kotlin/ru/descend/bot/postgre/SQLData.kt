@@ -3,16 +3,19 @@ package ru.descend.bot.postgre
 import dev.kord.core.entity.Guild
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.printLog
+import statements.select
+import statements.selectAll
 
 class SQLData (val guild: Guild, val guildSQL: TableGuild) {
 
     private val sqlCurrentMatches  = ArrayList<TableMatch>()
-    fun addCurrentMatch(item: TableMatch?) {
-        if (item != null) sqlCurrentMatches.add(item)
-    }
     private val sqlCurrentKORD  = ArrayList<TableKORDPerson>()
     fun addCurrentKORD(item: TableKORDPerson?) {
         if (item != null) sqlCurrentKORD.add(item)
+    }
+    private val sqlAllLOL  = ArrayList<TableLOLPerson>()
+    fun addAllLOL(item: TableLOLPerson?) {
+        if (item != null) sqlAllLOL.add(item)
     }
     private val sqlCurrentLOL  = ArrayList<TableLOLPerson>()
     fun addCurrentLOL(item: TableLOLPerson?) {
@@ -32,7 +35,7 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
         if (guildSQL.botChannelId.isEmpty()) return
 
         sqlCurrentMatches.clear()
-        sqlCurrentMatches.addAll(tableMatch.getAll { TableMatch::guild eq guildSQL })
+        sqlCurrentMatches.addAll(tableMatch.selectAll().where { TableMatch::guild eq guildSQL }.orderByDescending(TableMatch::matchDate).getEntities())
 
         sqlCurrentParticipants.clear()
         sqlCurrentParticipants.addAll(tableParticipant.getAll { TableParticipant::guildUid eq guildSQL.idGuild })
@@ -44,6 +47,9 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
         sqlCurrentKORD.clear()
         sqlCurrentKORD.addAll(tableKORDPerson.getAll { TableKORDPerson::guild eq guildSQL })
 
+        sqlAllLOL.clear()
+        sqlAllLOL.addAll(tableLOLPerson.getAll())
+
         sqlCurrentLOL.clear()
         sqlCurrentKORD.forEach {
             sqlCurrentLOL.addAll(it.LOLpersons)
@@ -52,8 +58,17 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
 
     fun getKORDLOL() = sqlCurrentKORDLOL
     fun getLOL() = sqlCurrentLOL
+    fun getAllLOL() = sqlAllLOL
+    fun getKORD() = sqlCurrentKORD
     fun getMatches() = sqlCurrentMatches
     fun getParticipants() = sqlCurrentParticipants
+
+    fun getLastParticipants(puuid: String?, limit: Int) : ArrayList<TableParticipant> {
+        val result = ArrayList<TableParticipant>()
+        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson eq sqlCurrentLOL.find { it.LOL_puuid == puuid } }.orderByDescending(TableParticipant::match).limit(limit).getEntities())
+        result.sortBy { it.match?.matchId }
+        return result
+    }
 
     fun getSavedParticipants() : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
@@ -62,26 +77,17 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
     }
 
     fun isHaveMatchId(matchId: String) : Boolean {
-        return getMatches().find { it.matchId == matchId } != null
+        return tableMatch.select()
+            .where { TableMatch::guild eq guildSQL }
+            .where { TableMatch::matchId eq matchId }
+            .limit(1)
+            .size > 0
     }
     fun addMatch(match: MatchDTO) {
-        sqlCurrentMatches.add(guildSQL.addMatch(guild, match))
-    }
-
-    fun getParticipantsFromMatch(match: TableMatch): ArrayList<TableParticipant> {
-        val result = ArrayList<TableParticipant>()
-        result.addAll(sqlCurrentParticipants.filter { it.match?.matchId == match.matchId })
-        return result
-    }
-
-    fun getSavedParticipantsFromMatch(match: TableMatch): ArrayList<TableParticipant> {
-        val result = ArrayList<TableParticipant>()
-        result.addAll(sqlCurrentParticipants.filter { it.match?.matchId == match.matchId && sqlCurrentKORDLOL.find { kl -> kl.LOLperson?.LOL_puuid == it.LOLperson?.LOL_puuid } != null })
-        return result
-    }
-
-    fun getSavedParticipantsFromMatch(match: TableMatch, kordLol: TableKORD_LOL): TableParticipant? {
-        return sqlCurrentParticipants.find { it.match?.matchId == match.matchId && it.LOLperson?.LOL_puuid == kordLol.LOLperson?.LOL_puuid }
+        guildSQL.addMatch(guild, match).let {
+            if (sqlCurrentMatches.find { mch -> mch.matchId == it.matchId } == null)
+                sqlCurrentMatches.add(it)
+        }
     }
 
     fun getCountPenta(lolPerson: TableLOLPerson?) : Int {

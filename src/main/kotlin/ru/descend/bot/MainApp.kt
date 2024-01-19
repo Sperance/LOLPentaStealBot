@@ -91,7 +91,7 @@ fun main() {
 
                         showLeagueHistory(data)
                         printLog(it, "Load main history ended (${currentLoadTick[it]})")
-                        delay((10).minutes)
+                        delay((5).minutes)
                         currentLoadTick[it] = currentLoadTick[it]!!.plus(1)
                         globalLOLRequests = 0
                     }
@@ -118,12 +118,6 @@ suspend fun removeMessage(guild: Guild, guildSQL: TableGuild) {
 var globalLOLRequests = 0
 var statusLOLRequests = 0
 
-//val sqlCurrentUsers  = HashMap<Guild, ArrayList<TableKORD_LOL>>()
-//val sqlCurrentMatches  = HashMap<Guild, ArrayList<TableMatch>>()
-//val sqlCurrentKORD  = HashMap<Guild, ArrayList<TableKORDPerson>>()
-//val sqlCurrentLOL  = HashMap<Guild, ArrayList<TableLOLPerson>>()
-//val sqlCurrentKORDLOL  = HashMap<Guild, ArrayList<TableKORD_LOL>>()
-//val sqlCurrentParticipants = HashMap<Guild, ArrayList<TableParticipant>>()
 val currentLoadTick = HashMap<Guild, Int>()
 
 var isWorkMainThread = HashMap<Guild, Boolean>()
@@ -179,10 +173,9 @@ suspend fun showLeagueHistory(sqlData: SQLData?) {
             sqlData.getKORDLOL().forEach {
                 if (it.LOLperson == null) return@forEach
                 if (it.LOLperson?.LOL_puuid == "") return@forEach
-                LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,5).forEach ff@ { matchId ->
+                LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,3).forEach ff@ { matchId ->
                     if (!sqlData.isHaveMatchId(matchId)) {
                         LeagueMainObject.catchMatch(matchId)?.let { match ->
-                            sqlData.guild.sendMessage(sqlData.guildSQL.messageIdDebug, "Добавлен матч $matchId дата ${match.info.gameCreation.toFormatDateTime()} по пользователю ${it.asUser(sqlData.guild).lowDescriptor()}")
                             sqlData.addMatch(match)
                         }
                     }
@@ -231,51 +224,25 @@ suspend fun showLeagueHistory(sqlData: SQLData?) {
 
 fun catchWinStreak(sqlData: SQLData): HashMap<TableKORD_LOL, Int> {
 
-    val mapStreak = HashMap<TableKORD_LOL, ArrayList<TableMatch>>()
     val mapResult = HashMap<TableKORD_LOL, Int>()
 
     //Инициализация
     sqlData.getKORDLOL().forEach {
-        mapStreak[it] = ArrayList()
-        mapResult[it] = 0
-    }
-
-    //Заполнение парами Игрок-Матчи
-    sqlData.getMatches().sortBy { it.matchDate }
-    sqlData.getMatches().forEach {match ->
-        sqlData.getSavedParticipantsFromMatch(match).forEach {part ->
-            if (mapStreak.containsKey(sqlData.getKORDLOLfromParticipant(part)))
-                mapStreak[sqlData.getKORDLOLfromParticipant(part)]!!.add(match)
-        }
-    }
-
-    //Сортировка мапа Игрок-Матчи по самому последнему его матчу
-    mapStreak.forEach { (firePerson, _) ->
-        mapStreak[firePerson]!!.sortBy { it.matchDate }
-
-        //Учитываем для оптимизации только 20 последних игр
-        while (mapStreak[firePerson]!!.size > 20) {
-            mapStreak[firePerson]!!.removeFirst()
-        }
-    }
-
-    mapStreak.forEach { (firePerson, fireMatches) ->
         var counter = 0
-        fireMatches.forEach { match ->
-            val objectPerson = sqlData.getSavedParticipantsFromMatch(match, firePerson)
-            if (objectPerson != null) {
-                if (objectPerson.win) {
-                    if (counter < 0) counter = 0
-                    counter++
-                } else {
-                    if (counter > 0) counter = 0
-                    counter--
-                }
+        sqlData.getLastParticipants(it.LOLperson?.LOL_puuid, 20).forEach {objectPerson ->
+            if (objectPerson.win) {
+                if (counter < 0) counter = 0
+                counter++
+            } else {
+                if (counter > 0) counter = 0
+                counter--
             }
         }
-        mapResult[firePerson] = counter
+
+        mapResult[it] = counter
     }
 
+    printLog(sqlData.guild, "[catchWinStreak] completed")
     return mapResult
 }
 
@@ -347,7 +314,8 @@ fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
             "Игр на сервере: ${sqlData.getMatches().size}\n" +
             "Пользователей в базе: ${sqlData.getLOL().size}\n" +
-            "Игроков в базе: ${sqlData.getParticipants().size}\n" +
+            "Игроков в базе: ${sqlData.getAllLOL().size}\n" +
+            "Записей в базе: ${sqlData.getParticipants().size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
             "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
 }
@@ -355,30 +323,26 @@ fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder
 fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData, mapWins: HashMap<TableKORD_LOL, Int>) {
 
     val dataList = ArrayList<TableParticipantData>()
-
-    sqlData.getMatches().forEach {match ->
-//        sqlCurrentParticipants[guild]!!.filter { part -> part.match?.matchId == match.matchId && sqlCurrentLOL[guild]!!.find { it.LOL_puuid == part.LOLperson?.LOL_puuid } != null }.forEach {part ->
-        sqlData.getSavedParticipantsFromMatch(match).forEach {part ->
-            val firePartData = TableParticipantData()
-            val findedObj = dataList.find { it.part?.LOLperson?.LOL_puuid == part.LOLperson?.LOL_puuid }
-            if (findedObj == null) {
-                firePartData.part = part
-                if (firePartData.part!!.win)
-                    firePartData.statWins++
-                firePartData.statGames++
-                dataList.add(firePartData)
-            } else {
-                findedObj.part!!.kills += part.kills
-                findedObj.part!!.kills2 += part.kills2
-                findedObj.part!!.kills3 += part.kills3
-                findedObj.part!!.kills4 += part.kills4
-                findedObj.part!!.kills5 += part.kills5
-                findedObj.part!!.skillsCast += part.skillsCast
-                findedObj.part!!.totalDmgToChampions += part.totalDmgToChampions
-                if (part.win)
-                    findedObj.statWins++
-                findedObj.statGames++
-            }
+    sqlData.getSavedParticipants().forEach {part ->
+        val firePartData = TableParticipantData()
+        val findedObj = dataList.find { it.part?.LOLperson?.LOL_puuid == part.LOLperson?.LOL_puuid }
+        if (findedObj == null) {
+            firePartData.part = part
+            if (firePartData.part!!.win)
+                firePartData.statWins++
+            firePartData.statGames++
+            dataList.add(firePartData)
+        } else {
+            findedObj.part!!.kills += part.kills
+            findedObj.part!!.kills2 += part.kills2
+            findedObj.part!!.kills3 += part.kills3
+            findedObj.part!!.kills4 += part.kills4
+            findedObj.part!!.kills5 += part.kills5
+            findedObj.part!!.skillsCast += part.skillsCast
+            findedObj.part!!.totalDmgToChampions += part.totalDmgToChampions
+            if (part.win)
+                findedObj.statWins++
+            findedObj.statGames++
         }
     }
 
@@ -411,6 +375,8 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData
             inline = true
         }
     }
+
+    printLog(sqlData.guild, "[editMessageGlobalStatisticContent] completed")
 }
 
 fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData) {
@@ -418,9 +384,17 @@ fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, sqlData: SQLD
 
     sqlData.getSavedParticipants().forEach {part ->
         val currentPart = sqlData.getKORDLOLfromParticipant(part)
-        if (!part.match!!.isHaveBots(sqlData.getParticipants()) && part.kills5 > 0 && dataList.size < 20) dataList.add(
-            DataBasic(user = currentPart, text = "Пентакилл за '${LeagueMainObject.findHeroForKey(part.championId.toString())}'", date = part.match!!.matchDate, match = part.match!!)
-        )
+        if (!part.match!!.bots && part.kills5 > 0 && dataList.size < 20) {
+            val addedText = if (part.kills5 == 1) "" else "(${part.kills5})"
+            dataList.add(
+                DataBasic(
+                    user = currentPart,
+                    text = "Пентакилл$addedText за '${LeagueMainObject.findHeroForKey(part.championId.toString())}'",
+                    date = part.match!!.matchDate,
+                    match = part.match!!
+                )
+            )
+        }
     }
 
     dataList.sortByDescending { it.date }
@@ -447,4 +421,6 @@ fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, sqlData: SQLD
             inline = true
         }
     }
+
+    printLog(sqlData.guild, "[editMessagePentaDataContent] completed")
 }

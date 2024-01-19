@@ -90,6 +90,20 @@ data class TableParticipant(
         this.team = participant.teamId
         this.win = participant.win
     }
+
+    fun getMMR() : Double {
+        var mmr = 0.0
+        mmr += ((kills.toDouble() + assists.toDouble()) / deaths.toDouble()) / 2.0  //УСС KDA
+        mmr += if (kills5 > 0) kills5 * 5 else 0                                    //Pentas
+        mmr += if (kills4 > 0) kills4 * 4 else 0                                    //Quadras
+        mmr += if (kills3 > 0) kills3 * 3 else 0                                    //Tripples
+        mmr += if (kills2 > 0) kills2 * 2 else 0                                    //Doubles
+        mmr += if (baronKills > 0) baronKills else 0                                //Barons
+        mmr += if (nexusKills > 0) nexusKills else 0                                //Nexus
+        mmr += skillsCast.toDouble() / 1000.0                                       //Skills
+        mmr += totalDmgToChampions.toDouble() / 10000.0                             //Damage
+        return String.format("%.2f", mmr).replace(",", ".").toDouble()
+    }
 }
 
 val tableParticipant = table<TableParticipant, Database>{

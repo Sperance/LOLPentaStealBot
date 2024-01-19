@@ -5,6 +5,7 @@ import column
 import databases.Database
 import dev.kord.core.entity.Guild
 import ru.descend.bot.postgre.PostgreSQL.getGuild
+import statements.selectAll
 import table
 
 data class TableMatch(
@@ -21,13 +22,6 @@ data class TableMatch(
 ) : Entity() {
 
     val participants: List<TableParticipant> by oneToMany(TableParticipant::match)
-
-    fun isHaveBots(arrayParts: ArrayList<TableParticipant>) : Boolean {
-        arrayParts.filter { it.match!!.matchId == matchId }.forEach {
-            if (it.LOLperson!!.isBot()) return true
-        }
-        return false
-    }
 }
 
 val tableMatch = table<TableMatch, Database> {

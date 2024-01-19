@@ -85,26 +85,38 @@ fun arguments() = commands("Arguments") {
 
             printLog("Start command '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'")
 
-            val KORD = TableKORDPerson(guild, user).save()
-            val LOL = TableLOLPerson(region, summonerName).save()
-            val KORDLOL = TableKORD_LOL(KORDperson = KORD, LOLperson = LOL).save()
+            val KORD = TableKORDPerson(guild, user)
+            val findKORD = mainMapData[guild]?.getKORD()?.find { it.KORD_id == KORD.KORD_id }
+            if (findKORD == null){
+                KORD.save()
+                mainMapData[guild]?.addCurrentKORD(KORD)
+            }
 
-            mainMapData[guild]?.addCurrentKORD(KORD)
-            mainMapData[guild]?.addCurrentLOL(LOL)
-            mainMapData[guild]?.addCurrentKORDLOL(KORDLOL)
+            val LOL = TableLOLPerson(region, summonerName)
+            val findLOL = mainMapData[guild]?.getLOL()?.find { it.LOL_puuid == LOL.LOL_puuid }
+            if (findLOL == null){
+                LOL.save()
+                mainMapData[guild]?.addCurrentLOL(LOL)
+            }
+
+            val KORDLOL = TableKORD_LOL(KORDperson = KORD, LOLperson = LOL)
+            val findKORDLOL = mainMapData[guild]?.getKORDLOL()?.find { it.LOLperson?.LOL_puuid == KORDLOL.LOLperson?.LOL_puuid && it.KORDperson?.KORD_id == KORDLOL.KORDperson?.KORD_id }
+            if (findKORDLOL == null){
+                KORDLOL.save()
+                mainMapData[guild]?.addCurrentKORDLOL(KORDLOL)
+            }
 
             val curGuild = getGuild(guild)
-
             asyncLaunch {
-                guild.sendMessage(curGuild.messageIdDebug, "Запущен процесс прогрузки матчей для пользователя ${KORDLOL?.asUser(guild)?.lowDescriptor()}")
-                LeagueMainObject.catchMatchID(LOL!!.LOL_puuid, 0,50).forEach { matchId ->
+                guild.sendMessage(curGuild.messageIdDebug, "Запущен процесс прогрузки матчей для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
+                LeagueMainObject.catchMatchID(LOL.LOL_puuid, 0,50).forEach { matchId ->
                     LeagueMainObject.catchMatch(matchId)?.let { match ->
-                        curGuild.addMatch(guild, match)
+                        mainMapData[guild]?.addMatch(match)
                     }
                 }
             }.invokeOnCompletion {
                 launch {
-                    guild.sendMessage(curGuild.messageIdDebug, "Матчи успешно загружены для пользователя ${KORDLOL?.asUser(guild)?.lowDescriptor()}")
+                    guild.sendMessage(curGuild.messageIdDebug, "Матчи успешно загружены для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
                 }
             }
 
