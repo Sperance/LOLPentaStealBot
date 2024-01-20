@@ -94,6 +94,8 @@ fun main() {
                         delay((5).minutes)
                         currentLoadTick[it] = currentLoadTick[it]!!.plus(1)
                         globalLOLRequests = 0
+
+                        System.gc()
                     }
                 }
             }
@@ -315,7 +317,6 @@ fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder
             "Игр на сервере: ${sqlData.getMatches().size}\n" +
             "Пользователей в базе: ${sqlData.getLOL().size}\n" +
             "Игроков в базе: ${sqlData.getAllLOL().size}\n" +
-            "Записей в базе: ${sqlData.getParticipants().size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
             "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
 }

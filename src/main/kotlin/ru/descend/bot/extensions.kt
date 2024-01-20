@@ -39,7 +39,6 @@ suspend fun Guild?.sendMessage(messageId: String, message: String, afterLaunchBo
             channelText.createMessage {
                 content = message
             }
-            printLog(this@sendMessage, "Send message $message for channel $messageId")
         }catch (e: Exception) {
             printLog(this@sendMessage, "Not sended message $message for channel $messageId. Error: ${e.message}")
         }

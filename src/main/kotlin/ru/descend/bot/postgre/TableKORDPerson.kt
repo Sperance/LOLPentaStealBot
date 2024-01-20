@@ -28,5 +28,5 @@ data class TableKORDPerson(
 
 val tableKORDPerson = table<TableKORDPerson, Database> {
     column(TableKORDPerson::KORD_id).unique()
-    column(TableKORDPerson::guild).notNull()
+    column(TableKORDPerson::guild).check { it neq null }
 }

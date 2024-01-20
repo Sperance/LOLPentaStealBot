@@ -48,7 +48,18 @@ class PostgreTest {
     @Test
     fun getMatchematick() {
         tableParticipant.selectAll().orderByDescending(TableParticipant::match).limit(10).getEntities().forEach {
-            printLog("Match: ${it.match?.matchId} ${it.match?.matchDate?.toFormatDateTime()} MMR: ${it.getMMR()} ${it.LOLperson?.LOL_summonerName}")
+            printLog("MMR: ${it.LOLperson?.LOL_summonerName} ${it.getMMR()} Games: ${it.getCountForMatches()}")
+        }
+    }
+
+    @Test
+    fun testUpdateTable() {
+        tableParticipant.getAll().forEach {
+            if (it.isBot()) {
+                it.update(TableParticipant::bot){
+                    bot = true
+                }
+            }
         }
     }
 

@@ -30,12 +30,16 @@ data class TableLOLPerson(
     }
 
     fun isBot() : Boolean {
-        return LOL_puuid == "BOT" || LOL_summonerId == "BOT"
+        if (LOL_puuid == "BOT" || LOL_puuid.length < 5){
+            return true
+        }
+        if (LOL_summonerId == "BOT" || LOL_summonerId.length < 5){
+            return true
+        }
+        return false
     }
 }
 
 val tableLOLPerson = table<TableLOLPerson, Database> {
     column(TableLOLPerson::LOL_puuid).unique()
-    column(TableLOLPerson::LOL_puuid).check { it neq "BOT" }
-    column(TableLOLPerson::LOL_summonerId).check { it neq "BOT" }
 }

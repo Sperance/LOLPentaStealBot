@@ -18,6 +18,7 @@ import ru.descend.bot.postgre.TableKORD_LOL
 import ru.descend.bot.postgre.TableLOLPerson
 import ru.descend.bot.postgre.PostgreSQL.getGuild
 import ru.descend.bot.postgre.TableGuild
+import ru.descend.bot.postgre.tableKORDPerson
 import ru.descend.bot.printLog
 import ru.descend.bot.reloadMatch
 import ru.descend.bot.sendMessage
@@ -139,6 +140,24 @@ fun arguments() = commands("Arguments") {
                 }
                 asyncLaunch {
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Удаление пользователя ${user.lowDescriptor()} завершено")
+                }
+                "Удаление произошло успешно"
+            }
+            respond(textMessage)
+        }
+    }
+
+    slash("userDeleteFromId", "Удалить учётную запись из базы данных бота по ID пользователя", Permissions(Permission.Administrator)){
+        execute(IntegerArg("UserId", "Пользователь Discord ID в базе")){
+            val (UserId) = args
+            printLog("Start command '$name' from ${author.fullName} with params: 'user=$UserId'")
+            val dataUserKORD = tableKORDPerson[UserId]
+            val textMessage = if (dataUserKORD == null) {
+                "Пользователя с id $UserId не существует в базе"
+            } else {
+                TableKORD_LOL.deleteForKORD(dataUserKORD.id)
+                asyncLaunch {
+                    guild.sendMessage(getGuild(guild).messageIdDebug, "Удаление пользователя $UserId завершено")
                 }
                 "Удаление произошло успешно"
             }

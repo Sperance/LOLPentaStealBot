@@ -5,6 +5,7 @@ import column
 import databases.Database
 import dev.kord.core.entity.Guild
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
+import statements.selectAll
 import table
 
 data class TableParticipantData(
@@ -48,6 +49,7 @@ data class TableParticipant(
     var profileIcon: Int = -1,
     var guildUid: String = "",
     var win: Boolean = false,
+    var bot: Boolean = false,
 
     var match: TableMatch? = null,
     var LOLperson: TableLOLPerson? = null
@@ -89,6 +91,24 @@ data class TableParticipant(
         this.profileIcon = participant.profileIcon
         this.team = participant.teamId
         this.win = participant.win
+        this.bot = isBot()
+    }
+
+    fun getCountForMatches() : Int {
+        return tableParticipant.selectAll().where { TableParticipant::LOLperson eq LOLperson }.size
+    }
+
+    fun isBot() : Boolean {
+        if (LOLperson == null) {
+            throw IllegalAccessException("LOLperson is NULL. Participant id: $id")
+        }
+        if (LOLperson?.LOL_puuid == "BOT" || LOLperson?.LOL_puuid?.length!! < 5){
+            return true
+        }
+        if (LOLperson?.LOL_summonerId == "BOT" || LOLperson?.LOL_summonerId?.length!! < 5){
+            return true
+        }
+        return false
     }
 
     fun getMMR() : Double {

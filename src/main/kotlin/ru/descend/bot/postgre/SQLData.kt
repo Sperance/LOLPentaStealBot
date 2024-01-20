@@ -35,11 +35,10 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
         if (guildSQL.botChannelId.isEmpty()) return
 
         sqlCurrentMatches.clear()
-        sqlCurrentMatches.addAll(tableMatch.selectAll().where { TableMatch::guild eq guildSQL }.orderByDescending(TableMatch::matchDate).getEntities())
+        sqlCurrentMatches.addAll(tableMatch.selectAll().where { TableMatch::guild eq guildSQL }.where { TableMatch::bots eq false }.orderByDescending(TableMatch::matchDate).getEntities())
 
         sqlCurrentParticipants.clear()
-        sqlCurrentParticipants.addAll(tableParticipant.getAll { TableParticipant::guildUid eq guildSQL.idGuild })
-        sqlCurrentParticipants.sortByDescending { it.match?.matchDate }
+        sqlCurrentParticipants.addAll(tableParticipant.selectAll().where { TableParticipant::guildUid eq guildSQL.idGuild }.where { TableParticipant::bot eq false }.orderByDescending(TableParticipant::match).getEntities())
 
         sqlCurrentKORDLOL.clear()
         sqlCurrentKORDLOL.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildSQL })
@@ -48,7 +47,7 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
         sqlCurrentKORD.addAll(tableKORDPerson.getAll { TableKORDPerson::guild eq guildSQL })
 
         sqlAllLOL.clear()
-        sqlAllLOL.addAll(tableLOLPerson.getAll())
+        sqlAllLOL.addAll(tableLOLPerson.getAll().filter { !it.isBot() })
 
         sqlCurrentLOL.clear()
         sqlCurrentKORD.forEach {
@@ -65,14 +64,15 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
 
     fun getLastParticipants(puuid: String?, limit: Int) : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
-        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson eq sqlCurrentLOL.find { it.LOL_puuid == puuid } }.orderByDescending(TableParticipant::match).limit(limit).getEntities())
-        result.sortBy { it.match?.matchId }
+        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson eq sqlCurrentLOL.find { it.LOL_puuid == puuid } }.where { TableParticipant::bot eq false }.orderByDescending(TableParticipant::match).limit(limit).getEntities())
+        result.sortByDescending { it.match?.matchId }
         return result
     }
 
     fun getSavedParticipants() : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
         result.addAll(getParticipants().filter { part -> getKORDLOL().find { it.LOLperson?.LOL_puuid == part.LOLperson?.LOL_puuid } != null })
+        result.sortByDescending { it.match?.matchId }
         return result
     }
 

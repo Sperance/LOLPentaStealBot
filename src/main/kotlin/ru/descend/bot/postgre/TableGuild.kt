@@ -74,9 +74,6 @@ data class TableGuild (
                 guild = this,
                 bots = isBots
             ).save()!!
-            asyncLaunch {
-                guild.sendMessage(messageIdDebug, "Добавлен матч ${pMatch.matchId}(${pMatch.id})(BOTS = $isBots)\nНачало: ${match.info.gameStartTimestamp.toFormatDateTime()} Конец: ${match.info.gameEndTimestamp.toFormatDateTime()}\nMode: ${match.info.gameMode} ${match.info.gameName}")
-            }
         }
 
         val findParticipants = tableParticipant.select().where { TableParticipant::guildUid eq guild.id.value.toString() }.where { TableParticipant::match eq pMatch}.getEntities()
@@ -131,6 +128,15 @@ data class TableGuild (
 
             TableParticipant(part, pMatch, curLOL).save()?.let {
                 mainMapData[guild]?.addCurrentParticipant(it)
+            }
+        }
+
+        if (findMatchId == null || findMatchId < 1){
+            asyncLaunch {
+                val arrayParts = mainMapData[guild]?.getParticipants()?.filter { it.match?.matchId == pMatch.matchId }
+                var textSending = "Добавлен ${pMatch.matchId}(${pMatch.id})\nНачало: ${match.info.gameStartTimestamp.toFormatDateTime()} Конец: ${match.info.gameEndTimestamp.toFormatDateTime()}\nMode: ${match.info.gameMode} ${match.info.gameName}\n"
+                textSending += arrayParts?.joinToString(separator = "\n") { "Summoner: ${it.LOLperson?.LOL_summonerName} Champion: ${LeagueMainObject.findHeroForKey(it.championId.toString())} MMR: ${it.getMMR()} Games: ${it.getCountForMatches()}" }
+                guild.sendMessage(messageIdDebug, textSending)
             }
         }
 
