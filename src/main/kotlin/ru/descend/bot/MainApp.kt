@@ -314,7 +314,6 @@ fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<Ta
 
 fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder) {
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
-            "Игр на сервере: ${sqlData.getMatches().size}\n" +
             "Пользователей в базе: ${sqlData.getLOL().size}\n" +
             "Игроков в базе: ${sqlData.getAllLOL().size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +

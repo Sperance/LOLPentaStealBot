@@ -12,6 +12,7 @@ data class TableLOLPerson(
 
     var LOL_puuid: String = "",
     var LOL_summonerId: String = "",
+    var LOL_accountId: String = "",
     var LOL_summonerName: String = "",
     var LOL_riotIdName: String? = "",
     var LOL_riotIdTagline: String? = "",
@@ -24,6 +25,7 @@ data class TableLOLPerson(
         leagueApi.leagueService.getBySummonerName(summonerName).execute().body()?.let {
             this.LOL_puuid = it.puuid
             this.LOL_summonerId = it.id
+            this.LOL_accountId = it.accountId
             this.LOL_summonerName = it.name
             this.LOL_region = region
         }
