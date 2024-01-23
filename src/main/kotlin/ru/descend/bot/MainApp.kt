@@ -35,6 +35,7 @@ import ru.descend.bot.postgre.tableKORDPerson
 import ru.descend.bot.postgre.tableMatch
 import ru.descend.bot.postgre.tableParticipant
 import ru.descend.bot.savedObj.DataBasic
+import statements.select
 import update
 import java.awt.Color
 import kotlin.time.Duration.Companion.minutes
@@ -314,6 +315,7 @@ fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<Ta
 
 fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder) {
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
+            "Игр на сервере: ${tableMatch.select().where { TableMatch::guild eq sqlData.guildSQL }.where { TableMatch::bots eq false }.size}\n" +
             "Пользователей в базе: ${sqlData.getLOL().size}\n" +
             "Игроков в базе: ${sqlData.getAllLOL().size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +

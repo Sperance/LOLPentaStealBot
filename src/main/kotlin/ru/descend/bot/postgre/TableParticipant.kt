@@ -5,6 +5,8 @@ import column
 import databases.Database
 import dev.kord.core.entity.Guild
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
+import ru.descend.bot.to2Digits
+import ru.descend.bot.toModMax
 import statements.selectAll
 import table
 
@@ -33,6 +35,18 @@ data class TableParticipant(
     var goldEarned: Int = 0,
     var skillsCast: Int = 0,
     var totalDmgToChampions: Int = 0,
+    var totalDamageShieldedOnTeammates: Int = 0,
+    var totalHealsOnTeammates: Int = 0,
+    var totalDamageTaken: Int = 0,
+    var damageDealtToBuildings: Int = 0,
+    var timeCCingOthers: Int = 0,
+    var skillshotsDodged: Int = 0,
+    var enemyChampionImmobilizations: Int = 0,
+    var damageTakenOnTeamPercentage: Double = 0.0,
+    var teamDamagePercentage: Double = 0.0,
+    var damagePerMinute: Double = 0.0,
+    var killParticipation: Double = 0.0,
+    var kda: Double = 0.0,
     var minionsKills: Int = 0,
     var baronKills: Int = 0,
     var dragonKills: Int = 0,
@@ -74,8 +88,20 @@ data class TableParticipant(
         this.assists = participant.assists
         this.deaths = participant.deaths
         this.goldEarned = participant.goldEarned
-        this.skillsCast = participant.spell1Casts + participant.spell2Casts + participant.spell3Casts + participant.spell4Casts
+        this.skillsCast = participant.challenges.abilityUses.toInt()
         this.totalDmgToChampions = participant.totalDamageDealtToChampions
+        this.totalHealsOnTeammates = participant.totalHealsOnTeammates
+        this.totalDamageShieldedOnTeammates = participant.totalDamageShieldedOnTeammates
+        this.totalDamageTaken = participant.totalDamageTaken
+        this.damageDealtToBuildings = participant.damageDealtToBuildings
+        this.timeCCingOthers = participant.timeCCingOthers
+        this.skillshotsDodged = participant.challenges.skillshotsDodged.toInt()
+        this.enemyChampionImmobilizations = participant.challenges.enemyChampionImmobilizations.toInt()
+        this.damageTakenOnTeamPercentage = participant.challenges.damageTakenOnTeamPercentage
+        this.damagePerMinute = participant.challenges.damagePerMinute
+        this.killParticipation = participant.challenges.killParticipation
+        this.kda = participant.challenges.kda
+        this.teamDamagePercentage = participant.challenges.teamDamagePercentage
         this.minionsKills = participant.totalMinionsKilled
         this.baronKills = participant.baronKills
         this.dragonKills = participant.dragonKills
@@ -113,16 +139,18 @@ data class TableParticipant(
 
     fun getMMR() : Double {
         var mmr = 0.0
-        mmr += ((kills.toDouble() + assists.toDouble()) / deaths.toDouble()) / 2.0  //УСС KDA
-        mmr += if (kills5 > 0) kills5 * 5 else 0                                    //Pentas
-        mmr += if (kills4 > 0) kills4 * 4 else 0                                    //Quadras
-        mmr += if (kills3 > 0) kills3 * 3 else 0                                    //Tripples
-        mmr += if (kills2 > 0) kills2 * 2 else 0                                    //Doubles
-        mmr += if (baronKills > 0) baronKills else 0                                //Barons
-        mmr += if (nexusKills > 0) nexusKills else 0                                //Nexus
-        mmr += skillsCast.toDouble() / 1000.0                                       //Skills
-        mmr += totalDmgToChampions.toDouble() / 10000.0                             //Damage
-        return String.format("%.2f", mmr).replace(",", ".").toDouble()
+
+        mmr += kda.toModMax(2.0, 5.0)
+        mmr += totalHealsOnTeammates.toDouble().toModMax(2000.0, 3.0)
+        mmr += totalDamageShieldedOnTeammates.toDouble().toModMax(2000.0, 4.0)
+        mmr += damageDealtToBuildings.toDouble().toModMax(3000.0, 3.0)
+        mmr += totalDamageTaken.toDouble().toModMax(5000.0, 5.0)
+        mmr += totalDmgToChampions.toDouble().toModMax(8000.0, 5.0)
+        mmr += skillsCast.toDouble().toModMax(100.0, 3.0)
+        mmr += timeCCingOthers.toDouble().toModMax(20.0, 5.0)
+        mmr += skillshotsDodged.toDouble().toModMax(20.0, 5.0)
+
+        return mmr.to2Digits()
     }
 }
 

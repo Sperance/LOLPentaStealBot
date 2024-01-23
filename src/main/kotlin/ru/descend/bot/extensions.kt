@@ -85,6 +85,12 @@ fun Long.toDate() : Date {
 
 fun Double.format(digits: Int) = "%.${digits}f".format(this)
 
+fun Double.to2Digits() = String.format("%.2f", this).replace(",", ".").toDouble()
+
+fun Double.toModMax(mod: Double, max: Double) : Double {
+    return if (this / mod > max) max else this / mod
+}
+
 fun Long.toFormatDateTime() : String {
     return SimpleDateFormat("dd.MM.yy HH:mm:ss", Locale.getDefault()).format(Date(this))
 }

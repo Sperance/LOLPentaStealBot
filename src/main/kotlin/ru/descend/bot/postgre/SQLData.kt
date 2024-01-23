@@ -51,14 +51,14 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
 
     fun getLastParticipants(puuid: String?, limit: Int) : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
-        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson eq getLOL().find { it.LOL_puuid == puuid } }.where { TableParticipant::bot eq false }.orderByDescending(TableParticipant::match).limit(limit).getEntities())
-        result.sortByDescending { it.match?.matchId }
+        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson eq getLOL().find { it.LOL_puuid == puuid } }.where { TableMatch::bots eq false }.orderByDescending(TableParticipant::match).limit(limit).getEntities())
+        result.sortBy { it.match?.matchId }
         return result
     }
 
     fun getSavedParticipants() : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
-        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }.where { TableParticipant::bot eq false }.getEntities())
+        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }.getEntities())
         result.sortByDescending { it.match?.matchId }
         return result
     }

@@ -12,9 +12,11 @@ import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mainMapData
 import ru.descend.bot.printLog
 import ru.descend.bot.sendMessage
+import ru.descend.bot.to2Digits
 import ru.descend.bot.toFormatDateTime
 import save
 import statements.select
+import statements.selectAll
 import table
 
 data class TableGuild (
@@ -126,19 +128,17 @@ data class TableGuild (
                 mainMapData[guild]?.addAllLOL(curLOL)
             }
 
-            TableParticipant(part, pMatch, curLOL).save()?.let {
-//                mainMapData[guild]?.addCurrentParticipant(it)
-            }
+            TableParticipant(part, pMatch, curLOL).save()
         }
 
-//        if (findMatchId == null || findMatchId < 1){
-//            asyncLaunch {
-//                val arrayParts = mainMapData[guild]?.getParticipants()?.filter { it.match?.matchId == pMatch.matchId }
-//                var textSending = "Добавлен ${pMatch.matchId}(${pMatch.id})\nНачало: ${match.info.gameStartTimestamp.toFormatDateTime()} Конец: ${match.info.gameEndTimestamp.toFormatDateTime()}\nMode: ${match.info.gameMode} ${match.info.gameName}\n"
-//                textSending += arrayParts?.joinToString(separator = "\n") { "Summoner: ${it.LOLperson?.LOL_summonerName} Champion: ${LeagueMainObject.findHeroForKey(it.championId.toString())} MMR: ${it.getMMR()} Games: ${it.getCountForMatches()}" }
-//                guild.sendMessage(messageIdDebug, textSending)
-//            }
-//        }
+        if (findMatchId == null || findMatchId < 1){
+            asyncLaunch {
+                val arrayParts = tableParticipant.selectAll().where { TableParticipant::match eq pMatch }.getEntities()
+                var textSending = "Добавлен ${pMatch.matchId}(${pMatch.id})\nНачало: ${match.info.gameStartTimestamp.toFormatDateTime()} Конец: ${match.info.gameEndTimestamp.toFormatDateTime()}\nMode: ${match.info.gameMode} ${match.info.gameName}\n"
+                textSending += arrayParts.joinToString(separator = "\n") { "Summoner: ${it.LOLperson?.LOL_summonerName} Champion: ${LeagueMainObject.findHeroForKey(it.championId.toString())} MMR: ${it.getMMR()} Games: ${it.getCountForMatches()} KDA: ${it.kda.to2Digits()}" }
+                guild.sendMessage(messageIdDebug, textSending)
+            }
+        }
 
         return pMatch
     }
