@@ -1,5 +1,6 @@
 package ru.descend.bot.savedObj
 
+import ru.descend.bot.toDate
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.Period
@@ -15,6 +16,12 @@ fun Long?.toDate(): Date {
     return Date(this?:Date().time)
 }
 
+fun Date.isCurrentDay() : Boolean {
+    val currentDate = System.currentTimeMillis().toDate().getStrongDate()
+    val inDate = this.getStrongDate()
+    return currentDate.date == inDate.date
+}
+
 fun LocalDate.toDate(): Date = Date.from(
     this
         .atStartOfDay(
@@ -22,12 +29,6 @@ fun LocalDate.toDate(): Date = Date.from(
         )
         .toInstant()
 )
-
-/**
- * Разница между двумя датами в месяцах
- * @param checkedYear учитывать ли год при сравнении дат
- */
-fun getDifferenceFromDatesInMonth(timeF: Long, timeS: Long, checkedYear: Boolean) = Period.between(timeF.toLocalDate(), timeS.toLocalDate()).months
 
 fun Date.getStringTime(withSeconds: Boolean = false): String {
     return if (withSeconds)
@@ -56,8 +57,8 @@ fun getDate(time: Long?): Date {
 /**
  * Преобразование подаваемой даты в удобный для форматирования объект
  */
-fun getStrongDate(date: Date) : StrongDate{
-    return getStrongDate(date.time)
+fun Date.getStrongDate() : StrongDate{
+    return getStrongDate(time)
 }
 
 /**

@@ -4,6 +4,7 @@ import delete
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
 import dev.kord.core.entity.channel.TextChannel
+import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.extensions.fullName
@@ -18,12 +19,15 @@ import ru.descend.bot.postgre.TableKORD_LOL
 import ru.descend.bot.postgre.TableLOLPerson
 import ru.descend.bot.postgre.PostgreSQL.getGuild
 import ru.descend.bot.postgre.TableGuild
+import ru.descend.bot.postgre.tableKORDLOL
 import ru.descend.bot.postgre.tableKORDPerson
+import ru.descend.bot.postgre.tableLOLPerson
 import ru.descend.bot.printLog
 import ru.descend.bot.reloadMatch
 import ru.descend.bot.sendMessage
 import ru.descend.bot.showLeagueHistory
 import save
+import statements.selectAll
 import update
 
 fun arguments() = commands("Arguments") {
@@ -100,19 +104,28 @@ fun arguments() = commands("Arguments") {
                 mainMapData[guild]?.addCurrentLOL(LOL)
             }
 
-            val KORDLOL = TableKORD_LOL(KORDperson = KORD, LOLperson = LOL)
-            val findKORDLOL = mainMapData[guild]?.getKORDLOL()?.find { it.LOLperson?.LOL_puuid == KORDLOL.LOLperson?.LOL_puuid && it.KORDperson?.KORD_id == KORDLOL.KORDperson?.KORD_id }
+            delay(3000)
+
+            val curGuild = getGuild(guild)
+
+            val KORDLOL = TableKORD_LOL(
+                KORDperson = tableKORDPerson.selectAll().where { TableKORDPerson::KORD_id eq KORD.KORD_id }.getEntities().firstOrNull(),
+                LOLperson = tableLOLPerson.selectAll().where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntities().firstOrNull(),
+                guild = curGuild)
+            val findKORDLOL = tableKORDLOL.selectAll().where { TableKORDPerson::KORD_id eq KORD.KORD_id }.where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntities().firstOrNull()
             if (findKORDLOL == null){
                 KORDLOL.save()
                 mainMapData[guild]?.addCurrentKORDLOL(KORDLOL)
             }
 
-            val curGuild = getGuild(guild)
+
             asyncLaunch {
                 guild.sendMessage(curGuild.messageIdDebug, "Запущен процесс прогрузки матчей для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
-                LeagueMainObject.catchMatchID(LOL.LOL_puuid, 0,50).forEach { matchId ->
-                    LeagueMainObject.catchMatch(matchId)?.let { match ->
-                        mainMapData[guild]?.addMatch(match)
+                LeagueMainObject.catchMatchID(LOL.LOL_puuid, 0,20).forEach { matchId ->
+                    if (mainMapData[guild]?.isHaveMatchId(matchId) == false) {
+                        LeagueMainObject.catchMatch(matchId)?.let { match ->
+                            mainMapData[guild]?.addMatch(match)
+                        }
                     }
                 }
             }.invokeOnCompletion {

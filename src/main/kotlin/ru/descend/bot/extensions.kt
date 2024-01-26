@@ -91,6 +91,10 @@ fun Double.toModMax(mod: Double, max: Double) : Double {
     return if (this / mod > max) max else this / mod
 }
 
+fun Int.toModMax(mod: Double, max: Double) : Double {
+    return if (this.toDouble() / mod > max) max else this.toDouble() / mod
+}
+
 fun Long.toFormatDateTime() : String {
     return SimpleDateFormat("dd.MM.yy HH:mm:ss", Locale.getDefault()).format(Date(this))
 }

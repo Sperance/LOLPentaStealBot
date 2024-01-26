@@ -2,10 +2,12 @@ package ru.descend.bot.lolapi
 
 import kotlinx.coroutines.delay
 import ru.descend.bot.catchToken
+import ru.descend.bot.globalChampionsDTO
 import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.launch
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
+import ru.descend.bot.lolapi.leaguedata.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
@@ -44,6 +46,7 @@ object LeagueMainObject {
 
         LOL_VERSION = champions.version
         LOL_HEROES = namesAllHero.size
+        globalChampionsDTO = champions
 
         printLog("Version Data: ${champions.version} Heroes: ${namesAllHero.size}")
 
@@ -101,6 +104,22 @@ object LeagueMainObject {
         return exec.body()
     }
 
+    suspend fun catchActiveGame(encryptedSummonerId: String) : CurrentGameInfo? {
+        globalLOLRequests++
+        delay(checkRiotQuota())
+        printLog("[catchActiveGame::$globalLOLRequests] started with encryptedSummonerId: $encryptedSummonerId")
+        val exec = leagueService.getActiveGame(encryptedSummonerId).execute()
+        reloadRiotQuota()
+        if (!exec.isSuccessful){
+            statusLOLRequests = 1
+            printLog("catchActiveGame failure: ${exec.code()} ${exec.message()}")
+        }
+        if (exec.code() == 404 || exec.message() == "Data not found - spectator game info isn't found"){
+            return null
+        }
+        return exec.body()
+    }
+
     /**
      * 20 запросов в 1 секунду
      * 100 запросов за 2 минуты
@@ -114,7 +133,8 @@ object LeagueMainObject {
         return (10).milliseconds //для безопасности
     }
 
-    private fun reloadRiotQuota() {
+    private suspend fun reloadRiotQuota() {
+        delay((0.5).seconds)
         if (statusLOLRequests == 1) {
             printLog("[leagueApi] reloadRiotQuota globalLOLRequests: $globalLOLRequests")
             statusLOLRequests = 0

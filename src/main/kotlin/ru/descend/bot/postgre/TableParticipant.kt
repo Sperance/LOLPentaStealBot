@@ -78,6 +78,8 @@ data class TableParticipant(
         this.LOLperson = LOLperson
         this.guildUid = match.guild!!.idGuild
 
+        if (participant.challenges == null) return
+
         this.championId = participant.championId
         this.championName = participant.championName
         this.kills5 = kill5
@@ -140,15 +142,15 @@ data class TableParticipant(
     fun getMMR() : Double {
         var mmr = 0.0
 
-        mmr += kda.toModMax(2.0, 5.0)
-        mmr += totalHealsOnTeammates.toDouble().toModMax(2000.0, 3.0)
-        mmr += totalDamageShieldedOnTeammates.toDouble().toModMax(2000.0, 4.0)
-        mmr += damageDealtToBuildings.toDouble().toModMax(3000.0, 3.0)
-        mmr += totalDamageTaken.toDouble().toModMax(5000.0, 5.0)
-        mmr += totalDmgToChampions.toDouble().toModMax(8000.0, 5.0)
-        mmr += skillsCast.toDouble().toModMax(100.0, 3.0)
-        mmr += timeCCingOthers.toDouble().toModMax(20.0, 5.0)
-        mmr += skillshotsDodged.toDouble().toModMax(20.0, 5.0)
+        mmr += if (kda > 10.0) kda.toModMax(3.0, 4.0) else kda.toModMax(2.0, 4.0)
+        mmr += damageDealtToBuildings.toModMax(2000.0, 3.0)
+        mmr += if ((teamDamagePercentage * 10.0) > 6.0) (teamDamagePercentage * 10.0) / 1.5 else (teamDamagePercentage * 10.0)
+
+        mmr += totalHealsOnTeammates.toModMax(3000.0, 3.0)
+        mmr += totalDamageShieldedOnTeammates.toModMax(2000.0, 3.0)
+        mmr += totalDamageTaken.toModMax(5000.0, 5.0)
+        mmr += timeCCingOthers.toModMax(20.0, 4.0)
+        mmr += skillshotsDodged.toModMax(20.0, 3.0)
 
         return mmr.to2Digits()
     }

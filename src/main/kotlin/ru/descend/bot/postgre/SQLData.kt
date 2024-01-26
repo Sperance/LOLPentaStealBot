@@ -58,7 +58,7 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
 
     fun getSavedParticipants() : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
-        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }.getEntities())
+        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }.where { TableMatch::bots eq false }.getEntities())
         result.sortByDescending { it.match?.matchId }
         return result
     }

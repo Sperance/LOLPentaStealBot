@@ -10,10 +10,10 @@ plugins {
     kotlin("plugin.serialization") version "1.9.10"
 }
 
-application {
-    mainClass.set("ru.descend.bot.MainApp.kt")
-
-}
+//application {
+//    mainClass.set("ru.descend.bot.MainApp.kt")
+//
+//}
 
 repositories {
     mavenCentral()
@@ -31,8 +31,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2")
     testImplementation(kotlin("test"))
-
-    implementation("com.google.firebase:firebase-admin:9.2.0")
 
     implementation("com.github.SergeyHSE7:Kotlin-ORM:01c23e02a5ede73647c5f4fc1cdefb8014b700c1")
 }
@@ -57,6 +55,12 @@ tasks.withType<Zip> { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
 tasks.withType<Jar> {
     manifest {
         attributes["Main-Class"] = "ru.descend.bot.MainAppKt"
+        manifest.attributes["Class-Path"] = configurations
+            .runtimeClasspath
+            .get()
+            .joinToString(separator = " ") { file ->
+                "libs/${file.name}"
+            }
     }
     archiveFileName.set("${project.name}_${version}.jar")
 

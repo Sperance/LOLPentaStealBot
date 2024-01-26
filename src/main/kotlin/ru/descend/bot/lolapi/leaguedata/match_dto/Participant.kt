@@ -8,7 +8,7 @@ data class Participant(
     val baronKills: Int,
     val basicPings: Int,
     val bountyLevel: Int,
-    val challenges: Challenges,
+    val challenges: Challenges?,
     val champExperience: Int,
     val champLevel: Int,
     val championId: Int,

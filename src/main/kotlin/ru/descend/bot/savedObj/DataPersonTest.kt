@@ -3,8 +3,10 @@ package ru.descend.bot.savedObj
 import Entity
 import column
 import databases.Database
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import ru.descend.bot.getRandom
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.printLog
 import table
 import kotlin.math.pow
@@ -14,6 +16,15 @@ class DataPersonTest {
     fun test_randomize_int() {
         repeat(100){
             println(getRandom(5))
+        }
+    }
+
+    @Test
+    fun testcatchActiveGame(): Unit = runBlocking {
+        val result = LeagueMainObject.catchActiveGame("")
+        printLog("RES: $result")
+        result?.participants?.forEach {
+            printLog("PART: ${it.puuid} ${it.summonerName}")
         }
     }
 
@@ -45,9 +56,6 @@ class DataPersonTest {
         val num3 = 0
         val num4 = 483
         val num5 = 11
-
-        val strSize = 3
-        val charS = "0"
 
         str += catchStr(num1, 4) + "/"
         str += catchStr(num2, 3) + "/"

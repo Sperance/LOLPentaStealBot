@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.toList
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.extensions.TimeStamp
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.lolapi.champions.ChampionsDTO
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.postgre.TableGuild
 import ru.descend.bot.postgre.TableKORDPerson
@@ -118,6 +119,7 @@ suspend fun removeMessage(guild: Guild, guildSQL: TableGuild) {
     }
 }
 
+lateinit var globalChampionsDTO: ChampionsDTO
 var globalLOLRequests = 0
 var statusLOLRequests = 0
 

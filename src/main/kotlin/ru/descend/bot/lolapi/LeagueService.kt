@@ -6,6 +6,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import ru.descend.bot.lolapi.leaguedata.SummonerDTO
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
+import ru.descend.bot.lolapi.leaguedata.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 
 interface LeagueService {
@@ -21,5 +22,8 @@ interface LeagueService {
 
     @GET("/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top")
     fun getChampionMastery(@Path("puuid") puuid: String) : Call<ChampionMasteryDto>
+
+    @GET("/lol/spectator/v4/active-games/by-summoner/{encryptedSummonerId}")
+    fun getActiveGame(@Path("encryptedSummonerId") encryptedSummonerId: String) : Call<CurrentGameInfo>
 
 }
