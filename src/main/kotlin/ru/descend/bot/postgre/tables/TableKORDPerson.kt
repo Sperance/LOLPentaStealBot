@@ -1,10 +1,11 @@
-package ru.descend.bot.postgre
+package ru.descend.bot.postgre.tables
 
 import Entity
 import column
 import databases.Database
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
+import ru.descend.bot.postgre.PostgreSQL
 import table
 
 data class TableKORDPerson(

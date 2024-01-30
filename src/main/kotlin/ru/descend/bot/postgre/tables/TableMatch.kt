@@ -1,22 +1,21 @@
-package ru.descend.bot.postgre
+package ru.descend.bot.postgre.tables
 
 import Entity
 import column
 import databases.Database
-import dev.kord.core.entity.Guild
-import ru.descend.bot.postgre.PostgreSQL.getGuild
-import statements.selectAll
 import table
 
 data class TableMatch(
     override var id: Int = 0,
     var matchId: String = "",
     var matchDate: Long = 0,
+    var matchDateEnd: Long = 0,
     var matchDuration: Int = 0,
     var matchMode: String = "",
     var matchGameVersion: String = "",
     var gameName: String = "",
     var bots: Boolean = false,
+    var surrender: Boolean = false,
 
     var guild: TableGuild? = null
 ) : Entity() {

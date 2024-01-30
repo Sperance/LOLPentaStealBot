@@ -1,4 +1,4 @@
-package ru.descend.bot.postgre
+package ru.descend.bot.postgre.tables
 
 import Entity
 import column
@@ -12,7 +12,6 @@ import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mainMapData
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.isCurrentDay
-import ru.descend.bot.savedObj.toDate
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toDate
@@ -63,32 +62,36 @@ data class TableGuild (
             pMatch = TableMatch(
                 id = findMatchId,
                 matchId = match.metadata.matchId,
-                matchDate = match.info.gameCreation,
+                matchDate = match.info.gameStartTimestamp,
+                matchDateEnd = match.info.gameEndTimestamp,
                 matchDuration = match.info.gameDuration,
                 matchMode = match.info.gameMode,
                 matchGameVersion = match.info.gameVersion,
                 gameName = match.info.gameName,
                 guild = this,
-                bots = isBots
+                bots = isBots,
+                surrender = isSurrender
             )
         } else {
             pMatch = TableMatch(
                 matchId = match.metadata.matchId,
-                matchDate = match.info.gameCreation,
+                matchDate = match.info.gameStartTimestamp,
+                matchDateEnd = match.info.gameEndTimestamp,
                 matchDuration = match.info.gameDuration,
                 matchMode = match.info.gameMode,
                 matchGameVersion = match.info.gameVersion,
                 gameName = match.info.gameName,
                 guild = this,
-                bots = isBots
+                bots = isBots,
+                surrender = isSurrender
             ).save()!!
         }
 
-        val findParticipants = tableParticipant.select().where { TableParticipant::guildUid eq guild.id.value.toString() }.where { TableParticipant::match eq pMatch}.getEntities()
-        if (findParticipants.isNotEmpty()){
-            printLog("[PostgreSQL Service] Match(${pMatch.id})${pMatch.matchId} already have ${findParticipants.size} participants")
-            return pMatch
-        }
+//        val findParticipants = tableParticipant.select().where { TableParticipant::guildUid eq guild.id.value.toString() }.where { TableParticipant::match eq pMatch}.getEntities()
+//        if (findParticipants.isNotEmpty()){
+//            printLog("[PostgreSQL Service] Match(${pMatch.id})${pMatch.matchId} already have ${findParticipants.size} participants")
+//            return pMatch
+//        }
 
         val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->
@@ -134,7 +137,7 @@ data class TableGuild (
                 mainMapData[guild]?.addAllLOL(curLOL)
             }
 
-            if (!isSurrender) TableParticipant(part, pMatch, curLOL).save()
+            TableParticipant(part, pMatch, curLOL).save()
         }
 
         if (findMatchId == null || findMatchId < 1){

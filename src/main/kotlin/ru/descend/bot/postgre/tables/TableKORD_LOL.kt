@@ -1,4 +1,4 @@
-package ru.descend.bot.postgre
+package ru.descend.bot.postgre.tables
 
 import Entity
 import column
@@ -42,7 +42,6 @@ data class TableKORD_LOL(
                 tableKORDLOL.getAll { TableKORD_LOL::LOLperson eq LOLpt }.forEach { KORDLOLpt ->
                     KORDLOLpt.delete()
                 }
-                LOLpt.delete()
             }
         }
     }

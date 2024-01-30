@@ -1,4 +1,4 @@
-package ru.descend.bot.postgre
+package ru.descend.bot.postgre.tables
 
 import Entity
 import column

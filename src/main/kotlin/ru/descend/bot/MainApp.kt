@@ -21,22 +21,15 @@ import me.jakejmattson.discordkt.extensions.TimeStamp
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.champions.ChampionsDTO
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
-import ru.descend.bot.postgre.TableGuild
-import ru.descend.bot.postgre.TableKORDPerson
-import ru.descend.bot.postgre.TableKORD_LOL
-import ru.descend.bot.postgre.TableMatch
-import ru.descend.bot.postgre.TableParticipantData
+import ru.descend.bot.postgre.tables.TableGuild
+import ru.descend.bot.postgre.tables.TableKORD_LOL
+import ru.descend.bot.postgre.tables.TableMatch
+import ru.descend.bot.postgre.tables.TableParticipantData
 import ru.descend.bot.postgre.PostgreSQL.getGuild
 import ru.descend.bot.postgre.Postgre
 import ru.descend.bot.postgre.SQLData
-import ru.descend.bot.postgre.TableLOLPerson
-import ru.descend.bot.postgre.TableParticipant
-import ru.descend.bot.postgre.tableKORDLOL
-import ru.descend.bot.postgre.tableKORDPerson
-import ru.descend.bot.postgre.tableMatch
-import ru.descend.bot.postgre.tableParticipant
+import ru.descend.bot.postgre.tables.tableMatch
 import ru.descend.bot.savedObj.DataBasic
-import statements.select
 import update
 import java.awt.Color
 import kotlin.time.Duration.Companion.minutes
@@ -79,22 +72,20 @@ fun main() {
                 println("\t  ${it.name} [${it.id.value}]")
 
                 isWorkMainThread[it] = true
-                currentLoadTick[it] = 1
 
                 val guildSQL = getGuild(it)
                 removeMessage(it, guildSQL)
                 launch {
                     while (true) {
-                        printLog(it, "Load main history started (${currentLoadTick[it]})")
+                        printLog(it, "Load main history started")
                         val data = SQLData(it, guildSQL)
                         data.reloadSQLData()
 
                         mainMapData[it] = data
 
                         showLeagueHistory(data)
-                        printLog(it, "Load main history ended (${currentLoadTick[it]})")
+                        printLog(it, "Load main history ended")
                         delay((5).minutes)
-                        currentLoadTick[it] = currentLoadTick[it]!!.plus(1)
                         globalLOLRequests = 0
 
                         System.gc()
@@ -122,8 +113,6 @@ suspend fun removeMessage(guild: Guild, guildSQL: TableGuild) {
 lateinit var globalChampionsDTO: ChampionsDTO
 var globalLOLRequests = 0
 var statusLOLRequests = 0
-
-val currentLoadTick = HashMap<Guild, Int>()
 
 var isWorkMainThread = HashMap<Guild, Boolean>()
 var mainMapData = HashMap<Guild, SQLData>()
@@ -178,13 +167,16 @@ suspend fun showLeagueHistory(sqlData: SQLData?) {
             sqlData.getKORDLOL().forEach {
                 if (it.LOLperson == null) return@forEach
                 if (it.LOLperson?.LOL_puuid == "") return@forEach
-                LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,3).forEach ff@ { matchId ->
-                    if (!sqlData.isHaveMatchId(matchId)) {
-                        LeagueMainObject.catchMatch(matchId)?.let { match ->
-                            sqlData.addMatch(match)
-                        }
+                val checkMatches = ArrayList<String>()
+                LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,100).forEach ff@ { matchId ->
+                    checkMatches.add(matchId)
+                }
+                sqlData.getNewMatches(checkMatches).forEach {newMatch ->
+                    LeagueMainObject.catchMatch(newMatch)?.let { match ->
+                        sqlData.addMatch(match)
                     }
                 }
+                checkMatches.clear()
             }
         }.join()
 
@@ -317,7 +309,7 @@ fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<Ta
 
 fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder) {
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
-            "Игр на сервере: ${tableMatch.select().where { TableMatch::guild eq sqlData.guildSQL }.where { TableMatch::bots eq false }.size}\n" +
+            "Игр на сервере: ${tableMatch.count { TableMatch::guild eq sqlData.guildSQL }}\n" +
             "Пользователей в базе: ${sqlData.getLOL().size}\n" +
             "Игроков в базе: ${sqlData.getAllLOL().size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +

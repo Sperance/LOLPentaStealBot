@@ -1,6 +1,8 @@
 package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
+import ru.descend.bot.postgre.tables.TableGuild
+import ru.descend.bot.postgre.tables.tableGuild
 import ru.descend.bot.printLog
 
 object PostgreSQL {
@@ -12,5 +14,8 @@ object PostgreSQL {
             return tableGuild.first { TableGuild::idGuild eq guild.id.value.toString() }!!
         }
         return myGuild
+    }
+    fun getGuild(guild: String) : TableGuild? {
+        return tableGuild.first { TableGuild::idGuild eq guild }
     }
 }

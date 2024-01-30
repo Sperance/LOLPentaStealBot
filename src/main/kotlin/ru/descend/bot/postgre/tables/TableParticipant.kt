@@ -1,9 +1,8 @@
-package ru.descend.bot.postgre
+package ru.descend.bot.postgre.tables
 
 import Entity
 import column
 import databases.Database
-import dev.kord.core.entity.Guild
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toModMax
@@ -78,8 +77,6 @@ data class TableParticipant(
         this.LOLperson = LOLperson
         this.guildUid = match.guild!!.idGuild
 
-        if (participant.challenges == null) return
-
         this.championId = participant.championId
         this.championName = participant.championName
         this.kills5 = kill5
@@ -90,20 +87,20 @@ data class TableParticipant(
         this.assists = participant.assists
         this.deaths = participant.deaths
         this.goldEarned = participant.goldEarned
-        this.skillsCast = participant.challenges.abilityUses.toInt()
+        this.skillsCast = if (participant.challenges == null) 0 else participant.challenges.abilityUses.toInt()
         this.totalDmgToChampions = participant.totalDamageDealtToChampions
         this.totalHealsOnTeammates = participant.totalHealsOnTeammates
         this.totalDamageShieldedOnTeammates = participant.totalDamageShieldedOnTeammates
         this.totalDamageTaken = participant.totalDamageTaken
         this.damageDealtToBuildings = participant.damageDealtToBuildings
         this.timeCCingOthers = participant.timeCCingOthers
-        this.skillshotsDodged = participant.challenges.skillshotsDodged.toInt()
-        this.enemyChampionImmobilizations = participant.challenges.enemyChampionImmobilizations.toInt()
-        this.damageTakenOnTeamPercentage = participant.challenges.damageTakenOnTeamPercentage
-        this.damagePerMinute = participant.challenges.damagePerMinute
-        this.killParticipation = participant.challenges.killParticipation
-        this.kda = participant.challenges.kda
-        this.teamDamagePercentage = participant.challenges.teamDamagePercentage
+        this.skillshotsDodged = if (participant.challenges == null) 0 else participant.challenges.skillshotsDodged.toInt()
+        this.enemyChampionImmobilizations = if (participant.challenges == null) 0 else participant.challenges.enemyChampionImmobilizations.toInt()
+        this.damageTakenOnTeamPercentage = if (participant.challenges == null) 0.0 else participant.challenges.damageTakenOnTeamPercentage
+        this.damagePerMinute = if (participant.challenges == null) 0.0 else participant.challenges.damagePerMinute
+        this.killParticipation = if (participant.challenges == null) 0.0 else participant.challenges.killParticipation
+        this.kda = if (participant.challenges == null) 0.0 else participant.challenges.kda
+        this.teamDamagePercentage = if (participant.challenges == null) 0.0 else participant.challenges.teamDamagePercentage
         this.minionsKills = participant.totalMinionsKilled
         this.baronKills = participant.baronKills
         this.dragonKills = participant.dragonKills

@@ -88,11 +88,13 @@ fun Double.format(digits: Int) = "%.${digits}f".format(this)
 fun Double.to2Digits() = String.format("%.2f", this).replace(",", ".").toDouble()
 
 fun Double.toModMax(mod: Double, max: Double) : Double {
-    return if (this / mod > max) max else this / mod
+    val result = this / mod
+    return if (result > max) max else result
 }
 
 fun Int.toModMax(mod: Double, max: Double) : Double {
-    return if (this.toDouble() / mod > max) max else this.toDouble() / mod
+    val result = this.toDouble() / mod
+    return if (result > max) max else result
 }
 
 fun Long.toFormatDateTime() : String {
@@ -122,19 +124,6 @@ fun String.fromBase64(): String {
     return String(decodedBytes)
 }
 
-suspend fun <T> Flow<T>.asList(): ArrayList<T> {
-    val emptyList = ArrayList<T>()
-    collect { emptyList.add(it) }
-    return emptyList
-}
-
-fun formatInt(value: Long, items: Int) : String {
-    var str = value.toString()
-    while (str.length < items)
-        str = "0$str"
-    return str
-}
-
 fun formatInt(value: Int, items: Int) : String {
     var str = value.toString()
     while (str.length < items)
@@ -142,27 +131,19 @@ fun formatInt(value: Int, items: Int) : String {
     return str
 }
 
-fun getRandom(): Random {
-    RAND_INT_SEED++
-    return Random(System.currentTimeMillis() + RAND_INT_SEED)
-}
-
-private var RAND_INT_SEED = 1
-
-fun getRandom(maxPos: Int) : Int {
-    return getRandom().nextInt(maxPos)
-}
-
 fun User.toStringUID() = id.value.toString()
 
 suspend fun reloadMatch(sqlData: SQLData, puuid: String, startIndex: Int) {
-    LeagueMainObject.catchMatchID(puuid, startIndex,100).forEach mch@ { matchId ->
-        if (!sqlData.isHaveMatchId(matchId)) {
-            LeagueMainObject.catchMatch(matchId)?.let { match ->
-                sqlData.addMatch(match)
-            }
+    val checkMatches = ArrayList<String>()
+    LeagueMainObject.catchMatchID(puuid, startIndex,100).forEach ff@ { matchId ->
+        checkMatches.add(matchId)
+    }
+    sqlData.getNewMatches(checkMatches).forEach {newMatch ->
+        LeagueMainObject.catchMatch(newMatch)?.let { match ->
+            sqlData.addMatch(match)
         }
     }
+    checkMatches.clear()
 }
 
 suspend fun User.checkRoleForName(guild: Guild, name: String): Boolean {

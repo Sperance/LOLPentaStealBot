@@ -24,8 +24,10 @@ fun listeners() = listeners {
     }
     on<MemberLeaveEvent> {
         val member = user.descriptor()
-        printLog(guild.asGuild(), "{Leave from server} $member All: ${guild.asGuild().memberCount}")
-        guild.asGuild().sendMessage(getGuild(guild.asGuild()).messageIdDebug, "{Leave from server} ${user.lowDescriptor()}")
+        val textLeave = "{Вышел с сервера} $member ${user.lowDescriptor()} ${user.username} All: ${guild.asGuild().memberCount}"
+        printLog(guild.asGuild(), textLeave)
+        guild.asGuild().sendMessage(getGuild(guild.asGuild()).messageIdDebug, textLeave)
+        guild.asGuild().sendMessage(getGuild(guild.asGuild()).messageIdStatus, textLeave)
     }
     on<MemberUpdateEvent> {
         val member = member.asUser().descriptor()

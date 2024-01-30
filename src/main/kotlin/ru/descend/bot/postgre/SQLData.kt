@@ -2,6 +2,17 @@ package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
+import ru.descend.bot.postgre.tables.TableGuild
+import ru.descend.bot.postgre.tables.TableKORDPerson
+import ru.descend.bot.postgre.tables.TableKORD_LOL
+import ru.descend.bot.postgre.tables.TableLOLPerson
+import ru.descend.bot.postgre.tables.TableMatch
+import ru.descend.bot.postgre.tables.TableParticipant
+import ru.descend.bot.postgre.tables.tableKORDLOL
+import ru.descend.bot.postgre.tables.tableKORDPerson
+import ru.descend.bot.postgre.tables.tableLOLPerson
+import ru.descend.bot.postgre.tables.tableMatch
+import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
 import statements.select
 import statements.selectAll
@@ -51,7 +62,9 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
 
     fun getLastParticipants(puuid: String?, limit: Int) : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
-        result.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson eq getLOL().find { it.LOL_puuid == puuid } }.where { TableMatch::bots eq false }.orderByDescending(TableParticipant::match).limit(limit).getEntities())
+        result.addAll(
+            tableParticipant.selectAll().where { TableParticipant::LOLperson eq getLOL().find { it.LOL_puuid == puuid } }.where { TableMatch::bots eq false }.orderByDescending(
+                TableParticipant::match).limit(limit).getEntities())
         result.sortBy { it.match?.matchId }
         return result
     }
@@ -63,15 +76,15 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
         return result
     }
 
-    fun isHaveMatchId(matchId: String) : Boolean {
-        return tableMatch.select()
-            .where { TableMatch::guild eq guildSQL }
-            .where { TableMatch::matchId eq matchId }
-            .limit(1)
-            .size > 0
-    }
     fun addMatch(match: MatchDTO) {
         guildSQL.addMatch(guild, match)
+    }
+
+    fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
+        tableMatch.select(TableMatch::matchId).where { TableMatch::matchId.inList(list) }.where { TableMatch::guild eq guildSQL }.getEntities().forEach {
+            list.remove(it.matchId)
+        }
+        return list
     }
 
     fun getKORDLOLfromParticipant(participant: TableParticipant?) : TableKORD_LOL {

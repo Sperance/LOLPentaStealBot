@@ -5,19 +5,12 @@ import column
 import databases.Database
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
-import ru.descend.bot.getRandom
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.printLog
 import table
 import kotlin.math.pow
 
 class DataPersonTest {
-    @Test
-    fun test_randomize_int() {
-        repeat(100){
-            println(getRandom(5))
-        }
-    }
 
     @Test
     fun testcatchActiveGame(): Unit = runBlocking {

@@ -14,14 +14,14 @@ import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mainMapData
-import ru.descend.bot.postgre.TableKORDPerson
-import ru.descend.bot.postgre.TableKORD_LOL
-import ru.descend.bot.postgre.TableLOLPerson
+import ru.descend.bot.postgre.tables.TableKORDPerson
+import ru.descend.bot.postgre.tables.TableKORD_LOL
+import ru.descend.bot.postgre.tables.TableLOLPerson
 import ru.descend.bot.postgre.PostgreSQL.getGuild
-import ru.descend.bot.postgre.TableGuild
-import ru.descend.bot.postgre.tableKORDLOL
-import ru.descend.bot.postgre.tableKORDPerson
-import ru.descend.bot.postgre.tableLOLPerson
+import ru.descend.bot.postgre.tables.TableGuild
+import ru.descend.bot.postgre.tables.tableKORDLOL
+import ru.descend.bot.postgre.tables.tableKORDPerson
+import ru.descend.bot.postgre.tables.tableLOLPerson
 import ru.descend.bot.printLog
 import ru.descend.bot.reloadMatch
 import ru.descend.bot.sendMessage
@@ -43,6 +43,16 @@ fun arguments() = commands("Arguments") {
         }
     }
 
+    slash("clearMainChannel", "Очистка основного канал для бота", Permissions(Permission.Administrator)){
+        execute {
+            printLog("Start command '$name' from ${author.fullName}")
+            getGuild(guild).update(TableGuild::botChannelId) {
+                this.botChannelId = ""
+            }
+            respond("Guild MainChannel cleared")
+        }
+    }
+
     slash("initStatusChannel", "Канал для сообщений бота", Permissions(Permission.Administrator)){
         execute(ChannelArg<TextChannel>("channel")){
             val (channel) = args
@@ -54,6 +64,16 @@ fun arguments() = commands("Arguments") {
         }
     }
 
+    slash("clearStatusChannel", "Очистка канала для сообщений бота", Permissions(Permission.Administrator)){
+        execute {
+            printLog("Start command '$name' from ${author.fullName}")
+            getGuild(guild).update(TableGuild::messageIdStatus) {
+                this.messageIdStatus = ""
+            }
+            respond("Guild StatusChannel cleared")
+        }
+    }
+
     slash("initDebugChannel", "Канал для системных сообщений", Permissions(Permission.Administrator)){
         execute(ChannelArg<TextChannel>("channel")){
             val (channel) = args
@@ -62,6 +82,16 @@ fun arguments() = commands("Arguments") {
                 this.messageIdDebug = channel.id.value.toString()
             }
             respond("Guild status channel saved in '${channel.name}(${channel.id.value})'")
+        }
+    }
+
+    slash("clearDebugChannel", "Очистка канала для системных сообщений", Permissions(Permission.Administrator)){
+        execute {
+            printLog("Start command '$name' from ${author.fullName}")
+            getGuild(guild).update(TableGuild::messageIdDebug) {
+                this.messageIdDebug = ""
+            }
+            respond("Guild DebugChannel cleared")
         }
     }
 
@@ -95,6 +125,9 @@ fun arguments() = commands("Arguments") {
             if (findKORD == null){
                 KORD.save()
                 mainMapData[guild]?.addCurrentKORD(KORD)
+            } else {
+                respond("Указанный пользователь(${KORD.id}) уже имеется в базе")
+                return@execute
             }
 
             val LOL = TableLOLPerson(region, summonerName)
@@ -116,23 +149,25 @@ fun arguments() = commands("Arguments") {
             if (findKORDLOL == null){
                 KORDLOL.save()
                 mainMapData[guild]?.addCurrentKORDLOL(KORDLOL)
+            } else {
+                respond("Указанный пользователь(${KORD.id}) уже связан с указанным аккаунтом лиги легенд(${LOL.id})")
+                return@execute
             }
 
-
-            asyncLaunch {
-                guild.sendMessage(curGuild.messageIdDebug, "Запущен процесс прогрузки матчей для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
-                LeagueMainObject.catchMatchID(LOL.LOL_puuid, 0,20).forEach { matchId ->
-                    if (mainMapData[guild]?.isHaveMatchId(matchId) == false) {
-                        LeagueMainObject.catchMatch(matchId)?.let { match ->
-                            mainMapData[guild]?.addMatch(match)
-                        }
-                    }
-                }
-            }.invokeOnCompletion {
-                launch {
-                    guild.sendMessage(curGuild.messageIdDebug, "Матчи успешно загружены для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
-                }
-            }
+//            asyncLaunch {
+//                guild.sendMessage(curGuild.messageIdDebug, "Запущен процесс прогрузки матчей для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
+//                LeagueMainObject.catchMatchID(LOL.LOL_puuid, 0,20).forEach { matchId ->
+//                    if (mainMapData[guild]?.isHaveMatchId(matchId) == false) {
+//                        LeagueMainObject.catchMatch(matchId)?.let { match ->
+//                            mainMapData[guild]?.addMatch(match)
+//                        }
+//                    }
+//                }
+//            }.invokeOnCompletion {
+//                launch {
+//                    guild.sendMessage(curGuild.messageIdDebug, "Матчи успешно загружены для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
+//                }
+//            }
 
             respond("Запущен процесс добавления пользователя и игрока в базу")
         }

@@ -1,6 +1,6 @@
 package ru.descend.bot.savedObj
 
-import ru.descend.bot.postgre.TableParticipant
+import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.toModMax
 
 class MMRCalculate(private val participant: TableParticipant) {

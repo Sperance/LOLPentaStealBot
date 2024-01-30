@@ -130,11 +130,10 @@ object LeagueMainObject {
             printLog("[leagueApi] checkRiotQuota globalLOLRequests: $globalLOLRequests")
             return ((2).minutes + (5).seconds) //+5 сек на всякий случай
         }
-        return (10).milliseconds //для безопасности
+        return (0.2).seconds //для безопасности
     }
 
-    private suspend fun reloadRiotQuota() {
-        delay((0.5).seconds)
+    private fun reloadRiotQuota() {
         if (statusLOLRequests == 1) {
             printLog("[leagueApi] reloadRiotQuota globalLOLRequests: $globalLOLRequests")
             statusLOLRequests = 0

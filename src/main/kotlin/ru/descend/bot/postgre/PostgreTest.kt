@@ -1,19 +1,26 @@
 package ru.descend.bot.postgre
 
-import dev.kord.core.entity.Guild
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.junit.Before
+import kotlinx.coroutines.selects.select
 import org.junit.Test
-import ru.descend.bot.launch
-import ru.descend.bot.postgre.PostgreSQL.getGuild
+import ru.descend.bot.postgre.tables.TableGuild
+import ru.descend.bot.postgre.tables.TableKORDPerson
+import ru.descend.bot.postgre.tables.TableKORD_LOL
+import ru.descend.bot.postgre.tables.TableLOLPerson
+import ru.descend.bot.postgre.tables.TableMatch
+import ru.descend.bot.postgre.tables.TableParticipant
+import ru.descend.bot.postgre.tables.tableGuild
+import ru.descend.bot.postgre.tables.tableKORDPerson
+import ru.descend.bot.postgre.tables.tableLOLPerson
+import ru.descend.bot.postgre.tables.tableMatch
+import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
-import ru.descend.bot.toFormatDateTime
-import save
+import statements.Expression
+import statements.WhereCondition
+import statements.WhereStatement
 import statements.select
 import statements.selectAll
 import update
@@ -30,9 +37,22 @@ class PostgreTest {
 
     @Test
     fun testMethod() {
-        tableLOLPerson.getAll { TableLOLPerson::id lessEq 3 }.forEach {
-            printLog("::: $it")
+        printLog(1)
+        val listIds = ArrayList<String>()
+        listIds.add("RU_476092238")
+        listIds.add("RE_476370823")
+        listIds.add("RU_476367408")
+
+        val condition = checkMatchContains(listIds)
+        printLog(condition)
+        printLog(3)
+    }
+
+    fun checkMatchContains(list: ArrayList<String>): ArrayList<String> {
+        tableMatch.select(TableMatch::matchId).where { TableMatch::matchId.inList(list) }.where { TableMatch::guild eq 1 }.getEntities().forEach {
+            list.remove(it.matchId)
         }
+        return list
     }
 
     @Test

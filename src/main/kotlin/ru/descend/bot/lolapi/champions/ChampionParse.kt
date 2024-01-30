@@ -1,10 +1,8 @@
 package ru.descend.bot.lolapi.champions
 
 import com.google.gson.annotations.SerializedName
-import ru.descend.bot.postgre.TableParticipant
+import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.savedObj.MMRCalculate
-import ru.descend.bot.to2Digits
-import ru.descend.bot.toModMax
 
 data class ChampionsDTO(
     val type: String,
