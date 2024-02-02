@@ -133,10 +133,6 @@ data class TableGuild (
             }
             curLOL.save()
 
-            if (isNewPerson) {
-                mainMapData[guild]?.addAllLOL(curLOL)
-            }
-
             TableParticipant(part, pMatch, curLOL).save()
         }
 

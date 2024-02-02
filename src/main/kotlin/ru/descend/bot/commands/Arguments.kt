@@ -100,7 +100,7 @@ fun arguments() = commands("Arguments") {
             printLog("Start command '$name' from ${author.fullName}")
             asyncLaunch {
                 launch {
-                    showLeagueHistory(mainMapData[guild])
+                    showLeagueHistory(guild)
                     isWorkMainThread[guild] = false
                 }.invokeOnCompletion {
                     launch {
@@ -124,7 +124,7 @@ fun arguments() = commands("Arguments") {
             val findKORD = mainMapData[guild]?.getKORD()?.find { it.KORD_id == KORD.KORD_id }
             if (findKORD == null){
                 KORD.save()
-                mainMapData[guild]?.addCurrentKORD(KORD)
+//                mainMapData[guild]?.addCurrentKORD(KORD)
             } else {
                 respond("Указанный пользователь(${KORD.id}) уже имеется в базе")
                 return@execute
@@ -134,7 +134,6 @@ fun arguments() = commands("Arguments") {
             val findLOL = mainMapData[guild]?.getLOL()?.find { it.LOL_puuid == LOL.LOL_puuid }
             if (findLOL == null){
                 LOL.save()
-                mainMapData[guild]?.addCurrentLOL(LOL)
             }
 
             delay(3000)
@@ -148,7 +147,7 @@ fun arguments() = commands("Arguments") {
             val findKORDLOL = tableKORDLOL.selectAll().where { TableKORDPerson::KORD_id eq KORD.KORD_id }.where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntities().firstOrNull()
             if (findKORDLOL == null){
                 KORDLOL.save()
-                mainMapData[guild]?.addCurrentKORDLOL(KORDLOL)
+//                mainMapData[guild]?.addCurrentKORDLOL(KORDLOL)
             } else {
                 respond("Указанный пользователь(${KORD.id}) уже связан с указанным аккаунтом лиги легенд(${LOL.id})")
                 return@execute

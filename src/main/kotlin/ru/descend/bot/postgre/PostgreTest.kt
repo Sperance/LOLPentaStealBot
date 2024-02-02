@@ -13,12 +13,14 @@ import ru.descend.bot.postgre.tables.TableLOLPerson
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.postgre.tables.tableGuild
+import ru.descend.bot.postgre.tables.tableKORDLOL
 import ru.descend.bot.postgre.tables.tableKORDPerson
 import ru.descend.bot.postgre.tables.tableLOLPerson
 import ru.descend.bot.postgre.tables.tableMatch
 import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
 import statements.Expression
+import statements.JoinType
 import statements.WhereCondition
 import statements.WhereStatement
 import statements.select
@@ -42,17 +44,15 @@ class PostgreTest {
         listIds.add("RU_476092238")
         listIds.add("RE_476370823")
         listIds.add("RU_476367408")
-
-        val condition = checkMatchContains(listIds)
-        printLog(condition)
-        printLog(3)
     }
 
-    fun checkMatchContains(list: ArrayList<String>): ArrayList<String> {
-        tableMatch.select(TableMatch::matchId).where { TableMatch::matchId.inList(list) }.where { TableMatch::guild eq 1 }.getEntities().forEach {
-            list.remove(it.matchId)
+    @Test
+    fun checkMatchContains() {
+        val list = tableKORDLOL.selectAll().where { TableKORD_LOL::guild eq 1 }.getEntities()
+        list.forEach {
+            printLog("KORD: ${it.KORDperson} LOL: ${it.LOLperson}")
         }
-        return list
+//        tableKORDPerson.getAll { TableKORDPerson::guild eq 1 }
     }
 
     @Test
