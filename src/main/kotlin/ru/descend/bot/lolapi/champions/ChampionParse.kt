@@ -2,7 +2,6 @@ package ru.descend.bot.lolapi.champions
 
 import com.google.gson.annotations.SerializedName
 import ru.descend.bot.postgre.tables.TableParticipant
-import ru.descend.bot.savedObj.MMRCalculate
 
 data class ChampionsDTO(
     val type: String,
@@ -195,16 +194,7 @@ data class Aatrox(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setDamageTakenOnTeamPercentage(15.0)
-        setMinionsKills(40.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(12.0)
-        setEnemyChampionImmobilizations(30.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Ahri(
     override val key: String,
@@ -212,17 +202,7 @@ data class Ahri(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(50.0)
-//        setSkillsCast()
-//        setTotalDamageShieldedOnTeammates()
-        setTotalHealsOnTeammates(800.0)
-        setTimeCCingOthers(12.0)
-//        setEnemyChampionImmobilizations(20.0, 3.0)
-//        setDamageTakenOnTeamPercentage(15.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Akali(
     override val key: String,
@@ -230,17 +210,7 @@ data class Akali(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(40.0)
-//        setSkillsCast()
-//        setTotalDamageShieldedOnTeammates()
-        setTotalHealsOnTeammates(500.0)
-        setTimeCCingOthers(5.0)
-//        setEnemyChampionImmobilizations(20.0, 3.0)
-//        setDamageTakenOnTeamPercentage(15.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Akshan(
     override val key: String,
@@ -248,17 +218,7 @@ data class Akshan(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(40.0)
-//        setSkillsCast()
-//        setTotalDamageShieldedOnTeammates()
-        setTotalHealsOnTeammates(500.0)
-        setTimeCCingOthers(5.0)
-//        setEnemyChampionImmobilizations(20.0, 3.0)
-//        setDamageTakenOnTeamPercentage(15.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Alistar(
     override val key: String,
@@ -266,17 +226,7 @@ data class Alistar(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(20.0)
-        setSkillsCast(50.0)
-//        setTotalDamageShieldedOnTeammates()
-        setTotalHealsOnTeammates(2500.0)
-        setTimeCCingOthers(25.0)
-        setEnemyChampionImmobilizations(45.0)
-        setDamageTakenOnTeamPercentage(10.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Amumu(
     override val key: String,
@@ -284,17 +234,7 @@ data class Amumu(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(20.0)
-//        setSkillsCast(60.0, 4.0)
-//        setTotalDamageShieldedOnTeammates()
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(15.0)
-        setEnemyChampionImmobilizations(40.0)
-        setDamageTakenOnTeamPercentage(9.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Anivia(
     override val key: String,
@@ -302,17 +242,7 @@ data class Anivia(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(30.0)
-//        setSkillsCast(60.0, 4.0)
-//        setTotalDamageShieldedOnTeammates()
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(25.0)
-//        setEnemyChampionImmobilizations(40.0, 3.0)
-//        setDamageTakenOnTeamPercentage(9.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Annie(
     override val key: String,
@@ -320,17 +250,7 @@ data class Annie(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(25.0)
-        setSkillsCast(100.0)
-        setTotalDamageShieldedOnTeammates(1000.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(20.0)
-//        setEnemyChampionImmobilizations(40.0, 3.0)
-//        setDamageTakenOnTeamPercentage(9.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Aphelios(
     override val key: String,
@@ -338,17 +258,7 @@ data class Aphelios(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(40.0)
-//        setSkillsCast(100.0, 2.0)
-//        setTotalDamageShieldedOnTeammates(1000.0, 3.0)
-//        setTotalHealsOnTeammates(500.0, 2.0)
-        setTimeCCingOthers(15.0)
-//        setEnemyChampionImmobilizations(40.0, 3.0)
-//        setDamageTakenOnTeamPercentage(9.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Ashe(
     override val key: String,
@@ -356,17 +266,7 @@ data class Ashe(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(40.0)
-//        setSkillsCast(100.0, 2.0)
-//        setTotalDamageShieldedOnTeammates(1000.0, 3.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(25.0)
-//        setEnemyChampionImmobilizations(40.0, 3.0)
-//        setDamageTakenOnTeamPercentage(9.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class AurelionSol(
     override val key: String,
@@ -374,18 +274,7 @@ data class AurelionSol(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(40.0)
-//        setSkillsCast(100.0, 2.0)
-//        setTotalDamageShieldedOnTeammates(1000.0, 3.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(15.0)
-//        setSkillshotsDodged(30.0, 3.0)
-//        setEnemyChampionImmobilizations(40.0, 3.0)
-//        setDamageTakenOnTeamPercentage(9.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Azir(
     override val key: String,
@@ -393,17 +282,7 @@ data class Azir(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(45.0)
-//        setSkillsCast(100.0, 2.0)
-//        setTotalDamageShieldedOnTeammates(1000.0, 3.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(10.0)
-//        setEnemyChampionImmobilizations(40.0, 3.0)
-//        setDamageTakenOnTeamPercentage(9.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Bard(
     override val key: String,
@@ -411,16 +290,7 @@ data class Bard(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(20.0)
-        setSkillsCast(60.0)
-        setTotalDamageShieldedOnTeammates(700.0)
-        setTotalHealsOnTeammates(800.0)
-        setTimeCCingOthers(18.0)
-//        setEnemyChampionImmobilizations(40.0, 3.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Belveth(
     override val key: String,
@@ -428,17 +298,7 @@ data class Belveth(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(30.0)
-//        setSkillsCast(70.0, 2.0)
-//        setTotalDamageShieldedOnTeammates(800.0, 4.0)
-//        setTotalHealsOnTeammates(1000.0, 3.0)
-        setTimeCCingOthers(10.0)
-        setEnemyChampionImmobilizations(15.0)
-        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Blitzcrank(
     override val key: String,
@@ -446,17 +306,7 @@ data class Blitzcrank(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(10.0)
-        setSkillsCast(60.0)
-//        setTotalDamageShieldedOnTeammates(800.0, 4.0)
-        setTotalHealsOnTeammates(500.0)
-        setTimeCCingOthers(30.0)
-        setEnemyChampionImmobilizations(50.0)
-        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Brand(
     override val key: String,
@@ -464,17 +314,7 @@ data class Brand(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(20.0)
-        setSkillsCast(65.0)
-//        setTotalDamageShieldedOnTeammates(800.0, 4.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(12.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Braum(
     override val key: String,
@@ -482,17 +322,7 @@ data class Braum(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(10.0)
-        setSkillsCast(80.0)
-        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(700.0)
-        setTimeCCingOthers(20.0)
-//        setEnemyChampionImmobilizations(50.0)
-        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Briar(
     override val key: String,
@@ -500,17 +330,7 @@ data class Briar(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(25.0)
-//        setSkillsCast(80.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-//        setTotalHealsOnTeammates(700.0)
-        setTimeCCingOthers(12.0)
-//        setEnemyChampionImmobilizations(50.0)
-        setDamageTakenOnTeamPercentage(7.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Caitlyn(
     override val key: String,
@@ -518,17 +338,7 @@ data class Caitlyn(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(35.0)
-//        setSkillsCast(80.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(10.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(7.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Camille(
     override val key: String,
@@ -536,17 +346,7 @@ data class Camille(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(20.0)
-//        setSkillsCast(80.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(10.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(7.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Cassiopeia(
     override val key: String,
@@ -554,17 +354,7 @@ data class Cassiopeia(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(25.0)
-        setSkillsCast(150.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(28.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(7.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Chogath(
     override val key: String,
@@ -572,17 +362,7 @@ data class Chogath(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(18.0)
-        setSkillsCast(100.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(500.0)
-        setTimeCCingOthers(80.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(7.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Corki(
     override val key: String,
@@ -590,17 +370,7 @@ data class Corki(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(35.0)
-        setSkillsCast(120.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(12.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(7.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Darius(
     override val key: String,
@@ -608,17 +378,7 @@ data class Darius(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(25.0)
-        setSkillsCast(80.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(24.0)
-//        setEnemyChampionImmobilizations(50.0)
-        setDamageTakenOnTeamPercentage(6.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Diana(
     override val key: String,
@@ -626,17 +386,7 @@ data class Diana(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(24.0)
-//        setSkillsCast(80.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(4.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(6.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Draven(
     override val key: String,
@@ -644,17 +394,7 @@ data class Draven(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(55.0)
-//        setSkillsCast(80.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(8.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(6.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class DrMundo(
     override val key: String,
@@ -662,17 +402,7 @@ data class DrMundo(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(22.0)
-//        setSkillsCast(80.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(8.0)
-//        setEnemyChampionImmobilizations(50.0)
-        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Ekko(
     override val key: String,
@@ -680,17 +410,7 @@ data class Ekko(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(24.0)
-//        setSkillsCast(80.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(20.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Elise(
     override val key: String,
@@ -698,17 +418,7 @@ data class Elise(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(18.0)
-        setSkillsCast(140.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(6.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Evelynn(
     override val key: String,
@@ -716,17 +426,7 @@ data class Evelynn(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(14.0)
-        setSkillsCast(100.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(6.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Ezreal(
     override val key: String,
@@ -734,17 +434,7 @@ data class Ezreal(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(60.0)
-        setSkillsCast(260.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(6.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Fiddlesticks(
     override val key: String,
@@ -752,17 +442,7 @@ data class Fiddlesticks(
     override val title: String,
     override val blurb: String,
     override val tags: List<String>
-) : InterfaceChampionBase {
-    fun getMMR(participant: TableParticipant) = MMRCalculate(participant).apply {
-        setMinionsKills(60.0)
-        setSkillsCast(260.0)
-//        setTotalDamageShieldedOnTeammates(800.0)
-        setTotalHealsOnTeammates(400.0)
-        setTimeCCingOthers(6.0)
-//        setEnemyChampionImmobilizations(50.0)
-//        setDamageTakenOnTeamPercentage(8.0)
-    }
-}
+) : InterfaceChampionBase
 
 data class Fiora(
     override val key: String,

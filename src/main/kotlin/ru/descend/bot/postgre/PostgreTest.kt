@@ -4,26 +4,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.selects.select
 import org.junit.Test
 import ru.descend.bot.postgre.tables.TableGuild
-import ru.descend.bot.postgre.tables.TableKORDPerson
-import ru.descend.bot.postgre.tables.TableKORD_LOL
-import ru.descend.bot.postgre.tables.TableLOLPerson
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.postgre.tables.tableGuild
-import ru.descend.bot.postgre.tables.tableKORDLOL
-import ru.descend.bot.postgre.tables.tableKORDPerson
-import ru.descend.bot.postgre.tables.tableLOLPerson
-import ru.descend.bot.postgre.tables.tableMatch
+import ru.descend.bot.postgre.tables.tableMmr
 import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
-import statements.Expression
-import statements.JoinType
-import statements.WhereCondition
-import statements.WhereStatement
-import statements.select
+import ru.descend.bot.savedObj.CalculateMMR
 import statements.selectAll
 import update
 import kotlin.time.Duration.Companion.seconds
@@ -48,29 +37,19 @@ class PostgreTest {
 
     @Test
     fun checkMatchContains() {
-        val list = tableKORDLOL.selectAll().where { TableKORD_LOL::guild eq 1 }.getEntities()
+        val list = tableMmr.selectAll().getEntities()
         list.forEach {
-            printLog("KORD: ${it.KORDperson} LOL: ${it.LOLperson}")
+            printLog("STR: $it")
         }
 //        tableKORDPerson.getAll { TableKORDPerson::guild eq 1 }
     }
 
     @Test
-    fun testSimple() {
-        TableKORD_LOL.deleteForLOL(1)
-    }
-
-    @Test
-    fun testAddMethod() {
-        tableKORDPerson.add(TableKORDPerson(KORD_id = "1"))
-        tableKORDPerson.add(TableKORDPerson(KORD_id = "2"))
-        tableKORDPerson.add(TableKORDPerson(KORD_id = "3"))
-    }
-
-    @Test
     fun getMatchematick() {
-        tableParticipant.selectAll().orderByDescending(TableParticipant::match).limit(10).getEntities().forEach {
-            printLog("MMR: ${it.LOLperson?.LOL_summonerName} ${it.getMMR()} Games: ${it.getCountForMatches()}")
+        tableParticipant.selectAll().where { TableParticipant::participant_uid eq "" }.getEntities().forEach {
+            it.update(TableParticipant::participant_uid) {
+                this.participant_uid = match?.matchId + "#" + LOLperson?.LOL_puuid + "#" + LOLperson?.id
+            }
         }
     }
 

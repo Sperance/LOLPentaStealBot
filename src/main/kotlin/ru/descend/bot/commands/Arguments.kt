@@ -14,10 +14,11 @@ import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mainMapData
+import ru.descend.bot.postgre.execProcedure
+import ru.descend.bot.postgre.getGuild
 import ru.descend.bot.postgre.tables.TableKORDPerson
 import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableLOLPerson
-import ru.descend.bot.postgre.PostgreSQL.getGuild
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.tableKORDLOL
 import ru.descend.bot.postgre.tables.tableKORDPerson
@@ -50,6 +51,14 @@ fun arguments() = commands("Arguments") {
                 this.botChannelId = ""
             }
             respond("Guild MainChannel cleared")
+        }
+    }
+
+    slash("resetMMRtable", "Перезагрузка таблицы средних рейтингов", Permissions(Permission.Administrator)){
+        execute {
+            printLog("Start command '$name' from ${author.fullName}")
+            execProcedure("call \"GetAVGs\"()")
+            respond("Успешно")
         }
     }
 
@@ -110,6 +119,7 @@ fun arguments() = commands("Arguments") {
                     }
                 }
             }
+            mainMapData[guild]?.isNeedUpdateMastery = true
             respond("Перезагрузка сервера успешно запущена")
         }
     }
@@ -124,7 +134,6 @@ fun arguments() = commands("Arguments") {
             val findKORD = mainMapData[guild]?.getKORD()?.find { it.KORD_id == KORD.KORD_id }
             if (findKORD == null){
                 KORD.save()
-//                mainMapData[guild]?.addCurrentKORD(KORD)
             } else {
                 respond("Указанный пользователь(${KORD.id}) уже имеется в базе")
                 return@execute
@@ -147,26 +156,12 @@ fun arguments() = commands("Arguments") {
             val findKORDLOL = tableKORDLOL.selectAll().where { TableKORDPerson::KORD_id eq KORD.KORD_id }.where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntities().firstOrNull()
             if (findKORDLOL == null){
                 KORDLOL.save()
-//                mainMapData[guild]?.addCurrentKORDLOL(KORDLOL)
             } else {
                 respond("Указанный пользователь(${KORD.id}) уже связан с указанным аккаунтом лиги легенд(${LOL.id})")
                 return@execute
             }
 
-//            asyncLaunch {
-//                guild.sendMessage(curGuild.messageIdDebug, "Запущен процесс прогрузки матчей для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
-//                LeagueMainObject.catchMatchID(LOL.LOL_puuid, 0,20).forEach { matchId ->
-//                    if (mainMapData[guild]?.isHaveMatchId(matchId) == false) {
-//                        LeagueMainObject.catchMatch(matchId)?.let { match ->
-//                            mainMapData[guild]?.addMatch(match)
-//                        }
-//                    }
-//                }
-//            }.invokeOnCompletion {
-//                launch {
-//                    guild.sendMessage(curGuild.messageIdDebug, "Матчи успешно загружены для пользователя ${KORDLOL.asUser(guild).lowDescriptor()}")
-//                }
-//            }
+            mainMapData[guild]?.isNeedUpdateMastery = true
 
             respond("Запущен процесс добавления пользователя и игрока в базу")
         }
@@ -188,6 +183,7 @@ fun arguments() = commands("Arguments") {
                 asyncLaunch {
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Удаление пользователя ${user.lowDescriptor()} завершено")
                 }
+                mainMapData[guild]?.isNeedUpdateMastery = true
                 "Удаление произошло успешно"
             }
             respond(textMessage)
@@ -206,6 +202,7 @@ fun arguments() = commands("Arguments") {
                 asyncLaunch {
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Удаление пользователя $UserId завершено")
                 }
+                mainMapData[guild]?.isNeedUpdateMastery = true
                 "Удаление произошло успешно"
             }
             respond(textMessage)
@@ -228,6 +225,7 @@ fun arguments() = commands("Arguments") {
                     }
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Прогрузка матчей (с $startIndex в количестве 100) для пользователя ${user.lowDescriptor()} завершена")
                 }
+                mainMapData[guild]?.isNeedUpdateMastery = true
                 "Прогрузка успешно запущена"
             }
 

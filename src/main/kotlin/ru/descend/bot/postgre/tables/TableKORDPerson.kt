@@ -5,7 +5,7 @@ import column
 import databases.Database
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
-import ru.descend.bot.postgre.PostgreSQL
+import ru.descend.bot.postgre.getGuild
 import table
 
 data class TableKORDPerson(
@@ -20,7 +20,7 @@ data class TableKORDPerson(
     val LOLpersons: List<TableLOLPerson> by manyToMany(TableKORD_LOL::KORDperson, TableKORD_LOL::LOLperson)
 
     constructor(guild: Guild, user: User) : this() {
-        this.guild = PostgreSQL.getGuild(guild)
+        this.guild = getGuild(guild)
         this.KORD_id = user.id.value.toString()
         this.KORD_name = user.username
         this.KORD_discriminator = user.discriminator

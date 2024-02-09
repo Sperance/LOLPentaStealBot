@@ -72,7 +72,7 @@ object LeagueMainObject {
         }catch (e: SocketTimeoutException) {
             statusLOLRequests = 1
             printLog("catchMatchID failure: puuid: $puuid start: $start count: $count error: ${e.localizedMessage}")
-            return catchMatchID(puuid, start, count)
+            return result
         }
 
         return result
@@ -87,6 +87,7 @@ object LeagueMainObject {
         if (!exec.isSuccessful) {
             statusLOLRequests = 1
             printLog("catchMatch failure: ${exec.code()} ${exec.message()}")
+            return null
         }
         return exec.body()
     }
@@ -100,6 +101,7 @@ object LeagueMainObject {
         if (!exec.isSuccessful){
             statusLOLRequests = 1
             printLog("catchChampionMastery failure: ${exec.code()} ${exec.message()}")
+            return null
         }
         return exec.body()
     }
@@ -113,6 +115,7 @@ object LeagueMainObject {
         if (!exec.isSuccessful){
             statusLOLRequests = 1
             printLog("catchActiveGame failure: ${exec.code()} ${exec.message()}")
+            return null
         }
         if (exec.code() == 404 || exec.message() == "Data not found - spectator game info isn't found"){
             return null

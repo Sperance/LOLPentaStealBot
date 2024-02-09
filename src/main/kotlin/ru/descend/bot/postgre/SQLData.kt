@@ -7,11 +7,13 @@ import ru.descend.bot.postgre.tables.TableKORDPerson
 import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableLOLPerson
 import ru.descend.bot.postgre.tables.TableMatch
+import ru.descend.bot.postgre.tables.TableMmr
 import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.postgre.tables.tableKORDLOL
 import ru.descend.bot.postgre.tables.tableKORDPerson
 import ru.descend.bot.postgre.tables.tableLOLPerson
 import ru.descend.bot.postgre.tables.tableMatch
+import ru.descend.bot.postgre.tables.tableMmr
 import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
 import statements.select
@@ -22,6 +24,7 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
     var isNeedUpdateMastery = true
 
     fun getKORDLOL() = tableKORDLOL.getAll { TableKORD_LOL::guild eq guildSQL }
+    fun getMMR() = tableMmr.selectAll().getEntities()
     fun getLOL(): ArrayList<TableLOLPerson> {
         val list =  ArrayList<TableLOLPerson>()
         tableKORDLOL.selectAll().where { TableKORD_LOL::guild eq guildSQL }.getEntities().forEach {
@@ -34,31 +37,41 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
 
     fun getLastParticipants(puuid: String?, limit: Int) : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
-        result.addAll(
-            tableParticipant.selectAll()
-                .where { TableParticipant::LOLperson eq (getLOL().find { it.LOL_puuid == puuid }?:"")}
-                .where { TableParticipant::bot eq false }
-                .where { TableMatch::bots eq false }
-                .orderByDescending(TableParticipant::match)
-                .limit(limit)
-                .getEntities())
-        result.sortBy { it.match?.matchId }
+        try {
+            result.addAll(
+                tableParticipant.selectAll()
+                    .where { TableParticipant::LOLperson eq (getLOL().find { it.LOL_puuid == puuid }?:"")}
+                    .where { TableParticipant::bot eq false }
+                    .where { TableMatch::bots eq false }
+                    .where { TableMatch::surrender eq false }
+                    .orderByDescending(TableParticipant::match)
+                    .limit(limit)
+                    .getEntities())
+            result.sortBy { it.match?.matchId }
+        }catch (e: Exception) {
+            printLog(guild, "[getLastParticipants] Error: ${e.localizedMessage}")
+        }
         return result
     }
 
     fun getSavedParticipants() : ArrayList<TableParticipant> {
         val result = ArrayList<TableParticipant>()
-        result.addAll(tableParticipant.selectAll()
-            .where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }
-            .where { TableParticipant::bot eq false }
-            .where { TableMatch::bots eq false }
-            .getEntities())
-        result.sortByDescending { it.match?.matchId }
+        try {
+            result.addAll(tableParticipant.selectAll()
+                .where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }
+                .where { TableParticipant::bot eq false }
+                .where { TableMatch::bots eq false }
+                .where { TableMatch::surrender eq false }
+                .getEntities())
+            result.sortByDescending { it.match?.matchId }
+        }catch (e: Error) {
+            printLog(guild, "[getSavedParticipants] Error: ${e.localizedMessage}")
+        }
         return result
     }
 
-    fun addMatch(match: MatchDTO) {
-        guildSQL.addMatch(guild, match)
+    suspend fun addMatch(match: MatchDTO, kordlol: List<TableKORD_LOL>? = null, tableMMR: List<TableMmr>? = null) {
+        guildSQL.addMatch(guild, match, kordlol, tableMMR)
     }
 
     fun getNewMatches(list: ArrayList<String>): ArrayList<String> {

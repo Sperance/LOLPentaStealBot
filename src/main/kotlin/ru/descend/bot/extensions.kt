@@ -10,18 +10,15 @@ import dev.kord.core.entity.channel.TextChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.extensions.descriptor
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.postgre.PostgreSQL
 import ru.descend.bot.postgre.SQLData
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Base64
 import java.util.Date
 import java.util.Locale
-import java.util.Random
 import kotlin.math.pow
 
 fun printLog(message: Any){

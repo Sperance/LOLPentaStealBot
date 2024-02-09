@@ -4,13 +4,16 @@ import Entity
 import column
 import databases.Database
 import dev.kord.core.entity.Guild
+import kotlinx.coroutines.delay
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mainMapData
+import ru.descend.bot.postgre.execProcedure
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.CalculateMMR
 import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
@@ -43,7 +46,7 @@ data class TableGuild (
     val KORDusers: List<TableKORDPerson> by oneToMany(TableKORDPerson::guild)
     val KORDLOL: List<TableKORD_LOL> by oneToMany(TableKORD_LOL::guild)
 
-    fun addMatch(guild: Guild, match: MatchDTO) : TableMatch {
+    suspend fun addMatch(guild: Guild, match: MatchDTO, kordLol: List<TableKORD_LOL>? = null, tableMMR: List<TableMmr>? = null) : TableMatch {
 
         var isBots = false
         var isSurrender = false
@@ -85,13 +88,14 @@ data class TableGuild (
                 bots = isBots,
                 surrender = isSurrender
             ).save()!!
+            delay(100)
         }
 
-//        val findParticipants = tableParticipant.select().where { TableParticipant::guildUid eq guild.id.value.toString() }.where { TableParticipant::match eq pMatch}.getEntities()
-//        if (findParticipants.isNotEmpty()){
-//            printLog("[PostgreSQL Service] Match(${pMatch.id})${pMatch.matchId} already have ${findParticipants.size} participants")
-//            return pMatch
-//        }
+        if (pMatch.id % 1000 == 0){
+            asyncLaunch {
+                execProcedure("call \"GetAVGs\"()")
+            }
+        }
 
         val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->
@@ -113,7 +117,6 @@ data class TableGuild (
                 }
             }
 
-            var isNewPerson = false
             //Создаем нового игрока в БД
             if (curLOL == null) {
                 curLOL = TableLOLPerson(
@@ -122,7 +125,6 @@ data class TableGuild (
                     LOL_summonerName = part.summonerName,
                     LOL_riotIdName = part.riotIdName,
                     LOL_riotIdTagline = part.riotIdTagline)
-                isNewPerson = true
             }
 
             //Вдруг что изменится в профиле игрока
@@ -132,20 +134,33 @@ data class TableGuild (
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
             }
             curLOL.save()
+            delay(100)
 
             TableParticipant(part, pMatch, curLOL).save()
         }
-
-        if (findMatchId == null || findMatchId < 1){
-            asyncLaunch {
-                val arrayParts = tableParticipant.selectAll().where { TableParticipant::match eq pMatch }.getEntities()
-                var textSending = "Добавлен ${pMatch.matchId}(${pMatch.id})Surrender:$isSurrender\nНачало: ${match.info.gameStartTimestamp.toFormatDateTime()} Конец: ${match.info.gameEndTimestamp.toFormatDateTime()}\nMode: ${match.info.gameMode} ${match.info.gameName}\n"
-                if (!isSurrender) textSending += arrayParts.joinToString(separator = "\n") { "Summoner: ${it.LOLperson?.LOL_summonerName} Champion: ${LeagueMainObject.findHeroForKey(it.championId.toString())} MMR: ${it.getMMR()} Games: ${it.getCountForMatches()} KDA: ${it.kda.to2Digits()}" }
-                guild.sendMessage(messageIdDebug, textSending)
-            }
+        if (kordLol != null && tableMMR != null) {
+            calculateMMR(guild, pMatch, isSurrender, isBots, kordLol, tableMMR)
         }
 
         return pMatch
+    }
+
+    private fun calculateMMR(guild: Guild, pMatch: TableMatch, isSurrender: Boolean, isBots: Boolean, kordLol: List<TableKORD_LOL>, tableMMR: List<TableMmr>) {
+        try {
+            asyncLaunch {
+                delay(1000)
+                val myParts = tableParticipant.selectAll().where { TableParticipant::match eq pMatch.id }.where { TableParticipant::LOLperson.inList(kordLol.map { it.LOLperson?.id }) }.getEntities()
+//                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} mmr: ${it.getMMR_v2(tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win}\n" }
+                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} mmr: ${CalculateMMR(it, pMatch, kordLol, tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win}\n" }
+                guild.sendMessage(messageIdDebug,
+                    "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
+                            "${pMatch.matchDate.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
+                            "Mode: ${pMatch.matchMode} Surrender: $isSurrender Bots: $isBots\n" +
+                            "Users: $users")
+            }
+        }catch (e: Exception) {
+            printLog(guild, "[calculateMMR] error: ${e.localizedMessage}")
+        }
     }
 
     fun initGuild(guild: Guild) : TableGuild? {

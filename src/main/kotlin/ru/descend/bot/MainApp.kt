@@ -26,9 +26,10 @@ import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableParticipantData
-import ru.descend.bot.postgre.PostgreSQL.getGuild
 import ru.descend.bot.postgre.Postgre
 import ru.descend.bot.postgre.SQLData
+import ru.descend.bot.postgre.getGuild
+import ru.descend.bot.postgre.tables.tableLOLPerson
 import ru.descend.bot.postgre.tables.tableMatch
 import ru.descend.bot.savedObj.DataBasic
 import update
@@ -84,31 +85,31 @@ fun main() {
                 launch {
                     while (true) {
 
-                        if (tickServerMin % 2 == 0) {
+//                        if (tickServerMin % 2 == 0) {
                             globalLOLRequests = 0
-                        }
+//                        }
 
                         if (data.guildSQL.botChannelId.isNotEmpty()) {
-                            if (tickServerMin != 0 && tickServerMin != 60 && tickServerMin % 5 == 0) {
-                                launch {
+//                            if (tickServerMin % 9 == 0) {
+//                                launch {
                                     printLog(it, "[START] showLeagueHistory")
                                     showLeagueHistory(it)
                                     printLog(it, "[END] showLeagueHistory")
-                                }
-                            }
+//                                }
+//                            }
 
-                            if (tickServerMin != 0 && tickServerMin % 60 == 0) {
-                                launch {
-                                    printLog(it, "[START] showMasteryHistory")
-                                    showMasteryHistory(it)
-                                    printLog(it, "[END] showMasteryHistory")
-                                }
-                            }
+//                            if (tickServerMin != 0 && tickServerMin % 60 == 0) {
+//                                launch {
+//                                    printLog(it, "[START] showMasteryHistory")
+//                                    showMasteryHistory(it)
+//                                    printLog(it, "[END] showMasteryHistory")
+//                                }
+//                            }
                         }
 
-                        delay((1).minutes)
-                        tickServerMin++
-                        if (tickServerMin >= 61) tickServerMin = 0
+                        delay((5).minutes)
+//                        tickServerMin++
+//                        if (tickServerMin > 60) tickServerMin = 5
                     }
                 }
             }
@@ -195,20 +196,38 @@ suspend fun showLeagueHistory(guild: Guild) {
     }
 
     launch {
-        sqlData.getKORDLOL().forEach {
+        val kordlol = sqlData.getKORDLOL()
+        val tableMMR = sqlData.getMMR()
+        val currentUsers = ArrayList<String?>()
+        kordlol.forEach {
+            if (it.LOLperson != null && it.LOLperson?.LOL_puuid != null && it.LOLperson?.LOL_puuid != "")
+                currentUsers.add(it.LOLperson?.LOL_puuid)
+        }
+
+        kordlol.forEach {
             if (it.LOLperson == null) return@forEach
             if (it.LOLperson?.LOL_puuid == "") return@forEach
             val checkMatches = ArrayList<String>()
-            LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,100).forEach ff@ { matchId ->
+
+            if (!currentUsers.contains(it.LOLperson?.LOL_puuid)){
+                printLog(guild, "User ${it.LOLperson?.LOL_puuid} ${it.LOLperson?.LOL_summonerName} has skipped match query")
+                return@forEach
+            }
+
+            LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,50).forEach ff@ { matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
             sqlData.getNewMatches(checkMatches).forEach {newMatch ->
                 LeagueMainObject.catchMatch(newMatch)?.let { match ->
+                    match.info.participants.forEach { part ->
+                        if (currentUsers.contains(part.puuid)) {
+                            currentUsers.remove(part.puuid)
+                        }
+                    }
                     sqlData.isNeedUpdateMastery = true
-                    sqlData.addMatch(match)
+                    sqlData.addMatch(match, kordlol, tableMMR)
                 }
             }
-            checkMatches.clear()
         }
     }.join()
 
@@ -332,7 +351,7 @@ fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
             "Игр на сервере: ${tableMatch.count { TableMatch::guild eq sqlData.guildSQL }}\n" +
             "Пользователей в базе: ${sqlData.getLOL().size}\n" +
-            "Игроков в базе: ${sqlData.getAllLOL().size}\n" +
+            "Игроков в базе: ${tableLOLPerson.size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
             "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
 }

@@ -14,6 +14,7 @@ import table
 
 data class TableKORD_LOL(
     override var id: Int = 0,
+    var mmrAram: Double = 0.0,
 
     var KORDperson: TableKORDPerson? = null,
     var LOLperson: TableLOLPerson? = null,
