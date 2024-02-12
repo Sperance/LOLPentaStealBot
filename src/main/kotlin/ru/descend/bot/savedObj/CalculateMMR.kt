@@ -11,36 +11,26 @@ import kotlin.reflect.KMutableProperty1
 
 class CalculateMMR(private val participant: TableParticipant, match: TableMatch, kordlol: List<TableKORD_LOL>, private val mmrTable: TableMmr?) {
 
-    var mmrValue = 0.0; private set
-    var mmrText = ""; private set
+    private var mmrValue = 0.0
+    private var mmrText = ""
     private var mmrModificator = 1.0
 
     init {
 
         if (mmrTable != null) {
-            mmrModificator = when (match.matchDuration.toDouble().fromDoubleValue(mmrTable.matchDuration)){
-                in Double.MIN_VALUE..20.0 -> 0.5
-                in 20.0..40.0 -> 0.6
-                in 40.0..60.0 -> 0.7
-                in 60.0..80.0 -> 0.8
-                in 80.0..100.0 -> 1.0
-                in 100.0..140.0 -> 1.2
-                in 140.0..180.0 -> 1.4
-                in 180.0..220.0 -> 1.6
-                in 220.0..260.0 -> 1.8
-                in 260.0..Double.MAX_VALUE -> 2.0
-                else -> 1.0
+            mmrModificator = (match.matchDuration.toDouble().fromDoubleValue(mmrTable.matchDuration) / 100.0).to2Digits()
+            if (mmrModificator < 0) {
+                printLog("[CalculateMMR] mmrModificator < 0: $mmrModificator. Match: ${match.matchId}. Setting modificator 1.0")
+                mmrModificator = 1.0
             }
-
-            mmrText += "Mod:$mmrModificator"
 
             calculateField(TableParticipant::minionsKills, TableMmr::minions)
             calculateField(TableParticipant::skillsCast, TableMmr::skills)
             calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded)
             calculateField(TableParticipant::totalHealsOnTeammates, TableMmr::healed)
-//            calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding)
+            calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding)
             calculateField(TableParticipant::timeCCingOthers, TableMmr::controlEnemy)
-//            calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
+            calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
             calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz)
             calculateField(TableParticipant::damageTakenOnTeamPercentage, TableMmr::dmgTakenPerc)
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
@@ -49,6 +39,7 @@ class CalculateMMR(private val participant: TableParticipant, match: TableMatch,
             if (match.matchMode == "ARAM") {
                 kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
                     it.update(TableKORD_LOL::mmrAram){
+                        printLog("[CalculateMMR] Updated mmr for user KORD_LOL ${this.id} old MMR: $mmrAram adding MMR: $mmrValue")
                         mmrAram = (mmrAram + mmrValue).to2Digits()
                     }
                 }
@@ -72,7 +63,7 @@ class CalculateMMR(private val participant: TableParticipant, match: TableMatch,
         val localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to2Digits()
 
         mmrValue += localMMR
-        mmrText += ";${propertyParticipant.name}:$valuePropertyParticipant(${(valuePropertyMmr * mmrModificator).to2Digits()})=$localMMR"
+        mmrText += ";${propertyMmr.name}:$valuePropertyParticipant(${(valuePropertyMmr * mmrModificator).to2Digits()})=$localMMR"
     }
 
     private fun Double.fromDoubleValue(stock: Double): Double {
@@ -98,6 +89,6 @@ class CalculateMMR(private val participant: TableParticipant, match: TableMatch,
     }
 
     override fun toString(): String {
-        return "CalculateMMR(mmrValue=$mmrValue, mmrText='$mmrText', mmrModificator=$mmrModificator)"
+        return "CalculateMMR(Value=$mmrValue, Text='$mmrText', Modificator=$mmrModificator)"
     }
 }

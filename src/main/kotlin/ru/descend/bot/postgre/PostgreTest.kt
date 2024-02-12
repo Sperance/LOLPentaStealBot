@@ -13,6 +13,7 @@ import ru.descend.bot.postgre.tables.tableMmr
 import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.CalculateMMR
+import ru.descend.bot.to2Digits
 import statements.selectAll
 import update
 import kotlin.time.Duration.Companion.seconds
@@ -37,11 +38,15 @@ class PostgreTest {
 
     @Test
     fun checkMatchContains() {
-        val list = tableMmr.selectAll().getEntities()
-        list.forEach {
-            printLog("STR: $it")
-        }
-//        tableKORDPerson.getAll { TableKORDPerson::guild eq 1 }
+        printLog("res: ${(843.0.fromDoubleValue(1024.0) / 100.0).to2Digits()}")
+        printLog("res: ${(843.0.fromDoubleValue(546.0) / 100.0).to2Digits()}")
+        printLog("res: ${(843.0.fromDoubleValue(5152.0) / 100.0).to2Digits()}")
+        printLog("res: ${(843.0.fromDoubleValue(2515.0) / 100.0).to2Digits()}")
+        printLog("res: ${(843.0.fromDoubleValue(56.0) / 100.0).to2Digits()}")
+    }
+
+    private fun Double.fromDoubleValue(stock: Double): Double {
+        return ((this / stock) * 100.0)
     }
 
     @Test

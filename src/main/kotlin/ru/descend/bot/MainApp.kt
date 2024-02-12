@@ -195,8 +195,8 @@ suspend fun showLeagueHistory(guild: Guild) {
         return
     }
 
-    launch {
-        val kordlol = sqlData.getKORDLOL()
+    val kordlol = sqlData.getKORDLOL()
+
         val tableMMR = sqlData.getMMR()
         val currentUsers = ArrayList<String?>()
         kordlol.forEach {
@@ -214,7 +214,7 @@ suspend fun showLeagueHistory(guild: Guild) {
                 return@forEach
             }
 
-            LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,50).forEach ff@ { matchId ->
+            LeagueMainObject.catchMatchID(it.LOLperson!!.LOL_puuid, 0,99).forEach ff@ { matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
             sqlData.getNewMatches(checkMatches).forEach {newMatch ->
@@ -229,42 +229,35 @@ suspend fun showLeagueHistory(guild: Guild) {
                 }
             }
         }
-    }.join()
 
-    val winStreakMap = catchWinStreak(sqlData)
+    val winStreakMap = catchWinStreak(sqlData, kordlol)
     val channelText = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     //Таблица Пентакиллов
-    launch {
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdPentaData, {
-            editMessagePentaDataContent(it, sqlData)
+            editMessagePentaDataContent(it, sqlData, kordlol)
         }) {
-            createMessagePentaData(channelText, sqlData)
+            createMessagePentaData(channelText, sqlData, kordlol)
         }
-    }.join()
     //Таблица по играм\винрейту\сериям убийств
-    launch {
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
-            editMessageGlobalStatisticContent(it, sqlData, winStreakMap)
+            editMessageGlobalStatisticContent(it, sqlData, winStreakMap, kordlol)
         }) {
-            createMessageGlobalStatistic(channelText, sqlData, winStreakMap)
+            createMessageGlobalStatistic(channelText, sqlData, winStreakMap, kordlol)
         }
-    }.join()
     //Общая статистика по серверу
-    launch {
         editMessageGlobal(channelText, sqlData.guildSQL.messageId, {
             editMessageSimpleContent(sqlData, it)
         }) {
             createMessageSimple(channelText, sqlData)
         }
-    }.join()
 }
 
-fun catchWinStreak(sqlData: SQLData): HashMap<TableKORD_LOL, Int> {
+fun catchWinStreak(sqlData: SQLData, kordLol: List<TableKORD_LOL>): HashMap<TableKORD_LOL, Int> {
 
     val mapResult = HashMap<TableKORD_LOL, Int>()
 
     //Инициализация
-    sqlData.getKORDLOL().forEach {
+    kordLol.forEach {
         var counter = 0
         sqlData.getLastParticipants(it.LOLperson?.LOL_puuid, 20).forEach {objectPerson ->
             if (objectPerson.win) {
@@ -293,16 +286,16 @@ suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, editB
     }
 }
 
-suspend fun createMessagePentaData(channelText: TextChannel, sqlData: SQLData) {
+suspend fun createMessagePentaData(channelText: TextChannel, sqlData: SQLData, kordLol: List<TableKORD_LOL>) {
     val message = channelText.createMessage("Initial Message PentaData")
-    channelText.getMessage(message.id).edit { editMessagePentaDataContent(this, sqlData) }
+    channelText.getMessage(message.id).edit { editMessagePentaDataContent(this, sqlData, kordLol) }
     sqlData.guildSQL.update (TableGuild::messageIdPentaData) { messageIdPentaData = message.id.value.toString() }
 }
 
-suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLData, mapWins: HashMap<TableKORD_LOL, Int>) {
+suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLData, mapWins: HashMap<TableKORD_LOL, Int>, kordLol: List<TableKORD_LOL>) {
     val message = channelText.createMessage("Initial Message GlobalStatistic")
     channelText.getMessage(message.id).edit {
-        editMessageGlobalStatisticContent(this, sqlData, mapWins)
+        editMessageGlobalStatisticContent(this, sqlData, mapWins, kordLol)
     }
     sqlData.guildSQL.update (TableGuild::messageIdGlobalStatisticData) { messageIdGlobalStatisticData = message.id.value.toString() }
 }
@@ -356,7 +349,7 @@ fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder
             "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
 }
 
-fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData, mapWins: HashMap<TableKORD_LOL, Int>) {
+fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData, mapWins: HashMap<TableKORD_LOL, Int>, kordLol: List<TableKORD_LOL>) {
 
     val dataList = ArrayList<TableParticipantData>()
     sqlData.getSavedParticipants().forEach {part ->
@@ -382,14 +375,12 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData
         }
     }
 
-    dataList.sortBy { it.part?.LOLperson?.id }
+    dataList.sortBy { sqlData.getKORDLOLfromParticipant(kordLol, it.part).id }
     val charStr = " / "
 
-    val kordlol = sqlData.getKORDLOL()
-
-    val list1 = dataList.map { obj -> formatInt(sqlData.getKORDLOLfromParticipant(kordlol, obj.part).id, 2) + "|" + sqlData.getKORDLOLfromParticipant(kordlol, obj.part).asUser(sqlData.guild).lowDescriptor() + ":" + mapWins[sqlData.getKORDLOLfromParticipant(kordlol, obj.part)] }
-    val listGames = dataList.map { formatInt(sqlData.getKORDLOLfromParticipant(kordlol, it.part).id, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" }
-    val listAllKills = dataList.map { formatInt(sqlData.getKORDLOLfromParticipant(kordlol, it.part).id, 2) + "| " + it.part!!.kills.toFormatK() + charStr + formatInt(it.part!!.kills3, 2) + charStr + formatInt(it.part!!.kills4, 2) + charStr + formatInt(it.part!!.kills5, 2) }
+    val list1 = dataList.map { obj -> formatInt(sqlData.getKORDLOLfromParticipant(kordLol, obj.part).id, 2) + "|" + sqlData.getKORDLOLfromParticipant(kordLol, obj.part).asUser(sqlData.guild).lowDescriptor() + ":" + mapWins[sqlData.getKORDLOLfromParticipant(kordLol, obj.part)] }
+    val listGames = dataList.map { formatInt(sqlData.getKORDLOLfromParticipant(kordLol, it.part).id, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" }
+    val listAllKills = dataList.map { formatInt(sqlData.getKORDLOLfromParticipant(kordLol, it.part).id, 2) + "| " + it.part!!.kills.toFormatK() + charStr + formatInt(it.part!!.kills3, 2) + charStr + formatInt(it.part!!.kills4, 2) + charStr + formatInt(it.part!!.kills5, 2) }
 
     dataList.forEach {
         it.clearData()
@@ -417,13 +408,11 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData
     printLog(sqlData.guild, "[editMessageGlobalStatisticContent] completed")
 }
 
-fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData) {
+fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData, kordLol: List<TableKORD_LOL>) {
     val dataList = ArrayList<DataBasic>()
 
-    val kordlol = sqlData.getKORDLOL()
-
     sqlData.getSavedParticipants().forEach {part ->
-        val currentPart = sqlData.getKORDLOLfromParticipant(kordlol, part)
+        val currentPart = sqlData.getKORDLOLfromParticipant(kordLol, part)
         if (!part.match!!.bots && part.kills5 > 0 && dataList.size < 20) {
             val addedText = if (part.kills5 == 1) "" else "(${part.kills5})"
             dataList.add(

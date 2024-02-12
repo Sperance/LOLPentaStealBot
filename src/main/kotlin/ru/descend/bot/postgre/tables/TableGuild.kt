@@ -151,7 +151,7 @@ data class TableGuild (
                 delay(1000)
                 val myParts = tableParticipant.selectAll().where { TableParticipant::match eq pMatch.id }.where { TableParticipant::LOLperson.inList(kordLol.map { it.LOLperson?.id }) }.getEntities()
 //                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} mmr: ${it.getMMR_v2(tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win}\n" }
-                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} mmr: ${CalculateMMR(it, pMatch, kordLol, tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win}\n" }
+                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(it, pMatch, kordLol, tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win}\n" }
                 guild.sendMessage(messageIdDebug,
                     "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                             "${pMatch.matchDate.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +

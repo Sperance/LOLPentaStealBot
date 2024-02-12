@@ -11,7 +11,6 @@ import ru.descend.bot.postgre.tables.TableMmr
 import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.postgre.tables.tableKORDLOL
 import ru.descend.bot.postgre.tables.tableKORDPerson
-import ru.descend.bot.postgre.tables.tableLOLPerson
 import ru.descend.bot.postgre.tables.tableMatch
 import ru.descend.bot.postgre.tables.tableMmr
 import ru.descend.bot.postgre.tables.tableParticipant
@@ -27,12 +26,11 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
     fun getMMR() = tableMmr.selectAll().getEntities()
     fun getLOL(): ArrayList<TableLOLPerson> {
         val list =  ArrayList<TableLOLPerson>()
-        tableKORDLOL.selectAll().where { TableKORD_LOL::guild eq guildSQL }.getEntities().forEach {
-            if (it.LOLperson != null) list.add(it.LOLperson!!)
+        tableKORDLOL.selectAll().where { TableKORD_LOL::guild eq guildSQL }.where { TableKORD_LOL::LOLperson neq null }.getEntities().forEach {
+            list.add(it.LOLperson!!)
         }
         return list
     }
-    fun getAllLOL() = tableLOLPerson.getAll().filter { !it.isBot() }
     fun getKORD() = tableKORDPerson.getAll { TableKORDPerson::guild eq guildSQL }
 
     fun getLastParticipants(puuid: String?, limit: Int) : ArrayList<TableParticipant> {
@@ -86,12 +84,8 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
     }
 
     fun getKORDLOLfromParticipant(kordlol: List<TableKORD_LOL>, participant: TableParticipant?) : TableKORD_LOL {
-        if (participant == null) {
-            throw IllegalArgumentException("[SQLData::getKORDLOLfromParticipant] participant is null")
-        }
-        if (participant.LOLperson == null) {
-            throw IllegalArgumentException("[SQLData::getKORDLOLfromParticipant] LOLperson is null. Part: $participant")
-        }
+        if (participant == null) throw IllegalArgumentException("[SQLData::getKORDLOLfromParticipant] participant is null")
+        if (participant.LOLperson == null) throw IllegalArgumentException("[SQLData::getKORDLOLfromParticipant] LOLperson is null. Part: $participant")
 
         val findedValue = kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }
         if (findedValue == null) {

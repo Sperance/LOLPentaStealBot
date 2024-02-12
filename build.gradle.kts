@@ -1,5 +1,5 @@
 group = "ru.descend"
-version = "1.3.0"
+version = "1.3.1"
 description = "Unofficial Bot for League of Legends"
 
 plugins {
@@ -9,11 +9,6 @@ plugins {
     kotlin("jvm") version "1.9.10"
     kotlin("plugin.serialization") version "1.9.10"
 }
-
-//application {
-//    mainClass.set("ru.descend.bot.MainApp.kt")
-//
-//}
 
 repositories {
     mavenCentral()
@@ -50,8 +45,6 @@ tasks {
     }
 }
 
-tasks.withType<Tar> { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
-tasks.withType<Zip> { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
 tasks.withType<Jar> {
     manifest {
         attributes["Main-Class"] = "ru.descend.bot.MainAppKt"
