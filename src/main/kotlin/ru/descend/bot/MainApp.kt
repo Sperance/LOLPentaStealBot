@@ -378,7 +378,7 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData
     dataList.sortBy { sqlData.getKORDLOLfromParticipant(kordLol, it.part).id }
     val charStr = " / "
 
-    val list1 = dataList.map { obj -> formatInt(sqlData.getKORDLOLfromParticipant(kordLol, obj.part).id, 2) + "|" + sqlData.getKORDLOLfromParticipant(kordLol, obj.part).asUser(sqlData.guild).lowDescriptor() + ":" + mapWins[sqlData.getKORDLOLfromParticipant(kordLol, obj.part)] }
+    val list1 = dataList.map { obj -> formatInt(sqlData.getKORDLOLfromParticipant(kordLol, obj.part).id, 2) + "|" + sqlData.getKORDLOLfromParticipant(kordLol, obj.part).asUser(sqlData.guild).lowDescriptor() + "/" + mapWins[sqlData.getKORDLOLfromParticipant(kordLol, obj.part)] + "/" + sqlData.getKORDLOLfromParticipant(kordLol, obj.part).mmrAram }
     val listGames = dataList.map { formatInt(sqlData.getKORDLOLfromParticipant(kordLol, it.part).id, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" }
     val listAllKills = dataList.map { formatInt(sqlData.getKORDLOLfromParticipant(kordLol, it.part).id, 2) + "| " + it.part!!.kills.toFormatK() + charStr + formatInt(it.part!!.kills3, 2) + charStr + formatInt(it.part!!.kills4, 2) + charStr + formatInt(it.part!!.kills5, 2) }
 
@@ -389,7 +389,7 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData
     builder.content = "Статистика Общая\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
         field {
-            name = "User/WinStreak"
+            name = "User/WinStreak/MMR"
             value = list1.joinToString(separator = "\n")
             inline = true
         }

@@ -9,11 +9,12 @@ import ru.descend.bot.to2Digits
 import update
 import kotlin.reflect.KMutableProperty1
 
-class CalculateMMR(private val participant: TableParticipant, match: TableMatch, kordlol: List<TableKORD_LOL>, private val mmrTable: TableMmr?) {
+class CalculateMMR(private val participant: TableParticipant, val match: TableMatch, kordlol: List<TableKORD_LOL>, private val mmrTable: TableMmr?) {
 
     private var mmrValue = 0.0
     private var mmrText = ""
     private var mmrModificator = 1.0
+    private var countFields = 0.0
 
     init {
 
@@ -24,6 +25,7 @@ class CalculateMMR(private val participant: TableParticipant, match: TableMatch,
                 mmrModificator = 1.0
             }
 
+            countFields = 0.0
             calculateField(TableParticipant::minionsKills, TableMmr::minions)
             calculateField(TableParticipant::skillsCast, TableMmr::skills)
             calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded)
@@ -36,13 +38,30 @@ class CalculateMMR(private val participant: TableParticipant, match: TableMatch,
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
             calculateField(TableParticipant::kda, TableMmr::kda)
 
-            if (match.matchMode == "ARAM") {
-                kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
-                    it.update(TableKORD_LOL::mmrAram){
-                        printLog("[CalculateMMR] Updated mmr for user KORD_LOL ${this.id} old MMR: $mmrAram adding MMR: $mmrValue")
-                        mmrAram = (mmrAram + mmrValue).to2Digits()
-                    }
-                }
+            mmrValue = mmrValue.to2Digits()
+            kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
+                calculateMMRaram(it)
+            }
+        }
+    }
+
+    private fun calculateMMRaram(kordlol: TableKORD_LOL?) {
+        if (kordlol == null) return
+        if (match.matchMode != "ARAM") return
+
+        if (participant.win) {
+            kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramLast){
+                printLog("[CalculateMMR] WIN updated mmr for user KORD_LOL ${this.id} old MMR: $mmrAram adding MMR: $mmrValue")
+                mmrAram = (mmrAram + mmrValue).to2Digits()
+                mmrAramLast = mmrValue
+            }
+        } else {
+            val minusMMR = (if (mmrValue < countFields) countFields - mmrValue else 1.0).to2Digits()
+            kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramLast){
+                printLog("[CalculateMMR] LOOSE updated mmr for user KORD_LOL ${this.id} old MMR: $mmrAram removed MMR: $minusMMR")
+                mmrAram = if (mmrAram - minusMMR < 0.0) 0.0
+                else (mmrAram - minusMMR).to2Digits()
+                mmrAramLast = -minusMMR
             }
         }
     }
@@ -50,6 +69,7 @@ class CalculateMMR(private val participant: TableParticipant, match: TableMatch,
     private fun calculateField(propertyParticipant: KMutableProperty1<TableParticipant, *>, propertyMmr: KMutableProperty1<TableMmr, *>) {
         if (mmrTable == null) return
 
+        countFields++
         val valuePropertyMmr = propertyMmr.invoke(mmrTable) as Double
         val valuePropertyParticipant = when (val valuePart = propertyParticipant.invoke(participant)){
             is Int -> valuePart.toDouble()
