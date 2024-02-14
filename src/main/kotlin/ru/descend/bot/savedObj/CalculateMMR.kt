@@ -12,9 +12,12 @@ import kotlin.reflect.KMutableProperty1
 class CalculateMMR(private val participant: TableParticipant, val match: TableMatch, kordlol: List<TableKORD_LOL>, private val mmrTable: TableMmr?) {
 
     private var mmrValue = 0.0
+    private var mmrValueStock = 0.0
     private var mmrText = ""
     private var mmrModificator = 1.0
     private var countFields = 0.0
+
+    private var baseModificator = 1.2 //20%
 
     init {
 
@@ -38,7 +41,6 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
             calculateField(TableParticipant::kda, TableMmr::kda)
 
-            mmrValue = mmrValue.to2Digits()
             kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
                 calculateMMRaram(it)
             }
@@ -70,7 +72,8 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
         if (mmrTable == null) return
 
         countFields++
-        val valuePropertyMmr = propertyMmr.invoke(mmrTable) as Double
+        val valuePropertyMmr = ((propertyMmr.invoke(mmrTable) as Double) * baseModificator).to2Digits()
+        val valuePropertyMmrStock = (propertyMmr.invoke(mmrTable) as Double).to2Digits()
         val valuePropertyParticipant = when (val valuePart = propertyParticipant.invoke(participant)){
             is Int -> valuePart.toDouble()
             is Double -> valuePart
@@ -80,9 +83,15 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
                 0.0
             }
         }.to2Digits()
-        val localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to2Digits()
 
+        val localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to2Digits()
         mmrValue += localMMR
+        mmrValue = mmrValue.to2Digits()
+
+        val localMMRStock = valuePropertyParticipant.fromDoublePerc(valuePropertyMmrStock * mmrModificator).to2Digits()
+        mmrValueStock += localMMRStock
+        mmrValueStock = mmrValueStock.to2Digits()
+
         mmrText += ";${propertyMmr.name}:$valuePropertyParticipant(${(valuePropertyMmr * mmrModificator).to2Digits()})=$localMMR"
     }
 
@@ -109,6 +118,6 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     }
 
     override fun toString(): String {
-        return "CalculateMMR(Value=$mmrValue, Text='$mmrText', Modificator=$mmrModificator)"
+        return "CalculateMMR(mmrValue=$mmrValue, mmrValueStock=$mmrValueStock, mmrText='$mmrText', mmrModificator=$mmrModificator, baseModificator=$baseModificator)"
     }
 }
