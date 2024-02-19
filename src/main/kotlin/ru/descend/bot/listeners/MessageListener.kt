@@ -21,6 +21,7 @@ fun listeners() = listeners {
         val memberUser = member.asUser().descriptor()
         printLog(guild.asGuild(), "{Зашел на сервер} $memberUser")
         guild.asGuild().sendMessage(ru.descend.bot.postgre.getGuild(guild.asGuild()).messageIdDebug, "{Зашел на сервер} ${member.asUser().descriptor()}")
+        mainMapData[getGuild()]?.guildSQL?.sendEmail("{Зашел на сервер} ${member.asUser().descriptor()}")
     }
     on<MemberLeaveEvent> {
         var textLeave = "{Вышел с сервера} ${user.descriptor()}"
@@ -28,6 +29,7 @@ fun listeners() = listeners {
         val findedBDuser = mainMapData[getGuild()]?.getKORD()?.find { it.KORD_id == user.id.value.toString() }
         if (findedBDuser != null) textLeave += ". Он присутствовал в БД под индексом: ${findedBDuser.id}"
         guild.asGuild().sendMessage(ru.descend.bot.postgre.getGuild(getGuild()).messageIdDebug, textLeave)
+        mainMapData[getGuild()]?.guildSQL?.sendEmail(textLeave)
     }
     on<MemberUpdateEvent> {
         val member = member.asUser().descriptor()

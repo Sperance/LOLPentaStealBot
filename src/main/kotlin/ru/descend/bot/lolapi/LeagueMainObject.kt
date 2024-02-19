@@ -9,6 +9,7 @@ import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.lolapi.leaguedata.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
+import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import java.net.SocketTimeoutException
@@ -53,7 +54,7 @@ object LeagueMainObject {
         return namesAllHero
     }
 
-    suspend fun catchMatchID(puuid: String, start: Int, count: Int) : ArrayList<String> {
+    suspend fun catchMatchID(guild: TableGuild, puuid: String, start: Int, count: Int) : ArrayList<String> {
         val result = ArrayList<String>()
         globalLOLRequests++
         delay(checkRiotQuota())
@@ -67,9 +68,11 @@ object LeagueMainObject {
                 }
             } else {
                 statusLOLRequests = 1
-                printLog("catchMatchID failure: ${exec.code()} ${exec.message()}")
+                val messageError = "catchMatchID failure: ${exec.code()} ${exec.message()} puuid: $puuid start: $start count: $count"
+                printLog(messageError)
+                guild.sendEmail(messageError)
             }
-        }catch (e: SocketTimeoutException) {
+        }catch (e: Exception) {
             statusLOLRequests = 1
             printLog("catchMatchID failure: puuid: $puuid start: $start count: $count error: ${e.localizedMessage}")
             return result
@@ -78,7 +81,7 @@ object LeagueMainObject {
         return result
     }
 
-    suspend fun catchMatch(matchId: String) : MatchDTO? {
+    suspend fun catchMatch(guild: TableGuild, matchId: String) : MatchDTO? {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
@@ -86,13 +89,15 @@ object LeagueMainObject {
         reloadRiotQuota()
         if (!exec.isSuccessful) {
             statusLOLRequests = 1
-            printLog("catchMatch failure: ${exec.code()} ${exec.message()}")
+            val messageError = "catchMatch failure: ${exec.code()} ${exec.message()} with matchId: $matchId"
+            printLog(messageError)
+            guild.sendEmail(messageError)
             return null
         }
         return exec.body()
     }
 
-    suspend fun catchChampionMastery(puuid: String) : ChampionMasteryDto? {
+    suspend fun catchChampionMastery(guild: TableGuild, puuid: String) : ChampionMasteryDto? {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchChampionMastery::$globalLOLRequests] started with puuid: $puuid")
@@ -100,13 +105,15 @@ object LeagueMainObject {
         reloadRiotQuota()
         if (!exec.isSuccessful){
             statusLOLRequests = 1
-            printLog("catchChampionMastery failure: ${exec.code()} ${exec.message()}")
+            val messageError = "catchChampionMastery failure: ${exec.code()} ${exec.message()} with puuid: $puuid"
+            printLog(messageError)
+            guild.sendEmail(messageError)
             return null
         }
         return exec.body()
     }
 
-    suspend fun catchActiveGame(encryptedSummonerId: String) : CurrentGameInfo? {
+    suspend fun catchActiveGame(guild: TableGuild, encryptedSummonerId: String) : CurrentGameInfo? {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchActiveGame::$globalLOLRequests] started with encryptedSummonerId: $encryptedSummonerId")
@@ -114,10 +121,13 @@ object LeagueMainObject {
         reloadRiotQuota()
         if (!exec.isSuccessful){
             statusLOLRequests = 1
-            printLog("catchActiveGame failure: ${exec.code()} ${exec.message()}")
+            val messageError = "catchActiveGame failure: ${exec.code()} ${exec.message()} with encryptedSummonerId: $encryptedSummonerId"
+            printLog(messageError)
+            guild.sendEmail(messageError)
             return null
         }
         if (exec.code() == 404 || exec.message() == "Data not found - spectator game info isn't found"){
+            guild.sendEmail("catchActiveGame failure: ${exec.code()} ${exec.message()} with encryptedSummonerId: $encryptedSummonerId")
             return null
         }
         return exec.body()

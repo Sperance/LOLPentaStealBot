@@ -9,6 +9,51 @@ import ru.descend.bot.to2Digits
 import update
 import kotlin.reflect.KMutableProperty1
 
+private const val modRank = 70.0
+private const val modTitle = 100.0
+
+enum class EnumMMRRank(val nameRank: String, val minMMR: Double) {
+    UNRANKED("Нет ранга", 0.0),
+    PAPER_III("Бумага III", UNRANKED.minMMR + modRank),
+    PAPER_II("Бумага II", PAPER_III.minMMR + modRank),
+    PAPER_I("Бумага I", PAPER_II.minMMR + modRank),
+    WOOD_III("Дерево III", PAPER_I.minMMR + modTitle),
+    WOOD_II("Дерево II", WOOD_III.minMMR + modRank),
+    WOOD_I("Дерево I", WOOD_II.minMMR + modRank),
+    BRONZE_III("Бронза III", WOOD_I.minMMR + modTitle),
+    BRONZE_II("Бронза II", BRONZE_III.minMMR + modRank),
+    BRONZE_I("Бронза I", BRONZE_II.minMMR + modRank),
+    IRON_III("Железо III", BRONZE_I.minMMR + modTitle),
+    IRON_II("Железо II", IRON_III.minMMR + modRank),
+    IRON_I("Железо I", IRON_II.minMMR + modRank),
+    SILVER_III("Серебро III", IRON_I.minMMR + modTitle),
+    SILVER_II("Серебро II", SILVER_III.minMMR + modRank),
+    SILVER_I("Серебро I", SILVER_II.minMMR + modRank),
+    GOLD_III("Золото III", SILVER_I.minMMR + modTitle),
+    GOLD_II("Золото II", GOLD_III.minMMR + modRank),
+    GOLD_I("Золото I", GOLD_II.minMMR + modRank),
+    PLATINUM_III("Платина III", GOLD_I.minMMR + modTitle),
+    PLATINUM_II("Платина II", PLATINUM_III.minMMR + modRank),
+    PLATINUM_I("Платина I", PLATINUM_II.minMMR + modRank),
+    DIAMOND_III("Алмаз III", PLATINUM_I.minMMR + modTitle),
+    DIAMOND_II("Алмаз II", DIAMOND_III.minMMR + modRank),
+    DIAMOND_I("Алмаз I", DIAMOND_II.minMMR + modRank),
+    MASTER_III("Мастер III", DIAMOND_I.minMMR + modTitle),
+    MASTER_II("Мастер II", MASTER_III.minMMR + modRank),
+    MASTER_I("Мастер I", MASTER_II.minMMR + modRank),
+    CHALLENGER("Челленджер", MASTER_I.minMMR + modTitle)
+    ;
+
+    companion object {
+        fun getMMRRank(mmr: Double) : EnumMMRRank {
+            entries.forEach {
+                if (it.minMMR >= mmr) return it
+            }
+            return UNRANKED
+        }
+    }
+}
+
 class CalculateMMR(private val participant: TableParticipant, val match: TableMatch, kordlol: List<TableKORD_LOL>, private val mmrTable: TableMmr?) {
 
     private var mmrValue = 0.0
@@ -17,10 +62,9 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     private var mmrModificator = 1.0
     private var countFields = 0.0
 
-    private var baseModificator = 1.2 //20%
+    private var baseModificator = 1.3 //30%
 
     init {
-
         if (mmrTable != null) {
             mmrModificator = (match.matchDuration.toDouble().fromDoubleValue(mmrTable.matchDuration) / 100.0).to2Digits()
             if (mmrModificator < 0) {
@@ -36,8 +80,8 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
             calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding)
             calculateField(TableParticipant::timeCCingOthers, TableMmr::controlEnemy)
             calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
-            calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz)
-            calculateField(TableParticipant::damageTakenOnTeamPercentage, TableMmr::dmgTakenPerc)
+//            calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz)
+//            calculateField(TableParticipant::damageTakenOnTeamPercentage, TableMmr::dmgTakenPerc)
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
             calculateField(TableParticipant::kda, TableMmr::kda)
 
@@ -50,6 +94,8 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     private fun calculateMMRaram(kordlol: TableKORD_LOL?) {
         if (kordlol == null) return
         if (match.matchMode != "ARAM") return
+        if (match.surrender) return
+        if (match.bots) return
 
         if (participant.win) {
             kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramLast){
@@ -58,7 +104,7 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
                 mmrAramLast = mmrValue
             }
         } else {
-            val minusMMR = (if (mmrValue < countFields) countFields - mmrValue else 1.0).to2Digits()
+            val minusMMR = (if (mmrValue < countFields) (countFields - mmrValue) * 2.0 else 1.0).to2Digits()
             kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramLast){
                 printLog("[CalculateMMR] LOOSE updated mmr for user KORD_LOL ${this.id} old MMR: $mmrAram removed MMR: $minusMMR")
                 mmrAram = if (mmrAram - minusMMR < 0.0) 0.0
@@ -92,7 +138,8 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
         mmrValueStock += localMMRStock
         mmrValueStock = mmrValueStock.to2Digits()
 
-        mmrText += ";${propertyMmr.name}:$valuePropertyParticipant(${(valuePropertyMmr * mmrModificator).to2Digits()})=$localMMR"
+        if (localMMR > 0.0)
+            mmrText += ";${propertyMmr.name}:$valuePropertyParticipant(${(valuePropertyMmr * mmrModificator).to2Digits()})=$localMMR"
     }
 
     private fun Double.fromDoubleValue(stock: Double): Double {

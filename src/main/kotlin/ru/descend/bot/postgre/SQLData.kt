@@ -19,9 +19,6 @@ import statements.select
 import statements.selectAll
 
 class SQLData (val guild: Guild, val guildSQL: TableGuild) {
-
-    var isNeedUpdateMastery = true
-
     fun getKORDLOL() = tableKORDLOL.getAll { TableKORD_LOL::guild eq guildSQL }
     fun getMMR() = tableMmr.selectAll().getEntities()
     fun getLOL(): ArrayList<TableLOLPerson> {

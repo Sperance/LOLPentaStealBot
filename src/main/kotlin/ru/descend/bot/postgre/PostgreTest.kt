@@ -5,18 +5,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import ru.descend.bot.mail.GMailSender
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.postgre.tables.tableGuild
-import ru.descend.bot.postgre.tables.tableMmr
 import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.CalculateMMR
+import ru.descend.bot.savedObj.EnumMMRRank
 import ru.descend.bot.to2Digits
 import statements.selectAll
 import update
 import kotlin.time.Duration.Companion.seconds
+
 
 class PostgreTest {
 
@@ -25,6 +26,23 @@ class PostgreTest {
 
     init {
         Postgre.initializePostgreSQL()
+    }
+
+    @Test
+    fun test_mmr(){
+        printLog("MMR: ${EnumMMRRank.getMMRRank(42.0)}")
+        printLog("MMR: ${EnumMMRRank.getMMRRank(420.0)}")
+        printLog("MMR: ${EnumMMRRank.getMMRRank(0.0)}")
+        printLog("MMR: ${EnumMMRRank.getMMRRank(89.5)}")
+    }
+    @Test
+    fun sendEmail() {
+        try {
+            val guild = tableGuild.first()
+            guild?.sendEmail("sample body message")
+        }catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     @Test
@@ -38,11 +56,9 @@ class PostgreTest {
 
     @Test
     fun checkMatchContains() {
-        printLog("res: ${(843.0.fromDoubleValue(1024.0) / 100.0).to2Digits()}")
-        printLog("res: ${(843.0.fromDoubleValue(546.0) / 100.0).to2Digits()}")
-        printLog("res: ${(843.0.fromDoubleValue(5152.0) / 100.0).to2Digits()}")
-        printLog("res: ${(843.0.fromDoubleValue(2515.0) / 100.0).to2Digits()}")
-        printLog("res: ${(843.0.fromDoubleValue(56.0) / 100.0).to2Digits()}")
+        EnumMMRRank.entries.forEach {
+            printLog("${it.nameRank} - ${it.minMMR}")
+        }
     }
 
     private fun Double.fromDoubleValue(stock: Double): Double {
@@ -54,17 +70,6 @@ class PostgreTest {
         tableParticipant.selectAll().where { TableParticipant::participant_uid eq "" }.getEntities().forEach {
             it.update(TableParticipant::participant_uid) {
                 this.participant_uid = match?.matchId + "#" + LOLperson?.LOL_puuid + "#" + LOLperson?.id
-            }
-        }
-    }
-
-    @Test
-    fun testUpdateTable() {
-        tableParticipant.getAll().forEach {
-            if (it.isBot()) {
-                it.update(TableParticipant::bot){
-                    bot = true
-                }
             }
         }
     }

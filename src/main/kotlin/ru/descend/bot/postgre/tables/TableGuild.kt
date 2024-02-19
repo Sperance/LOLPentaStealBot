@@ -10,6 +10,7 @@ import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.lowDescriptor
+import ru.descend.bot.mail.GMailSender
 import ru.descend.bot.mainMapData
 import ru.descend.bot.postgre.execProcedure
 import ru.descend.bot.printLog
@@ -35,6 +36,7 @@ data class TableGuild (
     var botChannelId: String = "",
     var messageId: String = "",
     var messageIdStatus: String = "",
+    var messageIdMain: String = "",
     var messageIdDebug: String = "",
     var messageIdPentaData: String = "",
     var messageIdGlobalStatisticData: String = "",
@@ -93,6 +95,7 @@ data class TableGuild (
 
         if (pMatch.id % 1000 == 0){
             asyncLaunch {
+                sendEmail("execute method GetAVGs()")
                 execProcedure("call \"GetAVGs\"()")
             }
         }
@@ -160,6 +163,20 @@ data class TableGuild (
             }
         }catch (e: Exception) {
             printLog(guild, "[calculateMMR] error: ${e.localizedMessage}")
+        }
+    }
+
+    fun sendEmail(message: String) {
+        try {
+            GMailSender("llps.sys.bot@gmail.com", "esjk bphc hsjh otcx")
+            .sendMail(
+                "LOLPentaStealBot - $name",
+                message,
+                "llps.sys.bot@gmail.com",
+                "mde@eme.ru,kaltemeis@gmail.com"
+            )
+        }catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

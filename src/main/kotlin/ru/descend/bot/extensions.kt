@@ -13,13 +13,25 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.extensions.descriptor
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.mail.GMailSender
 import ru.descend.bot.postgre.SQLData
+import ru.descend.bot.postgre.tables.TableGuild
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Base64
 import java.util.Date
 import java.util.Locale
+import java.util.Properties
+import javax.mail.Authenticator
+import javax.mail.Message
+import javax.mail.MessagingException
+import javax.mail.PasswordAuthentication
+import javax.mail.Session
+import javax.mail.Transport
+import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeMessage
 import kotlin.math.pow
+
 
 fun printLog(message: Any){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
@@ -128,15 +140,21 @@ fun formatInt(value: Int, items: Int) : String {
     return str
 }
 
+fun String?.toMaxSymbols(symbols: Int) : String {
+    if (this == null) return ""
+    if (this.length <= symbols) return this
+    return this.substring(0, symbols)
+}
+
 fun User.toStringUID() = id.value.toString()
 
 suspend fun reloadMatch(sqlData: SQLData, puuid: String, startIndex: Int) {
     val checkMatches = ArrayList<String>()
-    LeagueMainObject.catchMatchID(puuid, startIndex,100).forEach ff@ { matchId ->
+    LeagueMainObject.catchMatchID(sqlData.guildSQL, puuid, startIndex,100).forEach ff@ { matchId ->
         checkMatches.add(matchId)
     }
     sqlData.getNewMatches(checkMatches).forEach {newMatch ->
-        LeagueMainObject.catchMatch(newMatch)?.let { match ->
+        LeagueMainObject.catchMatch(sqlData.guildSQL, newMatch)?.let { match ->
             sqlData.addMatch(match)
         }
     }

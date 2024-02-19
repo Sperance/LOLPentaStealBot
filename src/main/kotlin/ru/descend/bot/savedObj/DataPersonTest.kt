@@ -13,15 +13,6 @@ import kotlin.math.pow
 class DataPersonTest {
 
     @Test
-    fun testcatchActiveGame(): Unit = runBlocking {
-        val result = LeagueMainObject.catchActiveGame("")
-        printLog("RES: $result")
-        result?.participants?.forEach {
-            printLog("PART: ${it.puuid} ${it.summonerName}")
-        }
-    }
-
-    @Test
     fun test_sum_int() {
         val numMain = 352
         var index = 0

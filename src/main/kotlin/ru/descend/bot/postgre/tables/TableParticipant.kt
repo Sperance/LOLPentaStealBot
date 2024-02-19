@@ -119,11 +119,7 @@ data class TableParticipant(
         this.bot = isBot()
     }
 
-    fun getCountForMatches() : Int {
-        return tableParticipant.selectAll().where { TableParticipant::LOLperson eq LOLperson }.size
-    }
-
-    fun isBot() : Boolean {
+    private fun isBot() : Boolean {
         if (LOLperson == null) {
             throw IllegalAccessException("LOLperson is NULL. Participant id: $id")
         }

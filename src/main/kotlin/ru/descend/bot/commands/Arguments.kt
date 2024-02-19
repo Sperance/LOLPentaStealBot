@@ -119,7 +119,6 @@ fun arguments() = commands("Arguments") {
                     }
                 }
             }
-            mainMapData[guild]?.isNeedUpdateMastery = true
             respond("Перезагрузка сервера успешно запущена")
         }
     }
@@ -161,8 +160,6 @@ fun arguments() = commands("Arguments") {
                 return@execute
             }
 
-            mainMapData[guild]?.isNeedUpdateMastery = true
-
             respond("Запущен процесс добавления пользователя и игрока в базу")
         }
     }
@@ -183,7 +180,6 @@ fun arguments() = commands("Arguments") {
                 asyncLaunch {
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Удаление пользователя ${user.lowDescriptor()} завершено")
                 }
-                mainMapData[guild]?.isNeedUpdateMastery = true
                 "Удаление произошло успешно"
             }
             respond(textMessage)
@@ -202,7 +198,6 @@ fun arguments() = commands("Arguments") {
                 asyncLaunch {
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Удаление пользователя $UserId завершено")
                 }
-                mainMapData[guild]?.isNeedUpdateMastery = true
                 "Удаление произошло успешно"
             }
             respond(textMessage)
@@ -225,7 +220,6 @@ fun arguments() = commands("Arguments") {
                     }
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Прогрузка матчей (с $startIndex в количестве 100) для пользователя ${user.lowDescriptor()} завершена")
                 }
-                mainMapData[guild]?.isNeedUpdateMastery = true
                 "Прогрузка успешно запущена"
             }
 
