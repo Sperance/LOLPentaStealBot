@@ -4,14 +4,12 @@ import delete
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
 import dev.kord.core.entity.channel.TextChannel
-import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.extensions.fullName
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.isWorkMainThread
 import ru.descend.bot.launch
-import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mainMapData
 import ru.descend.bot.postgre.execProcedure
@@ -27,6 +25,7 @@ import ru.descend.bot.printLog
 import ru.descend.bot.reloadMatch
 import ru.descend.bot.sendMessage
 import ru.descend.bot.showLeagueHistory
+import ru.descend.bot.to2Digits
 import save
 import statements.selectAll
 import update
@@ -129,30 +128,35 @@ fun arguments() = commands("Arguments") {
 
             printLog("Start command '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'")
 
-            val KORD = TableKORDPerson(guild, user)
-            val findKORD = mainMapData[guild]?.getKORD()?.find { it.KORD_id == KORD.KORD_id }
+            val curGuild = getGuild(guild)
+
+            var KORD = TableKORDPerson(guild, user)
+            var findKORD = mainMapData[guild]?.getKORD()?.find { it.KORD_id == KORD.KORD_id }
+            if (findKORD == null) {
+                findKORD = tableKORDPerson.selectAll().where { TableKORDPerson::guild eq curGuild }.where { TableKORDPerson::KORD_id eq user.id.value.toString() }.getEntity()
+            }
             if (findKORD == null){
                 KORD.save()
             } else {
-                respond("Указанный пользователь(${KORD.id}) уже имеется в базе")
-                return@execute
+                KORD = findKORD
             }
 
-            val LOL = TableLOLPerson(region, summonerName)
-            val findLOL = mainMapData[guild]?.getLOL()?.find { it.LOL_puuid == LOL.LOL_puuid }
+            var LOL = TableLOLPerson(region, summonerName)
+            var findLOL = mainMapData[guild]?.getLOL()?.find { it.LOL_puuid == LOL.LOL_puuid }
+            if (findLOL == null) {
+                findLOL = tableLOLPerson.selectAll().where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntity()
+            }
             if (findLOL == null){
                 LOL.save()
+            } else {
+                LOL = findLOL
             }
 
-            delay(3000)
-
-            val curGuild = getGuild(guild)
-
             val KORDLOL = TableKORD_LOL(
-                KORDperson = tableKORDPerson.selectAll().where { TableKORDPerson::KORD_id eq KORD.KORD_id }.getEntities().firstOrNull(),
-                LOLperson = tableLOLPerson.selectAll().where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntities().firstOrNull(),
+                KORDperson = KORD,
+                LOLperson = LOL,
                 guild = curGuild)
-            val findKORDLOL = tableKORDLOL.selectAll().where { TableKORDPerson::KORD_id eq KORD.KORD_id }.where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntities().firstOrNull()
+            val findKORDLOL = tableKORDLOL.selectAll().where { TableKORDPerson::KORD_id eq KORD.KORD_id }.where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntity()
             if (findKORDLOL == null){
                 KORDLOL.save()
             } else {
@@ -181,6 +185,53 @@ fun arguments() = commands("Arguments") {
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Удаление пользователя ${user.lowDescriptor()} завершено")
                 }
                 "Удаление произошло успешно"
+            }
+            respond(textMessage)
+        }
+    }
+
+    slash("addSavedMMR", "Добавить бонусные MMR пользователю", Permissions(Permission.Administrator)){
+        execute(UserArg("user", "Пользователь Discord"), IntegerArg("savedMMR", "Количество бонусных MMR")){
+            val (user, savedMMR) = args
+            printLog("Start command '$name' from ${author.fullName} with params: 'user=$user' 'savedMMR=$savedMMR'")
+            val dataUser = TableKORD_LOL.getForKORD(user)
+            val textMessage = if (dataUser == null){
+                "Пользователя не существует в базе"
+            } else {
+                asyncLaunch {
+                    dataUser.second.forEach {
+                        it.update(TableKORD_LOL::mmrAramSaved){
+                            mmrAramSaved += savedMMR.toDouble().to2Digits()
+                        }
+                    }
+                }
+                "Сохранение успешно произведено"
+            }
+            respond(textMessage)
+        }
+    }
+
+    slash("removeSavedMMR", "Вычесть бонусные MMR пользователю", Permissions(Permission.Administrator)){
+        execute(UserArg("user", "Пользователь Discord"), IntegerArg("savedMMR", "Количество вычитаемых MMR")){
+            val (user, savedMMR) = args
+            printLog("Start command '$name' from ${author.fullName} with params: 'user=$user' 'savedMMR=$savedMMR'")
+            val dataUser = TableKORD_LOL.getForKORD(user)
+            val textMessage = if (dataUser == null){
+                "Пользователя не существует в базе"
+            } else {
+                asyncLaunch {
+                    dataUser.second.forEach {
+                        it.update(TableKORD_LOL::mmrAramSaved){
+                            val currentMMR = mmrAramSaved
+                            if (currentMMR - savedMMR.toDouble().to2Digits() > 0){
+                                mmrAramSaved -= savedMMR.toDouble().to2Digits()
+                            } else {
+                                mmrAramSaved = 0.0
+                            }
+                        }
+                    }
+                }
+                "Сохранение успешно произведено"
             }
             respond(textMessage)
         }

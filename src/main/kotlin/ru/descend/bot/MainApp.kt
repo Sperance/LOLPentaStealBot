@@ -73,7 +73,6 @@ fun main() {
                     return@forEach
 
                 timerRequestReset((2).minutes)
-//                timerMastery(it, (60).minutes)
                 timerMainInformation(it, (5).minutes)
             }
         }
@@ -123,48 +122,11 @@ suspend fun removeMessage(guild: Guild, guildSQL: TableGuild) {
     }
 }
 
-lateinit var globalChampionsDTO: ChampionsDTO
 var globalLOLRequests = 0
 var statusLOLRequests = 0
 
 var isWorkMainThread = HashMap<Guild, Boolean>()
 var mainMapData = HashMap<Guild, SQLData>()
-
-fun timerMastery(guild: Guild, duration: Duration) = launch {
-    while (true) {
-
-        delay(duration)
-
-        val sqlData = mainMapData[guild]!!
-        var isStarted = true
-
-        if (isWorkMainThread[sqlData.guild]!! == false) {
-            printLog(sqlData.guild, "[MainApp] isWorkMainThread false")
-            isStarted = false
-        }
-
-        if (isStarted){
-            val mapUses = HashMap<TableKORD_LOL, ChampionMasteryDto>()
-            sqlData.getKORDLOL().forEach {
-                if (it.LOLperson == null) return@forEach
-                if (it.LOLperson?.LOL_puuid == "") return@forEach
-                LeagueMainObject.catchChampionMastery(sqlData.guildSQL, it.LOLperson!!.LOL_puuid)?.let { mastery ->
-                    mapUses[it] = mastery
-                }
-            }
-            val channelText = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
-            //Таблица по очкам чемпионам
-            launch {
-                editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteryData, {
-                    editMessageMasteryContent(it, mapUses, sqlData.guild)
-                }) {
-                    createMessageMastery(channelText, mapUses, sqlData.guildSQL)
-                }
-                mapUses.clear()
-            }
-        }
-    }
-}
 
 suspend fun showLeagueHistory(guild: Guild) {
 
@@ -182,7 +144,6 @@ suspend fun showLeagueHistory(guild: Guild) {
 
     val kordlol = sqlData.getKORDLOL()
     val savedParts = sqlData.getSavedParticipants()
-    var isNewMatch = false
 
     val tableMMR = sqlData.getMMR()
     val currentUsers = ArrayList<String?>()
@@ -209,7 +170,6 @@ suspend fun showLeagueHistory(guild: Guild) {
                             currentUsers.remove(part.puuid)
                         }
                     }
-                    isNewMatch = true
                     sqlData.addMatch(match, kordlol, tableMMR)
                 }
             }
@@ -224,20 +184,18 @@ suspend fun showLeagueHistory(guild: Guild) {
         createMessageMainData(channelText, sqlData, kordlol)
     }
 
-    if (isNewMatch) {
-        val winStreakMap = catchWinStreak(sqlData, kordlol)
-        //Таблица Пентакиллов
-        editMessageGlobal(channelText, sqlData.guildSQL.messageIdPentaData, {
-            editMessagePentaDataContent(it, sqlData, kordlol, savedParts)
-        }) {
-            createMessagePentaData(channelText, sqlData, kordlol, savedParts)
-        }
-        //Таблица по играм\винрейту\сериям убийств
-        editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
-            editMessageGlobalStatisticContent(it, sqlData, winStreakMap, kordlol, savedParts)
-        }) {
-            createMessageGlobalStatistic(channelText, sqlData, winStreakMap, kordlol, savedParts)
-        }
+    val winStreakMap = catchWinStreak(sqlData, kordlol)
+    //Таблица Пентакиллов
+    editMessageGlobal(channelText, sqlData.guildSQL.messageIdPentaData, {
+        editMessagePentaDataContent(it, sqlData, kordlol, savedParts)
+    }) {
+        createMessagePentaData(channelText, sqlData, kordlol, savedParts)
+    }
+    //Таблица по играм\винрейту\сериям убийств
+    editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
+        editMessageGlobalStatisticContent(it, sqlData, winStreakMap, kordlol, savedParts)
+    }) {
+        createMessageGlobalStatistic(channelText, sqlData, winStreakMap, kordlol, savedParts)
     }
 
     //Общая статистика по серверу
@@ -308,40 +266,6 @@ suspend fun createMessageSimple(channelText: TextChannel, sqlData: SQLData) {
     sqlData.guildSQL.update (TableGuild::messageId) { messageId = message.id.value.toString() }
 }
 
-suspend fun createMessageMastery(channelText: TextChannel, map: HashMap<TableKORD_LOL, ChampionMasteryDto>, file: TableGuild) {
-    val message = channelText.createMessage("Initial Message Mastery")
-    channelText.getMessage(message.id).edit { editMessageMasteryContent(this, map, message.getGuild()) }
-    file.update (TableGuild::messageIdMasteryData) { messageIdMasteryData = message.id.value.toString() }
-}
-
-fun editMessageMasteryContent(builder: UserMessageModifyBuilder, map: HashMap<TableKORD_LOL, ChampionMasteryDto>, guild: Guild) {
-
-    val sortedMap = map.toSortedMap { p0, p1 -> p0.id.compareTo(p1.id) }
-
-    val list1 = sortedMap.map { obj -> formatInt(obj.key.id, 2) + "|" + obj.key.asUser(guild).lowDescriptor() }
-    val listHeroes = sortedMap.map { formatInt(it.key.id, 2) + "| " + LeagueMainObject.findHeroForKey(it.value.getOrNull(0)?.championId.toString()).toMaxSymbols(8) + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(1)?.championId.toString()).toMaxSymbols(8) + " / " + LeagueMainObject.findHeroForKey(it.value.getOrNull(2)?.championId.toString()).toMaxSymbols(8) }
-    val listPoints = sortedMap.map { formatInt(it.key.id, 2) + "| " + it.value.getOrNull(0)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(1)?.championPoints?.toFormatK() + " / " + it.value.getOrNull(2)?.championPoints?.toFormatK() }
-
-    builder.content = "Статистика по Чемпионам\nОбновлено: ${TimeStamp.now()}\n"
-    builder.embed {
-        field {
-            name = "User"
-            value = list1.joinToString(separator = "\n")
-            inline = true
-        }
-        field {
-            name = "Heroes"
-            value = listHeroes.joinToString(separator = "\n")
-            inline = true
-        }
-        field {
-            name = "Points"
-            value = listPoints.joinToString(separator = "\n")
-            inline = true
-        }
-    }
-}
-
 fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder) {
     builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
             "Игр на сервере: ${tableMatch.count { TableMatch::guild eq sqlData.guildSQL }}\n" +
@@ -349,6 +273,8 @@ fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder
             "Игроков в базе: ${tableLOLPerson.size}\n" +
             "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
             "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
+
+    printLog(sqlData.guild, "[editMessageSimpleContent] completed")
 }
 
 fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData, mapWins: HashMap<TableKORD_LOL, Int>, kordLol: List<TableKORD_LOL>, savedParts: List<TableParticipant>) {
@@ -420,7 +346,7 @@ fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, sqlData: SQLD
             dataList.add(
                 DataBasic(
                     user = currentPart,
-                    text = "Пентакилл$addedText за '${LeagueMainObject.findHeroForKey(part.championId.toString())}'",
+                    text = "Пентакилл$addedText за '${LeagueMainObject.findHeroForKey(part.championId.toString()).toMaxSymbols(10, "..")}'",
                     date = part.match!!.matchDate,
                     match = part.match!!
                 )
@@ -464,8 +390,8 @@ fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLDa
     val charStr = " / "
 
     val list1 = dataList.map { it.id.toString() + charStr + it.asUser(sqlData.guild).lowDescriptor() }
-    val list2 = dataList.map { it.id.toString() + "|" + it.LOLperson?.LOL_summonerName + charStr + EnumMMRRank.getMMRRank(it.mmrAram).nameRank }
-//    val list3 = dataList.map { formatInt(it.user?.id ?: -1, 2) + "| " + it.date.toFormatDate() }
+    val list2 = dataList.map { it.id.toString() + "| " + it.LOLperson?.LOL_summonerName.toMaxSymbols(10, "..") + "#" + it.LOLperson?.LOL_riotIdTagline }
+    val list3 = dataList.map { it.id.toString() + "| " + it.mmrAram + charStr + EnumMMRRank.getMMRRank(it.mmrAram).nameRank + charStr + it.mmrAramSaved }
 
     builder.content = "Статистика Главная\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
@@ -475,15 +401,15 @@ fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLDa
             inline = true
         }
         field {
-            name = "Никнейм/ММР"
+            name = "Никнейм"
             value = list2.joinToString(separator = "\n")
             inline = true
         }
-//        field {
-//            name = "Дата"
-//            value = list3.joinToString(separator = "\n")
-//            inline = true
-//        }
+        field {
+            name = "MMR/Ранг/Бонусных MMR"
+            value = list3.joinToString(separator = "\n")
+            inline = true
+        }
     }
 
     printLog(sqlData.guild, "[editMessageMainDataContent] completed")

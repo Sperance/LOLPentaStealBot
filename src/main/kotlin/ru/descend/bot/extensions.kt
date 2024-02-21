@@ -42,6 +42,7 @@ suspend fun Guild?.sendMessage(messageId: String, message: String, afterLaunchBo
     if (this == null) return
     if (messageId.isEmpty()) return
     if (message.isEmpty()) return
+    printLog(this, "[Message::$messageId] $message")
     launch {
         try {
             val channelText = getChannelOf<TextChannel>(Snowflake(messageId))
@@ -140,10 +141,10 @@ fun formatInt(value: Int, items: Int) : String {
     return str
 }
 
-fun String?.toMaxSymbols(symbols: Int) : String {
+fun String?.toMaxSymbols(symbols: Int, addIfCatched: String = "") : String {
     if (this == null) return ""
     if (this.length <= symbols) return this
-    return this.substring(0, symbols)
+    return this.substring(0, symbols) + addIfCatched
 }
 
 fun User.toStringUID() = id.value.toString()

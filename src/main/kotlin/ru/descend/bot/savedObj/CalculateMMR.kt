@@ -1,5 +1,6 @@
 package ru.descend.bot.savedObj
 
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableMmr
@@ -7,6 +8,7 @@ import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.printLog
 import ru.descend.bot.to2Digits
 import update
+import kotlin.math.abs
 import kotlin.reflect.KMutableProperty1
 
 private const val modRank = 70.0
@@ -62,7 +64,7 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     private var mmrModificator = 1.0
     private var countFields = 0.0
 
-    private var baseModificator = 1.3 //30%
+    private var baseModificator = 1.2 //30%
 
     init {
         if (mmrTable != null) {
@@ -72,16 +74,35 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
                 mmrModificator = 1.0
             }
 
+            var isWarriorTank = false
+            var isMageSupport = false
+            LeagueMainObject.catchHeroForId(participant.championId.toString())?.let {
+                if (it.tags.contains("Fighter") || it.tags.contains("Tank")) isWarriorTank = true
+                if (it.tags.contains("Mage") || it.tags.contains("Support")) isMageSupport = true
+            }
+
+            mmrText += ";isWarriorTank=$isWarriorTank"
+            mmrText += ";isMageSupport=$isMageSupport"
+
             countFields = 0.0
             calculateField(TableParticipant::minionsKills, TableMmr::minions)
             calculateField(TableParticipant::skillsCast, TableMmr::skills)
-            calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded)
-            calculateField(TableParticipant::totalHealsOnTeammates, TableMmr::healed)
-            calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding)
+
+            if (isMageSupport) {
+                calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded)
+                calculateField(TableParticipant::totalHealsOnTeammates, TableMmr::healed)
+            }
+
+//          calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding)
             calculateField(TableParticipant::timeCCingOthers, TableMmr::controlEnemy)
-            calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
-//            calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz)
-//            calculateField(TableParticipant::damageTakenOnTeamPercentage, TableMmr::dmgTakenPerc)
+
+            if (isWarriorTank) {
+                calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz)
+                calculateField(TableParticipant::damageTakenOnTeamPercentage, TableMmr::dmgTakenPerc)
+            } else {
+                calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
+            }
+
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
             calculateField(TableParticipant::kda, TableMmr::kda)
 
@@ -97,20 +118,49 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
         if (match.surrender) return
         if (match.bots) return
 
+        val currentOldRank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
+
+        val partMMR: Double
+        var newSavedMMR = kordlol.mmrAramSaved.to2Digits()
+        val newAramValue: Double
         if (participant.win) {
-            kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramLast){
-                printLog("[CalculateMMR] WIN updated mmr for user KORD_LOL ${this.id} old MMR: $mmrAram adding MMR: $mmrValue")
-                mmrAram = (mmrAram + mmrValue).to2Digits()
-                mmrAramLast = mmrValue
-            }
+            newAramValue = (kordlol.mmrAram + mmrValue).to2Digits()
+            partMMR = mmrValue.to2Digits()
         } else {
-            val minusMMR = (if (mmrValue < countFields) (countFields - mmrValue) * 2.0 else 1.0).to2Digits()
-            kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramLast){
-                printLog("[CalculateMMR] LOOSE updated mmr for user KORD_LOL ${this.id} old MMR: $mmrAram removed MMR: $minusMMR")
-                mmrAram = if (mmrAram - minusMMR < 0.0) 0.0
-                else (mmrAram - minusMMR).to2Digits()
-                mmrAramLast = -minusMMR
+            var minusMMR = (if (mmrValue < countFields) (countFields - mmrValue) * 2.0
+            else 1.0).to2Digits()
+            partMMR = -minusMMR.to2Digits()
+
+            if (newSavedMMR > 0.0) {
+                newSavedMMR -= minusMMR
             }
+            if (newSavedMMR < 0.0) {
+                minusMMR -= abs(newSavedMMR)
+                if (minusMMR < 0.0) minusMMR = 0.0
+                newSavedMMR = 0.0
+            }
+
+            newAramValue = (if (kordlol.mmrAram - minusMMR < 0.0) 0.0
+            else kordlol.mmrAram - minusMMR).to2Digits()
+        }
+
+        kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramMaxRank, TableKORD_LOL::mmrAramSaved){
+            mmrAram = newAramValue
+            mmrAramSaved = newSavedMMR.to2Digits()
+
+            val currentNewRank = EnumMMRRank.getMMRRank(newAramValue)
+            mmrAramMaxRank = if (currentOldRank.minMMR < currentNewRank.minMMR){
+                val maxRank = EnumMMRRank.entries.find { it.nameRank == mmrAramMaxRank }
+                if (maxRank == null) currentNewRank.nameRank
+                else currentNewRank.nameRank
+            } else if (mmrAramMaxRank.isBlank()) {
+                currentNewRank.nameRank
+            } else {
+                mmrAramMaxRank
+            }
+        }
+        participant.update(TableParticipant::mmr){
+            mmr = partMMR
         }
     }
 
@@ -165,6 +215,6 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     }
 
     override fun toString(): String {
-        return "CalculateMMR(mmrValue=$mmrValue, mmrValueStock=$mmrValueStock, mmrText='$mmrText', mmrModificator=$mmrModificator, baseModificator=$baseModificator)"
+        return "CalculateMMR(mmrValue=$mmrValue, mmrValueStock=$mmrValueStock, mmrText='$mmrText', mmrModificator=$mmrModificator, baseModificator=$baseModificator, countFields=$countFields)"
     }
 }

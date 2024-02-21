@@ -45,6 +45,7 @@ data class TableParticipant(
     var damagePerMinute: Double = 0.0,
     var killParticipation: Double = 0.0,
     var kda: Double = 0.0,
+    var mmr: Double = 0.0,
     var minionsKills: Int = 0,
     var baronKills: Int = 0,
     var dragonKills: Int = 0,

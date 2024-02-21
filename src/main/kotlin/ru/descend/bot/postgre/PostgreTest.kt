@@ -5,6 +5,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import ru.descend.bot.catchToken
+import ru.descend.bot.lolapi.LeagueApi
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.mail.GMailSender
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.TableMatch
@@ -55,6 +58,24 @@ class PostgreTest {
     }
 
     @Test
+    fun testsss() {
+        val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
+        val dragonService = leagueApi.dragonService
+
+        val versions = dragonService.getVersions().execute().body()!!
+        val champions = dragonService.getChampions(versions.first(), "ru_RU").execute().body()!!
+
+        val namesAllHero = ArrayList<String>()
+        champions.data::class.java.declaredFields.forEach {
+            it.isAccessible = true
+            val curData = it.get(champions.data)
+            val nameField = curData::class.java.getDeclaredField("name")
+            nameField.isAccessible = true
+            namesAllHero.add(nameField.get(curData).toString())
+        }
+    }
+
+    @Test
     fun checkMatchContains() {
         EnumMMRRank.entries.forEach {
             printLog("${it.nameRank} - ${it.minMMR}")
@@ -92,30 +113,6 @@ class PostgreTest {
                 guildUid = "1141730148194996295"
             }
         }
-    }
-
-    @Test
-    fun test_coroutines() = runBlocking {
-        println("0")
-        launch(Dispatchers.IO) {
-            while (true) {
-                printLog("1")
-                delay((1).seconds)
-            }
-        }
-        launch(Dispatchers.IO) {
-            while (true) {
-                printLog("3")
-                delay((3).seconds)
-            }
-        }
-        launch(Dispatchers.IO) {
-            while (true) {
-                printLog("5")
-                delay((5).seconds)
-            }
-        }
-        printLog("1")
     }
 
     @Test

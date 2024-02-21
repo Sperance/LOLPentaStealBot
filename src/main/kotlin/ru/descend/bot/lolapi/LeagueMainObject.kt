@@ -2,9 +2,7 @@ package ru.descend.bot.lolapi
 
 import kotlinx.coroutines.delay
 import ru.descend.bot.catchToken
-import ru.descend.bot.globalChampionsDTO
 import ru.descend.bot.globalLOLRequests
-import ru.descend.bot.launch
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.lolapi.leaguedata.currentGameInfo.CurrentGameInfo
@@ -12,9 +10,6 @@ import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
-import java.net.SocketTimeoutException
-import java.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -28,6 +23,13 @@ object LeagueMainObject {
 
     var LOL_VERSION = ""
     var LOL_HEROES = 0
+
+    fun catchHeroForId(id: String) : InterfaceChampionBase? {
+        heroObjects.forEach {
+            if (it is InterfaceChampionBase && it.key == id) return it
+        }
+        return null
+    }
 
     fun catchHeroNames(): ArrayList<String> {
 
@@ -47,7 +49,6 @@ object LeagueMainObject {
 
         LOL_VERSION = champions.version
         LOL_HEROES = namesAllHero.size
-        globalChampionsDTO = champions
 
         printLog("Version Data: ${champions.version} Heroes: ${namesAllHero.size}")
 

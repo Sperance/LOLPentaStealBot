@@ -30,16 +30,6 @@ data class TableLOLPerson(
             this.LOL_region = region
         }
     }
-
-    fun isBot() : Boolean {
-        if (LOL_puuid == "BOT" || LOL_puuid.length < 5){
-            return true
-        }
-        if (LOL_summonerId == "BOT" || LOL_summonerId.length < 5){
-            return true
-        }
-        return false
-    }
 }
 
 val tableLOLPerson = table<TableLOLPerson, Database> {

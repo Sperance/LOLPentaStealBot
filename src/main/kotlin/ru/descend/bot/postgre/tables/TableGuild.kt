@@ -24,6 +24,7 @@ import save
 import statements.select
 import statements.selectAll
 import table
+import update
 
 data class TableGuild (
     override var id: Int = 0,
@@ -90,7 +91,6 @@ data class TableGuild (
                 bots = isBots,
                 surrender = isSurrender
             ).save()!!
-            delay(100)
         }
 
         if (pMatch.id % 1000 == 0){
@@ -108,13 +108,21 @@ data class TableGuild (
         match.info.participants.forEach {part ->
             var curLOL = tableLOLPerson.first { TableLOLPerson::LOL_puuid eq part.puuid }
 
-            if (!isBots && curLOL != null) {
-                if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
-                    tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let {
+            if (kordLol != null && tableMMR != null && curLOL != null && !isBots && !isSurrender){
+                tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let {
+                    if (part.pentaKills > 0 || (part.quadraKills - part.pentaKills) > 0) {
                         asyncLaunch {
-                            val currentTeam = part.teamId
-                            val textPentas = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                            guild.sendMessage(messageIdStatus, "Поздравляем!!!\n${it.asUser(guild).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != currentTeam }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
+
+                            if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
+                                val textPentas = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
+                                guild.sendMessage(messageIdStatus, "Поздравляем!!!\n${it.asUser(guild).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
+                            }
+
+                            val addedMMR = (part.pentaKills * 5) + ((part.quadraKills - part.pentaKills) * 2).toDouble().to2Digits()
+                            it.update(TableKORD_LOL::mmrAramSaved){
+                                mmrAramSaved += addedMMR
+                            }
+                            printLog(guild, "added saving MMR: $addedMMR Pentas: ${part.pentaKills} Quadras: ${part.quadraKills - part.pentaKills}")
                         }
                     }
                 }
@@ -127,19 +135,24 @@ data class TableGuild (
                     LOL_summonerId = part.summonerId,
                     LOL_summonerName = part.summonerName,
                     LOL_riotIdName = part.riotIdName,
-                    LOL_riotIdTagline = part.riotIdTagline)
+                    LOL_riotIdTagline = part.riotIdTagline).save()
             }
 
             //Вдруг что изменится в профиле игрока
-            if (curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId) {
-                curLOL.LOL_summonerName = part.summonerName
-                curLOL.LOL_summonerId = part.summonerId
-                curLOL.LOL_riotIdTagline = part.riotIdTagline
+            if (curLOL != null) {
+                if (curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId) {
+                    printLog(guild, "[addMatch::update] LOL_summonerName: old ${curLOL.LOL_summonerName} new ${part.summonerName}" +
+                            " LOL_riotIdTagline: old ${curLOL.LOL_riotIdTagline} new ${part.riotIdTagline}" +
+                            " LOL_summonerId: old ${curLOL.LOL_summonerId} new ${part.summonerId}")
+                    curLOL.update(TableLOLPerson::LOL_summonerName, TableLOLPerson::LOL_riotIdTagline, TableLOLPerson::LOL_summonerId){
+                        LOL_summonerName = part.summonerName
+                        LOL_summonerId = part.summonerId
+                        LOL_riotIdTagline = part.riotIdTagline
+                    }
+                }
             }
-            curLOL.save()
-            delay(100)
 
-            TableParticipant(part, pMatch, curLOL).save()
+            TableParticipant(part, pMatch, curLOL!!).save()
         }
         if (kordLol != null && tableMMR != null) {
             calculateMMR(guild, pMatch, isSurrender, isBots, kordLol, tableMMR)
@@ -153,8 +166,7 @@ data class TableGuild (
             asyncLaunch {
                 delay(1000)
                 val myParts = tableParticipant.selectAll().where { TableParticipant::match eq pMatch.id }.where { TableParticipant::LOLperson.inList(kordLol.map { it.LOLperson?.id }) }.getEntities()
-//                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} mmr: ${it.getMMR_v2(tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win}\n" }
-                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(it, pMatch, kordLol, tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win}\n" }
+                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(it, pMatch, kordLol, tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win} penta: ${it.kills5} quadra: ${it.kills4}\n" }
                 guild.sendMessage(messageIdDebug,
                     "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                             "${pMatch.matchDate.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
