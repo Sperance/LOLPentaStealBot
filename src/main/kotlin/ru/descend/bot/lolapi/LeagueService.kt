@@ -1,11 +1,10 @@
 package ru.descend.bot.lolapi
 
-import kotlinx.coroutines.Deferred
 import retrofit2.Call
-import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import ru.descend.bot.lolapi.leaguedata.MatchTimelineDTO
 import ru.descend.bot.lolapi.leaguedata.SummonerDTO
 import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.lolapi.leaguedata.currentGameInfo.CurrentGameInfo
@@ -21,6 +20,9 @@ interface LeagueService {
 
     @GET("https://europe.api.riotgames.com/lol/match/v5/matches/{matchId}")
     fun getMatchInfo(@Path("matchId") matchId: String) : Call<MatchDTO>
+
+    @GET("https://europe.api.riotgames.com/lol/match/v5/matches/{matchId}/timeline")
+    fun getMatchTimeline(@Path("matchId") matchId: String) : Call<MatchTimelineDTO>
 
     @GET("/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top")
     fun getChampionMastery(@Path("puuid") puuid: String) : Call<ChampionMasteryDto>

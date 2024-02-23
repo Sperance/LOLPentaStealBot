@@ -64,7 +64,7 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     private var mmrModificator = 1.0
     private var countFields = 0.0
 
-    private var baseModificator = 1.2 //30%
+    private var baseModificator = 1.2 //20%
 
     init {
         if (mmrTable != null) {
@@ -74,14 +74,14 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
                 mmrModificator = 1.0
             }
 
-            var isWarriorTank = false
+            var isFighterTank = false
             var isMageSupport = false
             LeagueMainObject.catchHeroForId(participant.championId.toString())?.let {
-                if (it.tags.contains("Fighter") || it.tags.contains("Tank")) isWarriorTank = true
+                if (it.tags.contains("Fighter") || it.tags.contains("Tank")) isFighterTank = true
                 if (it.tags.contains("Mage") || it.tags.contains("Support")) isMageSupport = true
             }
 
-            mmrText += ";isWarriorTank=$isWarriorTank"
+            mmrText += ";isWarriorTank=$isFighterTank"
             mmrText += ";isMageSupport=$isMageSupport"
 
             countFields = 0.0
@@ -89,19 +89,19 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
             calculateField(TableParticipant::skillsCast, TableMmr::skills)
 
             if (isMageSupport) {
-                calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded)
-                calculateField(TableParticipant::totalHealsOnTeammates, TableMmr::healed)
+                calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded, 100.0)
+                calculateField(TableParticipant::totalHealsOnTeammates, TableMmr::healed, 100.0)
             }
 
 //          calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding)
             calculateField(TableParticipant::timeCCingOthers, TableMmr::controlEnemy)
 
-            if (isWarriorTank) {
+            if (!isMageSupport && isFighterTank) {
                 calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz)
                 calculateField(TableParticipant::damageTakenOnTeamPercentage, TableMmr::dmgTakenPerc)
-            } else {
-                calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
             }
+//            calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
+
 
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
             calculateField(TableParticipant::kda, TableMmr::kda)
@@ -118,53 +118,109 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
         if (match.surrender) return
         if (match.bots) return
 
-        val currentOldRank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
-
         val partMMR: Double
-        var newSavedMMR = kordlol.mmrAramSaved.to2Digits()
+        var newSavedMMR = calcAddSavedMMR(kordlol)
+
         val newAramValue: Double
         if (participant.win) {
-            newAramValue = (kordlol.mmrAram + mmrValue).to2Digits()
+            newAramValue = calcAddingMMR(kordlol)
             partMMR = mmrValue.to2Digits()
         } else {
-            var minusMMR = (if (mmrValue < countFields) (countFields - mmrValue) * 2.0
-            else 1.0).to2Digits()
+            var minusMMR = calcRemoveMMR()
             partMMR = -minusMMR.to2Digits()
 
-            if (newSavedMMR > 0.0) {
-                newSavedMMR -= minusMMR
-            }
-            if (newSavedMMR < 0.0) {
-                minusMMR -= abs(newSavedMMR)
-                if (minusMMR < 0.0) minusMMR = 0.0
-                newSavedMMR = 0.0
-            }
+            val resultMin = calcRemSavedMMR(newSavedMMR, minusMMR)
+            newSavedMMR = resultMin.first
+            minusMMR = resultMin.second
 
             newAramValue = (if (kordlol.mmrAram - minusMMR < 0.0) 0.0
             else kordlol.mmrAram - minusMMR).to2Digits()
         }
 
-        kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramMaxRank, TableKORD_LOL::mmrAramSaved){
-            mmrAram = newAramValue
+        kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramSaved){
+            mmrAram = newAramValue.to2Digits()
             mmrAramSaved = newSavedMMR.to2Digits()
-
-            val currentNewRank = EnumMMRRank.getMMRRank(newAramValue)
-            mmrAramMaxRank = if (currentOldRank.minMMR < currentNewRank.minMMR){
-                val maxRank = EnumMMRRank.entries.find { it.nameRank == mmrAramMaxRank }
-                if (maxRank == null) currentNewRank.nameRank
-                else currentNewRank.nameRank
-            } else if (mmrAramMaxRank.isBlank()) {
-                currentNewRank.nameRank
-            } else {
-                mmrAramMaxRank
-            }
         }
         participant.update(TableParticipant::mmr){
-            mmr = partMMR
+            mmr = partMMR.to2Digits()
         }
     }
 
-    private fun calculateField(propertyParticipant: KMutableProperty1<TableParticipant, *>, propertyMmr: KMutableProperty1<TableMmr, *>) {
+    /**
+     * Подсчет ММР которое даётся игроку (при победе)
+     */
+    private fun calcAddingMMR(kordlol: TableKORD_LOL) : Double {
+        //Текущее значение ММР + новое значение ММР
+        val value = kordlol.mmrAram + mmrValue
+        return value.to2Digits()
+    }
+
+    /**
+     * Подсчет ММР которое вычитается из игрока (при поражении)
+     */
+    private fun calcRemoveMMR() : Double {
+        var value: Double
+
+        value = if (mmrValue < countFields) {
+            //кол-во всех полей минус текущий ММР (сколько нехватило до Нормы)
+            (countFields - mmrValue) * 2.0
+        } else {
+            //иначе если катали лучше Нормы - снимаем жалкую единичку
+            1.0
+        }
+
+        //если снимаем больше чем полей*2 - это много, органичиваем общим числом полей
+        if (value > countFields)
+            value = countFields
+
+        return value.to2Digits()
+    }
+
+    /**
+     * Подсчет увеличения бонусных ММР
+     */
+    private fun calcAddSavedMMR(kordlol: TableKORD_LOL) : Double {
+        val value: Double
+
+        //текущее значение бонусных ММР
+        val newSavedMMR = kordlol.mmrAramSaved.to2Digits()
+
+        //лимит получаемых бонусных ММР за матч
+        val limitMMR = 8.0
+
+        //подсчет добавочных бонусных ММР
+        var addSavedMMR = 0.0
+        if (participant.kills5 > 0) addSavedMMR = participant.kills5 * 5.0          //за каждую пенту 5 очков
+        else if (participant.kills4 > 0) addSavedMMR = participant.kills4 * 2.0     //за каждую квадру 2 очка
+        if (addSavedMMR > limitMMR) addSavedMMR = limitMMR
+        addSavedMMR = addSavedMMR.to2Digits()
+
+        value = newSavedMMR + addSavedMMR
+
+        return value.to2Digits()
+    }
+
+    /**
+     * Вычитаем ММР из бонусных
+     */
+    private fun calcRemSavedMMR(_newSavedMMR: Double, _minusMMR: Double) : Pair<Double, Double> {
+
+        var newSavedMMR = _newSavedMMR
+        var minusMMR = _minusMMR
+
+        if (newSavedMMR > 0.0) {
+            newSavedMMR -= minusMMR                     //вычитаем ММР из общего числа бонусных ММР
+        }
+        if (newSavedMMR < 0.0) {                        //если вычитаем Больше чем есть в бонусных ММР - вычитаем остатки из minusMMR
+            minusMMR -= abs(newSavedMMR)
+            if (minusMMR < 0.0) minusMMR = 0.0          //сохранить или вычесть меньше 0 ММР нельзя
+            newSavedMMR = 0.0
+        }
+
+        return Pair(newSavedMMR, minusMMR)
+    }
+
+    private fun calculateField(propertyParticipant: KMutableProperty1<TableParticipant, *>, propertyMmr: KMutableProperty1<TableMmr, *>, limitValue: Double? = null) {
         if (mmrTable == null) return
 
         countFields++
@@ -180,6 +236,8 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
             }
         }.to2Digits()
 
+        if (limitValue != null && valuePropertyParticipant < limitValue) return
+
         val localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to2Digits()
         mmrValue += localMMR
         mmrValue = mmrValue.to2Digits()
@@ -188,8 +246,7 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
         mmrValueStock += localMMRStock
         mmrValueStock = mmrValueStock.to2Digits()
 
-        if (localMMR > 0.0)
-            mmrText += ";${propertyMmr.name}:$valuePropertyParticipant(${(valuePropertyMmr * mmrModificator).to2Digits()})=$localMMR"
+        mmrText += ";${propertyMmr.name}:$valuePropertyParticipant(${(valuePropertyMmr * mmrModificator).to2Digits()})=$localMMR"
     }
 
     private fun Double.fromDoubleValue(stock: Double): Double {

@@ -16,7 +16,6 @@ data class TableKORD_LOL(
     override var id: Int = 0,
     var mmrAram: Double = 0.0,
     var mmrAramSaved: Double = 0.0,
-    var mmrAramMaxRank: String = "",
 
     var KORDperson: TableKORDPerson? = null,
     var LOLperson: TableLOLPerson? = null,

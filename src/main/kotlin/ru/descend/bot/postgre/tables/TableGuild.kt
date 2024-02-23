@@ -42,7 +42,8 @@ data class TableGuild (
     var messageIdPentaData: String = "",
     var messageIdGlobalStatisticData: String = "",
     var messageIdMasteryData: String = "",
-    var messageIdRealTimeData: String = ""
+    var messageIdRealTimeData: String = "",
+    var messageIdArammmr: String = ""
 ): Entity() {
 
     val matches: List<TableMatch> by oneToMany(TableMatch::guild)
@@ -109,20 +110,13 @@ data class TableGuild (
             var curLOL = tableLOLPerson.first { TableLOLPerson::LOL_puuid eq part.puuid }
 
             if (kordLol != null && tableMMR != null && curLOL != null && !isBots && !isSurrender){
-                tableKORDLOL.first { TableKORD_LOL::LOLperson eq curLOL }?.let {
+                kordLol.find { it.LOLperson?.id == curLOL?.id }?.let {
                     if (part.pentaKills > 0 || (part.quadraKills - part.pentaKills) > 0) {
                         asyncLaunch {
-
                             if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
                                 val textPentas = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
                                 guild.sendMessage(messageIdStatus, "Поздравляем!!!\n${it.asUser(guild).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
                             }
-
-                            val addedMMR = (part.pentaKills * 5) + ((part.quadraKills - part.pentaKills) * 2).toDouble().to2Digits()
-                            it.update(TableKORD_LOL::mmrAramSaved){
-                                mmrAramSaved += addedMMR
-                            }
-                            printLog(guild, "added saving MMR: $addedMMR Pentas: ${part.pentaKills} Quadras: ${part.quadraKills - part.pentaKills}")
                         }
                     }
                 }

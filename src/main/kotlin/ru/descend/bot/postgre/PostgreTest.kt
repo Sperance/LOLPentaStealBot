@@ -17,6 +17,7 @@ import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.EnumMMRRank
 import ru.descend.bot.to2Digits
+import ru.descend.bot.toFormatDateTime
 import statements.selectAll
 import update
 import kotlin.time.Duration.Companion.seconds
@@ -72,6 +73,22 @@ class PostgreTest {
             val nameField = curData::class.java.getDeclaredField("name")
             nameField.isAccessible = true
             namesAllHero.add(nameField.get(curData).toString())
+        }
+    }
+
+    @Test
+    fun testtimeline() {
+        val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
+        val service = leagueApi.leagueService
+
+        val exec = service.getMatchTimeline("RU_479019514").execute()
+        exec.body()?.let {
+            it.info.frames.forEach { frame ->
+                frame.events.forEach { event ->
+                    if (event.killerId != null && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL" || event.killType == "KILL_MULTI"))
+                        printLog("EVENT: killStreakLength:${event.killStreakLength} killerId:${event.killerId} multiKillLength:${event.multiKillLength} killType:${event.killType} type:${event.type} time:${event.timestamp.toFormatDateTime()}")
+                }
+            }
         }
     }
 
