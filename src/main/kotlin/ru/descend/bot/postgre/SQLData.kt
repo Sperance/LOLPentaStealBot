@@ -19,7 +19,19 @@ import statements.select
 import statements.selectAll
 
 class SQLData (val guild: Guild, val guildSQL: TableGuild) {
-    fun getKORDLOL() = tableKORDLOL.getAll { TableKORD_LOL::guild eq guildSQL }
+
+    private val arrayKORDLOL = ArrayList<TableKORD_LOL>()
+    fun getKORDLOL(): ArrayList<TableKORD_LOL> {
+        if (arrayKORDLOL.isEmpty()) {
+            resetKORDLOL()
+        }
+        return arrayKORDLOL
+    }
+    fun resetKORDLOL() {
+        arrayKORDLOL.clear()
+        arrayKORDLOL.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildSQL })
+    }
+
     fun getMMR() = tableMmr.selectAll().getEntities()
     fun getLOL(): ArrayList<TableLOLPerson> {
         val list =  ArrayList<TableLOLPerson>()
@@ -49,25 +61,87 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
         return result
     }
 
+    private val arraySavedParticipants = ArrayList<TableParticipant>()
+    fun resetSavedParticipants() {
+        arraySavedParticipants.clear()
+        arraySavedParticipants.addAll(tableParticipant.selectAll()
+            .where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }
+            .where { TableParticipant::bot eq false }
+            .where { TableMatch::bots eq false }
+            .where { TableMatch::surrender eq false }
+            .getEntities())
+        arraySavedParticipants.sortByDescending { it.match?.matchId }
+    }
     fun getSavedParticipants() : ArrayList<TableParticipant> {
-        val result = ArrayList<TableParticipant>()
-        try {
-            result.addAll(tableParticipant.selectAll()
-                .where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }
-                .where { TableParticipant::bot eq false }
-                .where { TableMatch::bots eq false }
-                .where { TableMatch::surrender eq false }
-                .getEntities())
-            result.sortByDescending { it.match?.matchId }
-        }catch (e: Error) {
-            printLog(guild, "[getSavedParticipants] Error: ${e.localizedMessage}")
+        if (arraySavedParticipants.isEmpty()) {
+            resetSavedParticipants()
         }
-        return result
+        return arraySavedParticipants
     }
 
-    suspend fun addMatch(match: MatchDTO, kordlol: List<TableKORD_LOL>? = null, tableMMR: List<TableMmr>? = null) {
-        guildSQL.addMatch(guild, match, kordlol, tableMMR)
+//    fun getSavedParticipants() : ArrayList<TableParticipant> {
+//        val result = ArrayList<TableParticipant>()
+//        try {
+//            result.addAll(tableParticipant.selectAll()
+//                .where { TableParticipant::LOLperson.inList(getKORDLOL().map { it.LOLperson?.id }) }
+//                .where { TableParticipant::bot eq false }
+//                .where { TableMatch::bots eq false }
+//                .where { TableMatch::surrender eq false }
+//                .getEntities())
+//            result.sortByDescending { it.match?.matchId }
+//        }catch (e: Error) {
+//            printLog(guild, "[getSavedParticipants] Error: ${e.localizedMessage}")
+//        }
+//        return result
+//    }
+
+    suspend fun addMatch(match: MatchDTO, tableMMR: List<TableMmr>? = null) {
+        guildSQL.addMatch(this, match, getKORDLOL(), tableMMR)
     }
+
+    private val mapWinStreak = HashMap<Int, Int>()
+    fun getWinStreak() : HashMap<Int, Int> {
+        if (mapWinStreak.isEmpty()) {
+            resetWinStreak()
+        }
+        return mapWinStreak
+    }
+    fun resetWinStreak() {
+        mapWinStreak.clear()
+        execQuery("SELECT * FROM get_streak_results()"){
+            it?.let {
+                while (it.next()){
+                    val pers = it.getInt("PERS")
+                    val res = it.getInt("RES")
+                    val ZN = it.getString("ZN")
+                    if (ZN == "+") {
+                        mapWinStreak[pers] = res
+                    } else if (ZN == "-") {
+                        mapWinStreak[pers] = -res
+                    }
+                }
+            }
+        }
+    }
+
+//    fun getMatchStreak(): Map<Int, Int> {
+//        val mapResult = HashMap<Int, Int>()
+//        execQuery("SELECT * FROM get_streak_results()"){
+//            it?.let {
+//                while (it.next()){
+//                    val pers = it.getInt("PERS")
+//                    val res = it.getInt("RES")
+//                    val ZN = it.getString("ZN")
+//                    if (ZN == "+") {
+//                        mapResult[pers] = res
+//                    } else if (ZN == "-") {
+//                        mapResult[pers] = -res
+//                    }
+//                }
+//            }
+//        }
+//        return mapResult
+//    }
 
     fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
         tableMatch.select(TableMatch::matchId)
@@ -80,13 +154,13 @@ class SQLData (val guild: Guild, val guildSQL: TableGuild) {
         return list
     }
 
-    fun getKORDLOLfromParticipant(kordlol: List<TableKORD_LOL>, participant: TableParticipant?) : TableKORD_LOL {
+    fun getKORDLOLfromParticipant(participant: TableParticipant?) : TableKORD_LOL {
         if (participant == null) throw IllegalArgumentException("[SQLData::getKORDLOLfromParticipant] participant is null")
         if (participant.LOLperson == null) throw IllegalArgumentException("[SQLData::getKORDLOLfromParticipant] LOLperson is null. Part: $participant")
 
-        val findedValue = kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }
+        val findedValue = getKORDLOL().find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }
         if (findedValue == null) {
-            kordlol.forEach {
+            getKORDLOL().forEach {
                 printLog("[SQLData::getKORDLOLfromParticipant] id KORDLOL: ${it.id} LOLPerson: ${it.LOLperson}")
             }
             throw IllegalArgumentException("[SQLData::getKORDLOLfromParticipant] Not find KORDLOL object from participant. Participant LOLperson: ${participant.LOLperson}")

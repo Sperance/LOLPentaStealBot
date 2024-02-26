@@ -77,6 +77,17 @@ class PostgreTest {
     }
 
     @Test
+    fun test_streak_query() {
+        execQuery("SELECT * FROM get_streak_results()"){
+            it?.let {
+                while (it.next()){
+                    printLog("${it.getInt("PERS")} ${it.getInt("RES")} ${it.getString("ZN")}")
+                }
+            }
+        }
+    }
+
+    @Test
     fun testtimeline() {
         val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
         val service = leagueApi.leagueService
@@ -95,7 +106,7 @@ class PostgreTest {
     @Test
     fun checkMatchContains() {
         EnumMMRRank.entries.forEach {
-            printLog("${it.nameRank} - ${it.minMMR}")
+            printLog("${it.nameRank} - ${it.ordinal} - ${((it.ordinal / 10.0) * 2.0) + 1.0}")
         }
     }
 

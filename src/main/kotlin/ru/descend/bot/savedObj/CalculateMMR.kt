@@ -1,6 +1,7 @@
 package ru.descend.bot.savedObj
 
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.postgre.SQLData
 import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableMmr
@@ -56,21 +57,23 @@ enum class EnumMMRRank(val nameRank: String, val minMMR: Double) {
     }
 }
 
-class CalculateMMR(private val participant: TableParticipant, val match: TableMatch, kordlol: List<TableKORD_LOL>, private val mmrTable: TableMmr?) {
+class CalculateMMR(private val sqlData: SQLData, private val participant: TableParticipant, val match: TableMatch, kordlol: List<TableKORD_LOL>, private val mmrTable: TableMmr?) {
 
     private var mmrValue = 0.0
     private var mmrValueStock = 0.0
     private var mmrText = ""
+    private var mmrExtendedText = ""
     private var mmrModificator = 1.0
     private var countFields = 0.0
 
-    private var baseModificator = 1.2 //20%
+    private var baseModificator = 1.25 //25%
 
     init {
         if (mmrTable != null) {
             mmrModificator = (match.matchDuration.toDouble().fromDoubleValue(mmrTable.matchDuration) / 100.0).to2Digits()
             if (mmrModificator < 0) {
                 printLog("[CalculateMMR] mmrModificator < 0: $mmrModificator. Match: ${match.matchId}. Setting modificator 1.0")
+                mmrExtendedText += ";mmrModificator < 0 ($mmrModificator), setting 1.0"
                 mmrModificator = 1.0
             }
 
@@ -102,9 +105,10 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
             }
 //            calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
 
-
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
             calculateField(TableParticipant::kda, TableMmr::kda)
+
+            if (countFields < 7) countFields++
 
             kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
                 calculateMMRaram(it)
@@ -126,7 +130,7 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
             newAramValue = calcAddingMMR(kordlol)
             partMMR = mmrValue.to2Digits()
         } else {
-            var minusMMR = calcRemoveMMR()
+            var minusMMR = calcRemoveMMR(kordlol)
             partMMR = -minusMMR.to2Digits()
 
             val resultMin = calcRemSavedMMR(newSavedMMR, minusMMR)
@@ -137,6 +141,7 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
             else kordlol.mmrAram - minusMMR).to2Digits()
         }
 
+        newSavedMMR += calcRankAramMMR(kordlol.mmrAram, newAramValue)
         kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramSaved){
             mmrAram = newAramValue.to2Digits()
             mmrAramSaved = newSavedMMR.to2Digits()
@@ -147,18 +152,62 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     }
 
     /**
+     * Изменение бонусных ММР за счёт рангов Арам
+     */
+    private fun calcRankAramMMR(oldMMR: Double, newMMR: Double) : Double {
+        var value = 0.0
+
+        val oldRank = EnumMMRRank.getMMRRank(oldMMR)
+        val newRank = EnumMMRRank.getMMRRank(newMMR)
+
+        if (oldRank.minMMR == newRank.minMMR) return value.to2Digits()
+
+        //Ранг повышен
+        if (oldRank.minMMR < newRank.minMMR) {
+            value += 10.0
+            mmrExtendedText += ";new Rank: ${newRank.nameRank}"
+        }
+
+        //Ранг понижен
+        if (oldRank.minMMR > newRank.minMMR) {
+//            value += 10.0
+            mmrExtendedText += ";removed new Rank: ${oldRank.nameRank}"
+        }
+
+        return value.to2Digits()
+    }
+
+    /**
      * Подсчет ММР которое даётся игроку (при победе)
      */
     private fun calcAddingMMR(kordlol: TableKORD_LOL) : Double {
         //Текущее значение ММР + новое значение ММР
-        val value = kordlol.mmrAram + mmrValue
+        var value = kordlol.mmrAram + mmrValue
+
+        //обработка добавочного ММР за лузстрик
+        val looseStreak = sqlData.getWinStreak()[kordlol.LOLperson?.id]?:0
+        if (looseStreak < 2) {
+            value += abs(looseStreak) * 0.3
+            mmrExtendedText += ";add MMR for looseStreak($looseStreak): ${abs(looseStreak) * 0.3}"
+        }
+
+        //обработка штрафа к получаемому ММР в зависимости от ранга
+        val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
+        val removeMMR = (rank.ordinal / 10.0)
+        mmrExtendedText += ";removed MMR for Rank ${rank.nameRank} removed: $removeMMR"
+        value -= removeMMR
+        if (value <= 0.0) {
+            value = (value + removeMMR) / 2.0
+            mmrExtendedText += ";below zero MMR. Setting in ${(value + removeMMR) / 2.0}"
+        }
+
         return value.to2Digits()
     }
 
     /**
      * Подсчет ММР которое вычитается из игрока (при поражении)
      */
-    private fun calcRemoveMMR() : Double {
+    private fun calcRemoveMMR(kordlol: TableKORD_LOL) : Double {
         var value: Double
 
         value = if (mmrValue < countFields) {
@@ -169,9 +218,19 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
             1.0
         }
 
+        //обработка минимального кол-ва снятия в зависимости от ранга
+        val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
+        val minimumMinus = ((rank.ordinal / 10.0) * 2.0) + 1.0
+        if (value < minimumMinus) {
+            mmrExtendedText += ";remove MMR first: $value low that minimum: $minimumMinus. Setted minimum"
+            value = minimumMinus
+        }
+
         //если снимаем больше чем полей*2 - это много, органичиваем общим числом полей
-        if (value > countFields)
+        if (value > countFields) {
+            mmrExtendedText += ";very strong removed($value). Setted to $countFields"
             value = countFields
+        }
 
         return value.to2Digits()
     }
@@ -186,14 +245,16 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
         val newSavedMMR = kordlol.mmrAramSaved.to2Digits()
 
         //лимит получаемых бонусных ММР за матч
-        val limitMMR = 8.0
+        val limitMMR = 10.0
 
         //подсчет добавочных бонусных ММР
         var addSavedMMR = 0.0
-        if (participant.kills5 > 0) addSavedMMR = participant.kills5 * 5.0          //за каждую пенту 5 очков
-        else if (participant.kills4 > 0) addSavedMMR = participant.kills4 * 2.0     //за каждую квадру 2 очка
-        if (addSavedMMR > limitMMR) addSavedMMR = limitMMR
-        addSavedMMR = addSavedMMR.to2Digits()
+        addSavedMMR += participant.kills5 * 5.0             //за каждую пенту 5 очков
+        addSavedMMR += participant.kills4 * 2.0             //за каждую квадру 2 очка
+        if (addSavedMMR > limitMMR) {
+            mmrExtendedText += ";adding so many mmr: $addSavedMMR Setting to limit $limitMMR"
+            addSavedMMR = limitMMR
+        }
 
         value = newSavedMMR + addSavedMMR
 
@@ -223,7 +284,6 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     private fun calculateField(propertyParticipant: KMutableProperty1<TableParticipant, *>, propertyMmr: KMutableProperty1<TableMmr, *>, limitValue: Double? = null) {
         if (mmrTable == null) return
 
-        countFields++
         val valuePropertyMmr = ((propertyMmr.invoke(mmrTable) as Double) * baseModificator).to2Digits()
         val valuePropertyMmrStock = (propertyMmr.invoke(mmrTable) as Double).to2Digits()
         val valuePropertyParticipant = when (val valuePart = propertyParticipant.invoke(participant)){
@@ -237,6 +297,7 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
         }.to2Digits()
 
         if (limitValue != null && valuePropertyParticipant < limitValue) return
+        countFields++
 
         val localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to2Digits()
         mmrValue += localMMR
@@ -257,12 +318,12 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
         // 40 крипов - по стате 200 норма - это 20% от нормы
         return when ((this / stock) * 100.0) {
             in Double.MIN_VALUE..10.0 -> 0.0
-            in 10.0..20.0 -> 0.2
-            in 20.0..40.0 -> 0.4
-            in 40.0..60.0 -> 0.6
-            in 60.0..80.0 -> 0.8
-            in 80.0..100.0 -> 1.0
-            in 100.0..140.0 -> 1.2
+            in 10.0..30.0 -> 0.2
+            in 30.0..50.0 -> 0.4
+            in 50.0..70.0 -> 0.6
+            in 70.0..90.0 -> 0.8
+            in 90.0..110.0 -> 1.0
+            in 110.0..140.0 -> 1.2
             in 140.0..180.0 -> 1.4
             in 180.0..220.0 -> 1.6
             in 220.0..260.0 -> 1.8
@@ -272,6 +333,6 @@ class CalculateMMR(private val participant: TableParticipant, val match: TableMa
     }
 
     override fun toString(): String {
-        return "CalculateMMR(mmrValue=$mmrValue, mmrValueStock=$mmrValueStock, mmrText='$mmrText', mmrModificator=$mmrModificator, baseModificator=$baseModificator, countFields=$countFields)"
+        return "CalculateMMR(mmrValue=$mmrValue, mmrExtendedText='$mmrExtendedText', mmrText='$mmrText', countFields=$countFields)"
     }
 }
