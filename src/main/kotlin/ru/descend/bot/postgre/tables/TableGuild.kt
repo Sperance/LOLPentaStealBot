@@ -136,9 +136,16 @@ data class TableGuild (
             //Вдруг что изменится в профиле игрока
             if (curLOL != null) {
                 if (curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId) {
-                    printLog(sqlData.guild, "[addMatch::update] LOL_summonerName: old ${curLOL.LOL_summonerName} new ${part.summonerName}" +
+                    val textData = "[addMatch::update] LOL_summonerName: old ${curLOL.LOL_summonerName} new ${part.summonerName}" +
                             " LOL_riotIdTagline: old ${curLOL.LOL_riotIdTagline} new ${part.riotIdTagline}" +
-                            " LOL_summonerId: old ${curLOL.LOL_summonerId} new ${part.summonerId}")
+                            " LOL_summonerId: old ${curLOL.LOL_summonerId} new ${part.summonerId}"
+                    printLog(sqlData.guild, textData)
+
+                    //если чтото меняется у сохраненных пользователей - отсылаем Email
+                    if (kordLol != null && kordLol.find { it.LOLperson?.id == curLOL.id } != null) {
+                        sqlData.guildSQL.sendEmail(textData)
+                    }
+
                     curLOL.update(TableLOLPerson::LOL_summonerName, TableLOLPerson::LOL_riotIdTagline, TableLOLPerson::LOL_summonerId){
                         LOL_summonerName = part.summonerName
                         LOL_summonerId = part.summonerId
@@ -159,9 +166,8 @@ data class TableGuild (
     private fun calculateMMR(sqlData: SQLData, pMatch: TableMatch, isSurrender: Boolean, isBots: Boolean, kordLol: List<TableKORD_LOL>, tableMMR: List<TableMmr>) {
         try {
             asyncLaunch {
-                delay(1000)
                 val myParts = tableParticipant.selectAll().where { TableParticipant::match eq pMatch.id }.where { TableParticipant::LOLperson.inList(kordLol.map { it.LOLperson?.id }) }.getEntities()
-                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(sqlData, it, pMatch, kordLol, tableMMR.find { mmr -> mmr.champion == it.championName })} win: ${it.win} penta: ${it.kills5} quadra: ${it.kills4}\n" }
+                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(sqlData, it, pMatch, kordLol, tableMMR.find { mmr -> mmr.champion == it.championName })}\n" }
                 sqlData.guild.sendMessage(messageIdDebug,
                     "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                             "${pMatch.matchDate.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
@@ -180,7 +186,7 @@ data class TableGuild (
                 "LOLPentaStealBot - $name",
                 message,
                 "llps.sys.bot@gmail.com",
-                "mde@eme.ru,kaltemeis@gmail.com"
+                "kaltemeis@gmail.com"
             )
         }catch (e: Exception) {
             e.printStackTrace()

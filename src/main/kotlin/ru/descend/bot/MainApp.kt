@@ -5,6 +5,7 @@ import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
 import dev.kord.common.entity.PresenceStatus
 import dev.kord.common.entity.Snowflake
+import dev.kord.common.entity.TextInputStyle
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
@@ -32,6 +33,7 @@ import ru.descend.bot.postgre.tables.tableMatch
 import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.savedObj.DataBasic
 import ru.descend.bot.savedObj.EnumMMRRank
+import statements.select
 import statements.selectAll
 import update
 import java.awt.Color
@@ -275,12 +277,12 @@ suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData)
 }
 
 fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder) {
-    builder.content = "Статистика по Серверу: ${TimeStamp.now()}\n" +
-            "Игр на сервере: ${tableMatch.count { TableMatch::guild eq sqlData.guildSQL }}\n" +
-            "Пользователей в базе: ${sqlData.getLOL().size}\n" +
-            "Игроков в базе: ${tableLOLPerson.size}\n" +
-            "Версия игры: ${LeagueMainObject.LOL_VERSION}\n" +
-            "Количество чемпионов: ${LeagueMainObject.LOL_HEROES}"
+    builder.content = "**Статистика по Серверу:** ${TimeStamp.now()}\n" +
+            "**Игр на сервере:** ${tableMatch.count { TableMatch::guild eq sqlData.guildSQL }}\n" +
+            "**Пользователей в базе:** ${sqlData.getLOL().size}\n" +
+            "**Игроков в базе:** ${tableLOLPerson.size}\n" +
+            "**Версия игры:** ${LeagueMainObject.LOL_VERSION}\n" +
+            "**Количество чемпионов:** ${LeagueMainObject.LOL_HEROES}"
 
     printLog(sqlData.guild, "[editMessageSimpleContent] completed")
 }
@@ -314,21 +316,15 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData
     dataList.sortBy { sqlData.getKORDLOLfromParticipant(it.part).id }
     val charStr = " / "
 
-//    val list1 = dataList.map { obj -> formatInt(sqlData.getKORDLOLfromParticipant(kordLol, obj.part).id, 2) + "|" + sqlData.getKORDLOLfromParticipant(kordLol, obj.part).asUser(sqlData.guild).lowDescriptor() + "/" + mapWins[sqlData.getKORDLOLfromParticipant(kordLol, obj.part)] }
     val listGames = dataList.map { formatInt(sqlData.getKORDLOLfromParticipant(it.part).id, 2) + "| " + formatInt(it.statGames, 3) + charStr + formatInt(it.statWins, 3) + charStr + formatInt(((it.statWins.toDouble() / it.statGames.toDouble()) * 100).toInt(), 2) + "%" }
-    val listAllKills = dataList.map {  it.part!!.kills.toFormatK() + charStr + formatInt(it.part!!.kills3, 2) + charStr + formatInt(it.part!!.kills4, 2) + charStr + formatInt(it.part!!.kills5, 2) }
+    val listAllKills = dataList.map {  it.part!!.kills.toFormatK() + charStr + formatInt(it.part!!.kills3, 3) + charStr + formatInt(it.part!!.kills4, 3) + charStr + formatInt(it.part!!.kills5, 2) }
 
     dataList.forEach {
         it.clearData()
     }
 
-    builder.content = "Статистика Общая\nОбновлено: ${TimeStamp.now()}\n"
+    builder.content = "**Статистика Общая**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
-//        field {
-//            name = "User/WinStreak"
-//            value = list1.joinToString(separator = "\n")
-//            inline = true
-//        }
         field {
             name = "Game/Win/WinRate"
             value = listGames.joinToString(separator = "\n")
@@ -368,7 +364,7 @@ fun editMessagePentaDataContent(builder: UserMessageModifyBuilder, sqlData: SQLD
     val list2 = dataList.map { formatInt(it.user?.id ?: -1, 2) + "| " + it.text }
     val list3 = dataList.map { it.date.toFormatDate() }
 
-    builder.content = "Статистика Пентакиллов (топ 20)\nОбновлено: ${TimeStamp.now()}\n"
+    builder.content = "**Статистика Пентакиллов (топ 20)**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
 //        field {
 //            name = "Призыватель"
@@ -401,7 +397,7 @@ fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLDa
     val list2 = dataList.map { it.LOLperson?.LOL_summonerName + "#" + it.LOLperson?.LOL_riotIdTagline }
     val list3 = dataList.map { sqlData.getWinStreak()[it.LOLperson?.id] }
 
-    builder.content = "Статистика Главная\nОбновлено: ${TimeStamp.now()}\n"
+    builder.content = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
         field {
             name = "ID/User"
@@ -425,22 +421,45 @@ fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLDa
 
 fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData) {
 
-    data class kordTemp(var kordLOL: TableKORD_LOL, var lastPart: TableParticipant?)
+    data class kordTemp(var kordLOL: TableKORD_LOL, var lastParts: ArrayList<TableParticipant>, var isBold: Boolean)
+
+    //Последняя игра АРАМ. Нужна чтобы выделить жирным всех игроков учавствующих в этом матче
+    val codeLastAramMatch = tableMatch.selectAll().where { TableMatch::matchMode eq "ARAM" }.orderByDescending(TableMatch::matchId).limit(1).getEntity()
 
     val dataList = ArrayList<kordTemp>()
     sqlData.getKORDLOL().forEach {
-        dataList.add(kordTemp(it,
-            tableParticipant.selectAll().where { TableParticipant::LOLperson eq it.LOLperson }.where { TableMatch::matchMode eq "ARAM" }.orderByDescending(TableParticipant::match).limit(1).getEntity()))
+        val newList = ArrayList<TableParticipant>()
+        newList.addAll(tableParticipant.selectAll().where { TableParticipant::LOLperson eq it.LOLperson?.id }.where { TableMatch::matchMode eq "ARAM" }.where { TableParticipant::mmr neq 0.0 }.orderByDescending(TableParticipant::match).getEntities())
+
+        var isBold = false
+        newList.forEach let@ { part ->
+            if (part.match?.id == codeLastAramMatch?.id) {
+                isBold = true
+                return@let
+            }
+        }
+
+        if (newList.isEmpty()) newList.add(TableParticipant())
+        dataList.add(kordTemp(it,newList, isBold))
     }
 
     dataList.sortBy { it.kordLOL.id }
     val charStr = " / "
 
-    val list1 = dataList.map { formatInt(it.kordLOL.id, 2) + "| " + EnumMMRRank.getMMRRank(it.kordLOL.mmrAram).nameRank }
-    val list2 = dataList.map { it.kordLOL.mmrAram.toString() + charStr + it.kordLOL.mmrAramSaved }
-    val list3 = dataList.map { LeagueMainObject.catchHeroForId(it.lastPart?.championId.toString())?.name + charStr + it.lastPart?.mmr }
+    val list1 = dataList.map {
+        if (it.isBold) "**" + formatInt(it.kordLOL.id, 2) + "| " + EnumMMRRank.getMMRRank(it.kordLOL.mmrAram).nameRank + "**"
+        else formatInt(it.kordLOL.id, 2) + "| " + EnumMMRRank.getMMRRank(it.kordLOL.mmrAram).nameRank
+    }
+    val list2 = dataList.map {
+        if (it.isBold) "**" + it.kordLOL.mmrAram.toString() + charStr + it.kordLOL.mmrAramSaved + charStr + if (it.lastParts.size == 1 && it.lastParts[0].LOLperson == null) 0 else it.lastParts.size.toString() + "**"
+        else it.kordLOL.mmrAram.toString() + charStr + it.kordLOL.mmrAramSaved + charStr + if (it.lastParts.size == 1 && it.lastParts[0].LOLperson == null) 0 else it.lastParts.size
+    }
+    val list3 = dataList.map {
+        if (it.isBold) "**" + LeagueMainObject.catchHeroForId(it.lastParts.first().championId.toString())?.name + charStr + it.lastParts.first().mmr + "**"
+        else LeagueMainObject.catchHeroForId(it.lastParts.first().championId.toString())?.name + charStr + it.lastParts.first().mmr
+    }
 
-    builder.content = "Статистика ММР\nОбновлено: ${TimeStamp.now()}\n"
+    builder.content = "**Статистика ММР**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
         field {
             name = "ARAM Rank"
@@ -448,7 +467,7 @@ fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQ
             inline = true
         }
         field {
-            name = "MMR/Bonus"
+            name = "MMR/Bonus/Games"
             value = list2.joinToString(separator = "\n")
             inline = true
         }

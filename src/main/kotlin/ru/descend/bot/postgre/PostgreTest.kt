@@ -77,17 +77,6 @@ class PostgreTest {
     }
 
     @Test
-    fun test_streak_query() {
-        execQuery("SELECT * FROM get_streak_results()"){
-            it?.let {
-                while (it.next()){
-                    printLog("${it.getInt("PERS")} ${it.getInt("RES")} ${it.getString("ZN")}")
-                }
-            }
-        }
-    }
-
-    @Test
     fun testtimeline() {
         val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
         val service = leagueApi.leagueService
@@ -96,8 +85,8 @@ class PostgreTest {
         exec.body()?.let {
             it.info.frames.forEach { frame ->
                 frame.events.forEach { event ->
-                    if (event.killerId != null && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL" || event.killType == "KILL_MULTI"))
-                        printLog("EVENT: killStreakLength:${event.killStreakLength} killerId:${event.killerId} multiKillLength:${event.multiKillLength} killType:${event.killType} type:${event.type} time:${event.timestamp.toFormatDateTime()}")
+                    if (event.killerId != null && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL"))
+                        printLog("EVENT: killerId:${event.killerId} killStreakLength:${event.killStreakLength} multiKillLength:${event.multiKillLength} type:${event.type} ${event.timestamp.toFormatDateTime()}")
                 }
             }
         }

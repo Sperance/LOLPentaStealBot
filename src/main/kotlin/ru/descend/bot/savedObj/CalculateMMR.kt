@@ -1,13 +1,18 @@
 package ru.descend.bot.savedObj
 
+import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.SQLData
 import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableMmr
 import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.printLog
+import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
+import ru.descend.bot.toDate
+import ru.descend.bot.toFormatDateTime
 import update
 import kotlin.math.abs
 import kotlin.reflect.KMutableProperty1
@@ -15,36 +20,39 @@ import kotlin.reflect.KMutableProperty1
 private const val modRank = 70.0
 private const val modTitle = 100.0
 
-enum class EnumMMRRank(val nameRank: String, val minMMR: Double) {
-    UNRANKED("Нет ранга", 0.0),
-    PAPER_III("Бумага III", UNRANKED.minMMR + modRank),
-    PAPER_II("Бумага II", PAPER_III.minMMR + modRank),
-    PAPER_I("Бумага I", PAPER_II.minMMR + modRank),
-    WOOD_III("Дерево III", PAPER_I.minMMR + modTitle),
-    WOOD_II("Дерево II", WOOD_III.minMMR + modRank),
-    WOOD_I("Дерево I", WOOD_II.minMMR + modRank),
-    BRONZE_III("Бронза III", WOOD_I.minMMR + modTitle),
-    BRONZE_II("Бронза II", BRONZE_III.minMMR + modRank),
-    BRONZE_I("Бронза I", BRONZE_II.minMMR + modRank),
-    IRON_III("Железо III", BRONZE_I.minMMR + modTitle),
-    IRON_II("Железо II", IRON_III.minMMR + modRank),
-    IRON_I("Железо I", IRON_II.minMMR + modRank),
-    SILVER_III("Серебро III", IRON_I.minMMR + modTitle),
-    SILVER_II("Серебро II", SILVER_III.minMMR + modRank),
-    SILVER_I("Серебро I", SILVER_II.minMMR + modRank),
-    GOLD_III("Золото III", SILVER_I.minMMR + modTitle),
-    GOLD_II("Золото II", GOLD_III.minMMR + modRank),
-    GOLD_I("Золото I", GOLD_II.minMMR + modRank),
-    PLATINUM_III("Платина III", GOLD_I.minMMR + modTitle),
-    PLATINUM_II("Платина II", PLATINUM_III.minMMR + modRank),
-    PLATINUM_I("Платина I", PLATINUM_II.minMMR + modRank),
-    DIAMOND_III("Алмаз III", PLATINUM_I.minMMR + modTitle),
-    DIAMOND_II("Алмаз II", DIAMOND_III.minMMR + modRank),
-    DIAMOND_I("Алмаз I", DIAMOND_II.minMMR + modRank),
-    MASTER_III("Мастер III", DIAMOND_I.minMMR + modTitle),
-    MASTER_II("Мастер II", MASTER_III.minMMR + modRank),
-    MASTER_I("Мастер I", MASTER_II.minMMR + modRank),
-    CHALLENGER("Челленджер", MASTER_I.minMMR + modTitle)
+enum class EnumMMRRank(val nameRank: String, val minMMR: Double, val rankValue: Int) {
+    UNRANKED("Нет ранга", 0.0, 0),
+    PAPER_III("Бумага III", UNRANKED.minMMR + modRank, 0),
+    PAPER_II("Бумага II", PAPER_III.minMMR + modRank, 0),
+    PAPER_I("Бумага I", PAPER_II.minMMR + modRank, 0),
+    WOOD_III("Дерево III", PAPER_I.minMMR + modTitle, 1),
+    WOOD_II("Дерево II", WOOD_III.minMMR + modRank, 1),
+    WOOD_I("Дерево I", WOOD_II.minMMR + modRank, 1),
+    IRON_III("Железо III", WOOD_I.minMMR + modTitle, 2),
+    IRON_II("Железо II", IRON_III.minMMR + modRank, 2),
+    IRON_I("Железо I", IRON_II.minMMR + modRank, 2),
+    BRONZE_III("Бронза III", IRON_I.minMMR + modTitle, 3),
+    BRONZE_II("Бронза II", BRONZE_III.minMMR + modRank, 3),
+    BRONZE_I("Бронза I", BRONZE_II.minMMR + modRank, 3),
+    SILVER_III("Серебро III", BRONZE_I.minMMR + modTitle, 4),
+    SILVER_II("Серебро II", SILVER_III.minMMR + modRank, 4),
+    SILVER_I("Серебро I", SILVER_II.minMMR + modRank, 4),
+    GOLD_III("Золото III", SILVER_I.minMMR + modTitle, 5),
+    GOLD_II("Золото II", GOLD_III.minMMR + modRank, 5),
+    GOLD_I("Золото I", GOLD_II.minMMR + modRank, 5),
+    PLATINUM_III("Платина III", GOLD_I.minMMR + modTitle, 6),
+    PLATINUM_II("Платина II", PLATINUM_III.minMMR + modRank, 6),
+    PLATINUM_I("Платина I", PLATINUM_II.minMMR + modRank, 6),
+    DIAMOND_III("Алмаз III", PLATINUM_I.minMMR + modTitle, 7),
+    DIAMOND_II("Алмаз II", DIAMOND_III.minMMR + modRank, 7),
+    DIAMOND_I("Алмаз I", DIAMOND_II.minMMR + modRank, 7),
+    MASTER_III("Мастер III", DIAMOND_I.minMMR + modTitle, 8),
+    MASTER_II("Мастер II", MASTER_III.minMMR + modRank, 8),
+    MASTER_I("Мастер I", MASTER_II.minMMR + modRank, 8),
+    GRANDMASTER_III("ГрандМастер III", MASTER_I.minMMR + modTitle, 9),
+    GRANDMASTER_II("ГрандМастер II", GRANDMASTER_III.minMMR + modRank, 9),
+    GRANDMASTER_I("ГрандМастер I", GRANDMASTER_II.minMMR + modRank, 9),
+    CHALLENGER("Челленджер", GRANDMASTER_I.minMMR + modTitle, 10)
     ;
 
     companion object {
@@ -97,10 +105,10 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
             }
 
 //          calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding)
-            calculateField(TableParticipant::timeCCingOthers, TableMmr::controlEnemy)
+            calculateField(TableParticipant::timeCCingOthers, TableMmr::controlEnemy, 3.0)
 
             if (!isMageSupport && isFighterTank) {
-                calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz)
+                calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz, 5.0)
                 calculateField(TableParticipant::damageTakenOnTeamPercentage, TableMmr::dmgTakenPerc)
             }
 //            calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge)
@@ -113,6 +121,8 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
             kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
                 calculateMMRaram(it)
             }
+
+            if (match.matchMode != "ARAM") mmrText = ""
         }
     }
 
@@ -186,14 +196,14 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
 
         //обработка добавочного ММР за лузстрик
         val looseStreak = sqlData.getWinStreak()[kordlol.LOLperson?.id]?:0
-        if (looseStreak < 2) {
+        if (looseStreak < -2) {
             value += abs(looseStreak) * 0.3
             mmrExtendedText += ";add MMR for looseStreak($looseStreak): ${abs(looseStreak) * 0.3}"
         }
 
         //обработка штрафа к получаемому ММР в зависимости от ранга
         val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
-        val removeMMR = (rank.ordinal / 10.0)
+        val removeMMR = (rank.rankValue / 10.0)
         mmrExtendedText += ";removed MMR for Rank ${rank.nameRank} removed: $removeMMR"
         value -= removeMMR
         if (value <= 0.0) {
@@ -220,7 +230,7 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
 
         //обработка минимального кол-ва снятия в зависимости от ранга
         val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
-        val minimumMinus = ((rank.ordinal / 10.0) * 2.0) + 1.0
+        val minimumMinus = ((rank.rankValue / 10.0) * 5.0) + 1.0
         if (value < minimumMinus) {
             mmrExtendedText += ";remove MMR first: $value low that minimum: $minimumMinus. Setted minimum"
             value = minimumMinus
@@ -296,7 +306,10 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
             }
         }.to2Digits()
 
-        if (limitValue != null && valuePropertyParticipant < limitValue) return
+        if (limitValue != null && valuePropertyMmr < (limitValue * mmrModificator).to2Digits()) {
+            mmrExtendedText += ";field ${propertyParticipant.name} with value $valuePropertyMmr low than minimum: ${(limitValue * mmrModificator).to2Digits()}"
+            return
+        }
         countFields++
 
         val localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to2Digits()
@@ -333,6 +346,6 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
     }
 
     override fun toString(): String {
-        return "CalculateMMR(mmrValue=$mmrValue, mmrExtendedText='$mmrExtendedText', mmrText='$mmrText', countFields=$countFields)"
+        return "CalculateMMR(win=${participant.win} mmrValue=$mmrValue, mmrExtendedText='$mmrExtendedText', mmrText='$mmrText', countFields=$countFields)"
     }
 }
