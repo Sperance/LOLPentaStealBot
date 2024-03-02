@@ -16,6 +16,26 @@ data class TableParticipantData(
         statWins = 0
         statGames = 0
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TableParticipantData
+
+        if (part != other.part) return false
+        if (statWins != other.statWins) return false
+        if (statGames != other.statGames) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = part?.hashCode() ?: 0
+        result = 31 * result + statWins
+        result = 31 * result + statGames
+        return result
+    }
 }
 
 data class TableParticipant(
@@ -131,6 +151,112 @@ data class TableParticipant(
             return true
         }
         return false
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TableParticipant
+
+        if (id != other.id) return false
+        if (participant_uid != other.participant_uid) return false
+        if (championId != other.championId) return false
+        if (championName != other.championName) return false
+        if (kills5 != other.kills5) return false
+        if (kills4 != other.kills4) return false
+        if (kills3 != other.kills3) return false
+        if (kills2 != other.kills2) return false
+        if (kills != other.kills) return false
+        if (assists != other.assists) return false
+        if (deaths != other.deaths) return false
+        if (goldEarned != other.goldEarned) return false
+        if (skillsCast != other.skillsCast) return false
+        if (totalDmgToChampions != other.totalDmgToChampions) return false
+        if (totalDamageShieldedOnTeammates != other.totalDamageShieldedOnTeammates) return false
+        if (totalHealsOnTeammates != other.totalHealsOnTeammates) return false
+        if (totalDamageTaken != other.totalDamageTaken) return false
+        if (damageDealtToBuildings != other.damageDealtToBuildings) return false
+        if (timeCCingOthers != other.timeCCingOthers) return false
+        if (skillshotsDodged != other.skillshotsDodged) return false
+        if (enemyChampionImmobilizations != other.enemyChampionImmobilizations) return false
+        if (damageTakenOnTeamPercentage != other.damageTakenOnTeamPercentage) return false
+        if (teamDamagePercentage != other.teamDamagePercentage) return false
+        if (damagePerMinute != other.damagePerMinute) return false
+        if (killParticipation != other.killParticipation) return false
+        if (kda != other.kda) return false
+        if (mmr != other.mmr) return false
+        if (minionsKills != other.minionsKills) return false
+        if (baronKills != other.baronKills) return false
+        if (dragonKills != other.dragonKills) return false
+        if (inhibitorKills != other.inhibitorKills) return false
+        if (nexusKills != other.nexusKills) return false
+        if (item0 != other.item0) return false
+        if (item1 != other.item1) return false
+        if (item2 != other.item2) return false
+        if (item3 != other.item3) return false
+        if (item4 != other.item4) return false
+        if (item5 != other.item5) return false
+        if (item6 != other.item6) return false
+        if (team != other.team) return false
+        if (profileIcon != other.profileIcon) return false
+        if (guildUid != other.guildUid) return false
+        if (win != other.win) return false
+        if (bot != other.bot) return false
+        if (match != other.match) return false
+        if (LOLperson != other.LOLperson) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id
+        result = 31 * result + participant_uid.hashCode()
+        result = 31 * result + championId
+        result = 31 * result + championName.hashCode()
+        result = 31 * result + kills5
+        result = 31 * result + kills4
+        result = 31 * result + kills3
+        result = 31 * result + kills2
+        result = 31 * result + kills
+        result = 31 * result + assists
+        result = 31 * result + deaths
+        result = 31 * result + goldEarned
+        result = 31 * result + skillsCast
+        result = 31 * result + totalDmgToChampions
+        result = 31 * result + totalDamageShieldedOnTeammates
+        result = 31 * result + totalHealsOnTeammates
+        result = 31 * result + totalDamageTaken
+        result = 31 * result + damageDealtToBuildings
+        result = 31 * result + timeCCingOthers
+        result = 31 * result + skillshotsDodged
+        result = 31 * result + enemyChampionImmobilizations
+        result = 31 * result + damageTakenOnTeamPercentage.hashCode()
+        result = 31 * result + teamDamagePercentage.hashCode()
+        result = 31 * result + damagePerMinute.hashCode()
+        result = 31 * result + killParticipation.hashCode()
+        result = 31 * result + kda.hashCode()
+        result = 31 * result + mmr.hashCode()
+        result = 31 * result + minionsKills
+        result = 31 * result + baronKills
+        result = 31 * result + dragonKills
+        result = 31 * result + inhibitorKills
+        result = 31 * result + nexusKills
+        result = 31 * result + item0
+        result = 31 * result + item1
+        result = 31 * result + item2
+        result = 31 * result + item3
+        result = 31 * result + item4
+        result = 31 * result + item5
+        result = 31 * result + item6
+        result = 31 * result + team
+        result = 31 * result + profileIcon
+        result = 31 * result + guildUid.hashCode()
+        result = 31 * result + win.hashCode()
+        result = 31 * result + bot.hashCode()
+        result = 31 * result + (match?.hashCode() ?: 0)
+        result = 31 * result + (LOLperson?.hashCode() ?: 0)
+        return result
     }
 }
 

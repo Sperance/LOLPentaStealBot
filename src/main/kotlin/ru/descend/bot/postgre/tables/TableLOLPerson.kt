@@ -30,6 +30,36 @@ data class TableLOLPerson(
             this.LOL_region = region
         }
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TableLOLPerson
+
+        if (id != other.id) return false
+        if (LOL_puuid != other.LOL_puuid) return false
+        if (LOL_summonerId != other.LOL_summonerId) return false
+        if (LOL_accountId != other.LOL_accountId) return false
+        if (LOL_summonerName != other.LOL_summonerName) return false
+        if (LOL_riotIdName != other.LOL_riotIdName) return false
+        if (LOL_riotIdTagline != other.LOL_riotIdTagline) return false
+        if (LOL_region != other.LOL_region) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id
+        result = 31 * result + LOL_puuid.hashCode()
+        result = 31 * result + LOL_summonerId.hashCode()
+        result = 31 * result + LOL_accountId.hashCode()
+        result = 31 * result + LOL_summonerName.hashCode()
+        result = 31 * result + (LOL_riotIdName?.hashCode() ?: 0)
+        result = 31 * result + (LOL_riotIdTagline?.hashCode() ?: 0)
+        result = 31 * result + (LOL_region?.hashCode() ?: 0)
+        return result
+    }
 }
 
 val tableLOLPerson = table<TableLOLPerson, Database> {

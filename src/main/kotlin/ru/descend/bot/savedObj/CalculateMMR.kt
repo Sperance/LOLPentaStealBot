@@ -1,18 +1,13 @@
 package ru.descend.bot.savedObj
 
-import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.SQLData
 import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableMmr
 import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.printLog
-import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
-import ru.descend.bot.toDate
-import ru.descend.bot.toFormatDateTime
 import update
 import kotlin.math.abs
 import kotlin.reflect.KMutableProperty1
@@ -65,10 +60,9 @@ enum class EnumMMRRank(val nameRank: String, val minMMR: Double, val rankValue: 
     }
 }
 
-class CalculateMMR(private val sqlData: SQLData, private val participant: TableParticipant, val match: TableMatch, kordlol: List<TableKORD_LOL>, private val mmrTable: TableMmr?) {
+class CalculateMMR(private var sqlData: SQLData, private var participant: TableParticipant, var match: TableMatch, kordlol: List<TableKORD_LOL>, private var mmrTable: TableMmr?) {
 
     private var mmrValue = 0.0
-    private var mmrValueStock = 0.0
     private var mmrText = ""
     private var mmrExtendedText = ""
     private var mmrModificator = 1.0
@@ -78,7 +72,7 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
 
     init {
         if (mmrTable != null) {
-            mmrModificator = (match.matchDuration.toDouble().fromDoubleValue(mmrTable.matchDuration) / 100.0).to2Digits()
+            mmrModificator = (match.matchDuration.toDouble().fromDoubleValue(mmrTable!!.matchDuration) / 100.0).to2Digits()
             if (mmrModificator < 0) {
                 printLog("[CalculateMMR] mmrModificator < 0: $mmrModificator. Match: ${match.matchId}. Setting modificator 1.0")
                 mmrExtendedText += ";mmrModificator < 0 ($mmrModificator), setting 1.0"
@@ -100,8 +94,8 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
             calculateField(TableParticipant::skillsCast, TableMmr::skills)
 
             if (isMageSupport) {
-                calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded, 100.0)
-                calculateField(TableParticipant::totalHealsOnTeammates, TableMmr::healed, 100.0)
+                calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded, 300.0)
+                calculateField(TableParticipant::totalHealsOnTeammates, TableMmr::healed, 300.0)
             }
 
 //          calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding)
@@ -175,13 +169,13 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
         //Ранг повышен
         if (oldRank.minMMR < newRank.minMMR) {
             value += 10.0
-            mmrExtendedText += ";new Rank: ${newRank.nameRank}"
+            mmrExtendedText += ";set new Rank: ${newRank.nameRank}"
         }
 
         //Ранг понижен
         if (oldRank.minMMR > newRank.minMMR) {
 //            value += 10.0
-            mmrExtendedText += ";removed new Rank: ${oldRank.nameRank}"
+            mmrExtendedText += ";set old Rank: ${oldRank.nameRank}"
         }
 
         return value.to2Digits()
@@ -204,11 +198,13 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
         //обработка штрафа к получаемому ММР в зависимости от ранга
         val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
         val removeMMR = (rank.rankValue / 10.0)
-        mmrExtendedText += ";removed MMR for Rank ${rank.nameRank} removed: $removeMMR"
-        value -= removeMMR
+        if (removeMMR > 0.0) {
+            mmrExtendedText += ";removed MMR for Rank ${rank.nameRank} removed: $removeMMR"
+            value -= removeMMR
+        }
         if (value <= 0.0) {
             value = (value + removeMMR) / 2.0
-            mmrExtendedText += ";below zero MMR. Setting in ${(value + removeMMR) / 2.0}"
+            mmrExtendedText += ";below zero MMR. set ${(value + removeMMR) / 2.0}"
         }
 
         return value.to2Digits()
@@ -262,8 +258,12 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
         addSavedMMR += participant.kills5 * 5.0             //за каждую пенту 5 очков
         addSavedMMR += participant.kills4 * 2.0             //за каждую квадру 2 очка
         if (addSavedMMR > limitMMR) {
-            mmrExtendedText += ";adding so many mmr: $addSavedMMR Setting to limit $limitMMR"
+            mmrExtendedText += ";adding so many mmr: $addSavedMMR set to limit $limitMMR"
             addSavedMMR = limitMMR
+        }
+
+        if (addSavedMMR > 0.0) {
+            mmrExtendedText += ";adding savedMMR: $addSavedMMR"
         }
 
         value = newSavedMMR + addSavedMMR
@@ -294,8 +294,7 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
     private fun calculateField(propertyParticipant: KMutableProperty1<TableParticipant, *>, propertyMmr: KMutableProperty1<TableMmr, *>, limitValue: Double? = null) {
         if (mmrTable == null) return
 
-        val valuePropertyMmr = ((propertyMmr.invoke(mmrTable) as Double) * baseModificator).to2Digits()
-        val valuePropertyMmrStock = (propertyMmr.invoke(mmrTable) as Double).to2Digits()
+        val valuePropertyMmr = ((propertyMmr.invoke(mmrTable!!) as Double) * baseModificator).to2Digits()
         val valuePropertyParticipant = when (val valuePart = propertyParticipant.invoke(participant)){
             is Int -> valuePart.toDouble()
             is Double -> valuePart
@@ -316,10 +315,6 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
         mmrValue += localMMR
         mmrValue = mmrValue.to2Digits()
 
-        val localMMRStock = valuePropertyParticipant.fromDoublePerc(valuePropertyMmrStock * mmrModificator).to2Digits()
-        mmrValueStock += localMMRStock
-        mmrValueStock = mmrValueStock.to2Digits()
-
         mmrText += ";${propertyMmr.name}:$valuePropertyParticipant(${(valuePropertyMmr * mmrModificator).to2Digits()})=$localMMR"
     }
 
@@ -328,7 +323,6 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
     }
 
     private fun Double.fromDoublePerc(stock: Double): Double {
-        // 40 крипов - по стате 200 норма - это 20% от нормы
         return when ((this / stock) * 100.0) {
             in Double.MIN_VALUE..10.0 -> 0.0
             in 10.0..30.0 -> 0.2
@@ -347,5 +341,39 @@ class CalculateMMR(private val sqlData: SQLData, private val participant: TableP
 
     override fun toString(): String {
         return "CalculateMMR(win=${participant.win} mmrValue=$mmrValue, mmrExtendedText='$mmrExtendedText', mmrText='$mmrText', countFields=$countFields)"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as CalculateMMR
+
+        if (sqlData != other.sqlData) return false
+        if (participant != other.participant) return false
+        if (match != other.match) return false
+        if (mmrTable != other.mmrTable) return false
+        if (mmrValue != other.mmrValue) return false
+        if (mmrText != other.mmrText) return false
+        if (mmrExtendedText != other.mmrExtendedText) return false
+        if (mmrModificator != other.mmrModificator) return false
+        if (countFields != other.countFields) return false
+        if (baseModificator != other.baseModificator) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = sqlData.hashCode()
+        result = 31 * result + participant.hashCode()
+        result = 31 * result + match.hashCode()
+        result = 31 * result + (mmrTable?.hashCode() ?: 0)
+        result = 31 * result + mmrValue.hashCode()
+        result = 31 * result + mmrText.hashCode()
+        result = 31 * result + mmrExtendedText.hashCode()
+        result = 31 * result + mmrModificator.hashCode()
+        result = 31 * result + countFields.hashCode()
+        result = 31 * result + baseModificator.hashCode()
+        return result
     }
 }

@@ -19,15 +19,13 @@ fun getGuild(guild: Guild): TableGuild {
 
 fun execProcedure(text: String) {
     printLog("[execProcedure] $text")
-    val statement = Postgre.newStatement
-    statement.execute(text)
-    statement.close()
+    Postgre.newStatement.execute(text)
+    Postgre.closeAllStatements()
 }
 
 fun execQuery(query: String, body: (ResultSet?) -> Unit) {
     printLog("[execQuery] $query")
-    val statement = Postgre.newStatement
-    val value = statement.executeQuery(query)
+    val value = Postgre.newStatement.executeQuery(query)
     body.invoke(value)
-    statement.close()
+    Postgre.closeAllStatements()
 }

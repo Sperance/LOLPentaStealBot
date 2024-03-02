@@ -183,3 +183,15 @@ suspend fun User.checkPermission(guild: Guild, permission: Permission): Boolean 
     }
     return result
 }
+
+fun printMemoryUsage(addText: String = "") {
+    val mb = 1024 * 1024
+    val memValue = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / mb
+    val heapSize = Runtime.getRuntime().totalMemory() / mb
+    printLog("[Memory Usage::$memValue MB Size::$heapSize MB All::${heapSize + memValue} MB (pid ${ProcessHandle.current().pid()})] $addText")
+}
+
+fun performGC() {
+    System.gc()
+    Runtime.getRuntime().gc()
+}

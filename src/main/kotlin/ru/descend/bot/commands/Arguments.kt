@@ -8,10 +8,8 @@ import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.extensions.fullName
 import ru.descend.bot.asyncLaunch
-import ru.descend.bot.isWorkMainThread
-import ru.descend.bot.launch
 import ru.descend.bot.lowDescriptor
-import ru.descend.bot.mainMapData
+import ru.descend.bot.postgre.SQLData
 import ru.descend.bot.postgre.execProcedure
 import ru.descend.bot.postgre.getGuild
 import ru.descend.bot.postgre.tables.TableKORDPerson
@@ -24,7 +22,6 @@ import ru.descend.bot.postgre.tables.tableLOLPerson
 import ru.descend.bot.printLog
 import ru.descend.bot.reloadMatch
 import ru.descend.bot.sendMessage
-import ru.descend.bot.showLeagueHistory
 import ru.descend.bot.to2Digits
 import save
 import statements.selectAll
@@ -103,37 +100,18 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash("resetHistory", "Перезагрузить историю сервера", Permissions(Permission.Administrator)){
-        execute {
-            printLog("Start command '$name' from ${author.fullName}")
-            asyncLaunch {
-                launch {
-                    showLeagueHistory(guild)
-                    isWorkMainThread[guild] = false
-                }.invokeOnCompletion {
-                    launch {
-                        guild.sendMessage(getGuild(guild).messageIdDebug, "Перезагрузка истории сервера прошла завершена")
-                        isWorkMainThread[guild] = true
-                        printLog(guild, "[Arguments] isWorkMainThread true")
-                    }
-                }
-            }
-            respond("Перезагрузка сервера успешно запущена")
-        }
-    }
-
     slash("userCreate", "Создание учетной записи Лиги легенд и пользователя Discord", Permissions(Permission.Administrator)){
         execute(UserArg("User", "Пользователь Discord"), ChoiceArg("Region", "Регион аккаунта Лиги легенд", "ru", "br1", "eun1", "euw1", "jp1", "kr", "la1", "la2", "na1", "oc1", "tr1", "pbe1"), AnyArg("SummonerName", "Имя призывателя в Лиге легенд")){
             val (user, region, summonerName) = args
 
             printLog("Start command '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'")
 
-            val curGuild = getGuild(guild)
+            val sqlData = SQLData(guild, getGuild(guild))
 
             var KORD = TableKORDPerson(guild, user)
-            var findKORD = mainMapData[guild]?.getKORD()?.find { it.KORD_id == KORD.KORD_id }
+            var findKORD = sqlData.getKORD().find { it.KORD_id == KORD.KORD_id }
             if (findKORD == null) {
-                findKORD = tableKORDPerson.selectAll().where { TableKORDPerson::guild eq curGuild }.where { TableKORDPerson::KORD_id eq user.id.value.toString() }.getEntity()
+                findKORD = tableKORDPerson.selectAll().where { TableKORDPerson::guild eq sqlData.guildSQL }.where { TableKORDPerson::KORD_id eq user.id.value.toString() }.getEntity()
             }
             if (findKORD == null){
                 KORD.save()
@@ -142,7 +120,7 @@ fun arguments() = commands("Arguments") {
             }
 
             var LOL = TableLOLPerson(region, summonerName)
-            var findLOL = mainMapData[guild]?.getLOL()?.find { it.LOL_puuid == LOL.LOL_puuid }
+            var findLOL = sqlData.getLOL().find { it.LOL_puuid == LOL.LOL_puuid }
             if (findLOL == null) {
                 findLOL = tableLOLPerson.selectAll().where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntity()
             }
@@ -155,7 +133,7 @@ fun arguments() = commands("Arguments") {
             val KORDLOL = TableKORD_LOL(
                 KORDperson = KORD,
                 LOLperson = LOL,
-                guild = curGuild)
+                guild = sqlData.guildSQL)
             val findKORDLOL = tableKORDLOL.selectAll().where { TableKORDPerson::KORD_id eq KORD.KORD_id }.where { TableLOLPerson::LOL_puuid eq LOL.LOL_puuid }.getEntity()
             if (findKORDLOL == null){
                 KORDLOL.save()
@@ -260,6 +238,7 @@ fun arguments() = commands("Arguments") {
             val (user, startIndex) = args
             printLog("Start command '$name' from ${author.fullName} with params: 'user=${user.fullName}' 'startIndex=$startIndex'")
 
+            val sqlData = SQLData(guild, getGuild(guild))
             val dataUser = TableKORD_LOL.getForKORD(user)
             val textMessage = if (dataUser == null){
                 "Пользователя не существует в базе"
@@ -267,7 +246,7 @@ fun arguments() = commands("Arguments") {
                 asyncLaunch {
                     dataUser.second.forEach {
                         if (it.LOLperson == null) return@forEach
-                        reloadMatch(mainMapData[guild]!!, it.LOLperson!!.LOL_puuid, startIndex)
+                        reloadMatch(sqlData, it.LOLperson!!.LOL_puuid, startIndex)
                     }
                     guild.sendMessage(getGuild(guild).messageIdDebug, "Прогрузка матчей (с $startIndex в количестве 100) для пользователя ${user.lowDescriptor()} завершена")
                 }

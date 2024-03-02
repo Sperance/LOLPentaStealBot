@@ -50,4 +50,28 @@ class LeagueApi(private val apiKey: String, region: String) {
         }
         return newOkHttpBuilder.build()
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as LeagueApi
+
+        if (apiKey != other.apiKey) return false
+        if (ENDPOINT != other.ENDPOINT) return false
+        if (dragonService != other.dragonService) return false
+        if (leagueService != other.leagueService) return false
+        if (retrofit != other.retrofit) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = apiKey.hashCode()
+        result = 31 * result + ENDPOINT.hashCode()
+        result = 31 * result + dragonService.hashCode()
+        result = 31 * result + leagueService.hashCode()
+        result = 31 * result + retrofit.hashCode()
+        return result
+    }
 }

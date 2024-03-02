@@ -4,25 +4,21 @@ import Entity
 import column
 import databases.Database
 import dev.kord.core.entity.Guild
-import kotlinx.coroutines.delay
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mail.GMailSender
-import ru.descend.bot.mainMapData
 import ru.descend.bot.postgre.SQLData
 import ru.descend.bot.postgre.execProcedure
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.CalculateMMR
 import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
-import ru.descend.bot.to2Digits
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDateTime
 import save
-import statements.select
 import statements.selectAll
 import table
 import update
@@ -200,6 +196,52 @@ data class TableGuild (
         this.description = guild.description ?: ""
         this.ownerId = guild.ownerId.value.toString()
         return save()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TableGuild
+
+        if (id != other.id) return false
+        if (idGuild != other.idGuild) return false
+        if (name != other.name) return false
+        if (applicationId != other.applicationId) return false
+        if (description != other.description) return false
+        if (ownerId != other.ownerId) return false
+        if (botChannelId != other.botChannelId) return false
+        if (messageId != other.messageId) return false
+        if (messageIdStatus != other.messageIdStatus) return false
+        if (messageIdMain != other.messageIdMain) return false
+        if (messageIdDebug != other.messageIdDebug) return false
+        if (messageIdPentaData != other.messageIdPentaData) return false
+        if (messageIdGlobalStatisticData != other.messageIdGlobalStatisticData) return false
+        if (messageIdMasteryData != other.messageIdMasteryData) return false
+        if (messageIdRealTimeData != other.messageIdRealTimeData) return false
+        if (messageIdArammmr != other.messageIdArammmr) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id
+        result = 31 * result + idGuild.hashCode()
+        result = 31 * result + name.hashCode()
+        result = 31 * result + (applicationId?.hashCode() ?: 0)
+        result = 31 * result + description.hashCode()
+        result = 31 * result + ownerId.hashCode()
+        result = 31 * result + botChannelId.hashCode()
+        result = 31 * result + messageId.hashCode()
+        result = 31 * result + messageIdStatus.hashCode()
+        result = 31 * result + messageIdMain.hashCode()
+        result = 31 * result + messageIdDebug.hashCode()
+        result = 31 * result + messageIdPentaData.hashCode()
+        result = 31 * result + messageIdGlobalStatisticData.hashCode()
+        result = 31 * result + messageIdMasteryData.hashCode()
+        result = 31 * result + messageIdRealTimeData.hashCode()
+        result = 31 * result + messageIdArammmr.hashCode()
+        return result
     }
 }
 

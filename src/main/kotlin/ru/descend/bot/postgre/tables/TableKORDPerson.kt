@@ -25,6 +25,30 @@ data class TableKORDPerson(
         this.KORD_name = user.username
         this.KORD_discriminator = user.discriminator
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TableKORDPerson
+
+        if (id != other.id) return false
+        if (KORD_id != other.KORD_id) return false
+        if (KORD_name != other.KORD_name) return false
+        if (KORD_discriminator != other.KORD_discriminator) return false
+        if (guild != other.guild) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id
+        result = 31 * result + KORD_id.hashCode()
+        result = 31 * result + KORD_name.hashCode()
+        result = 31 * result + KORD_discriminator.hashCode()
+        result = 31 * result + (guild?.hashCode() ?: 0)
+        return result
+    }
 }
 
 val tableKORDPerson = table<TableKORDPerson, Database> {

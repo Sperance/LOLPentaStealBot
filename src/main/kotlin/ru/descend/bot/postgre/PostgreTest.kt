@@ -6,6 +6,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import ru.descend.bot.catchToken
+import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.mail.GMailSender
@@ -20,6 +21,7 @@ import ru.descend.bot.to2Digits
 import ru.descend.bot.toFormatDateTime
 import statements.selectAll
 import update
+import java.lang.ref.WeakReference
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -88,6 +90,29 @@ class PostgreTest {
                     if (event.killerId != null && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL"))
                         printLog("EVENT: killerId:${event.killerId} killStreakLength:${event.killStreakLength} multiKillLength:${event.multiKillLength} type:${event.type} ${event.timestamp.toFormatDateTime()}")
                 }
+            }
+        }
+    }
+
+    private val _data = ArrayList<TableParticipant>()
+    val data = WeakReference(_data)
+
+    @Test
+    fun testMethodWeak() {
+
+        System.gc()
+
+        runBlocking {
+            while (true) {
+
+                data.get()?.addAll(tableParticipant.selectAll().getEntities())
+                printLog("DATA REF SIZE: ${data.get()?.size} DATA SIZE: ${_data.size}")
+                _data.clear()
+
+//                dataRef.get()?.add(TableParticipant())
+//                data.add(TableParticipant())
+
+                delay(2000)
             }
         }
     }

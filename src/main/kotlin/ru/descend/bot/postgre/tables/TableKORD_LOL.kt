@@ -52,6 +52,34 @@ data class TableKORD_LOL(
         if (KORDperson == null) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
         return User(UserData(Snowflake(KORDperson!!.KORD_id.toLong()), KORDperson!!.KORD_name, KORDperson!!.KORD_discriminator), guild.kord)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TableKORD_LOL
+
+        if (id != other.id) return false
+        if (mmrAram != other.mmrAram) return false
+        if (mmrAramSaved != other.mmrAramSaved) return false
+        if (KORDperson != other.KORDperson) return false
+        if (LOLperson != other.LOLperson) return false
+        if (guild != other.guild) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id
+        result = 31 * result + mmrAram.hashCode()
+        result = 31 * result + mmrAramSaved.hashCode()
+        result = 31 * result + (KORDperson?.hashCode() ?: 0)
+        result = 31 * result + (LOLperson?.hashCode() ?: 0)
+        result = 31 * result + (guild?.hashCode() ?: 0)
+        return result
+    }
+
+
 }
 
 val tableKORDLOL = table<TableKORD_LOL, Database> {

@@ -1,8 +1,6 @@
 package ru.descend.bot.postgre
 
-import SqlSequence
 import config
-import databases.Database
 import databases.PostgreSQL
 import ru.descend.bot.postgre.tables.tableGuild
 import ru.descend.bot.postgre.tables.tableKORDLOL
@@ -21,7 +19,7 @@ object Postgre {
     private const val POSTGRES_USERNAME = "postgres"
     private const val POSTGRES_PASSWORD = "22322137"
 
-    internal val connection: Connection = run {
+    private val connection: Connection = run {
         var count = 0
         while (count++ < Config.connectionAttemptsAmount) {
             runCatching { DriverManager.getConnection(POSTGRES_URL, POSTGRES_USERNAME, POSTGRES_PASSWORD) }.onSuccess { return@run it }
@@ -36,7 +34,6 @@ object Postgre {
 
     fun initializePostgreSQL() {
         config {
-            this.connectionAttemptsDelay = 200
             database = PostgreSQL(
                 url = POSTGRES_URL,
                 user = POSTGRES_USERNAME,
@@ -45,5 +42,10 @@ object Postgre {
             setTables(::tableGuild, ::tableMatch, ::tableParticipant, ::tableKORDPerson, ::tableLOLPerson, ::tableKORDLOL, ::tableMmr)
         }
         println("POSTGRE_SQL $POSTGRES_URL initialized")
+    }
+
+    fun closeAllStatements() {
+        openedStatements.forEach { it.close() }
+        openedStatements.clear()
     }
 }
