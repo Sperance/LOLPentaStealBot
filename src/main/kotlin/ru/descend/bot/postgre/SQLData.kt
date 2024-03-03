@@ -24,6 +24,7 @@ import kotlin.concurrent.getOrSet
 
 data class kordTemp(var kordLOL: TableKORD_LOL, var lastParts: ArrayList<TableParticipant>, var isBold: Boolean)
 data class statMainTemp(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int)
+data class statAramDataTemp(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int?, var champion_id: Int?, var mmr: Double?, var match_id: String?, var bold: Boolean)
 
 class SQLData (var guild: Guild, var guildSQL: TableGuild) {
 
@@ -51,6 +52,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
 
         arrayKORDLOL.clear()
         arraySavedParticipants.clear()
+        arrayAramMMRData.clear()
         mapWinStreak.clear()
 
         mainDataList1.remove()
@@ -78,6 +80,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
     private fun clearPGData() {
         _arrayKORDLOL.clear()
         _arraySavedParticipants.clear()
+        _arrayAramMMRData.clear()
         _mapWinStreak.clear()
     }
 
@@ -131,6 +134,33 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
             resetSavedParticipants()
         }
         return arraySavedParticipants.get()!!
+    }
+
+    private var _arrayAramMMRData = ArrayList<statAramDataTemp>()
+    private var arrayAramMMRData = WeakReference(_arrayAramMMRData)
+
+    fun resetArrayAramMMRData() {
+        _arrayAramMMRData.clear()
+        execQuery("SELECT * FROM get_aram_data()") {
+            it?.let {
+                while (it.next()){
+                    val id = it.getInt("id")
+                    val mmr_aram = it.getDouble("mmr_aram")
+                    val mmr_aram_saved = it.getDouble("mmr_aram_saved")
+                    val games = it.getInt("games")
+                    val champion_id = it.getInt("champion_id")
+                    val mmr = it.getDouble("mmr")
+                    val match_id = it.getString("match_id")
+                    arrayAramMMRData.get()?.add(statAramDataTemp(id, mmr_aram, mmr_aram_saved, games, champion_id, mmr, match_id, false))
+                }
+            }
+        }
+    }
+    fun getArrayAramMMRData() : ArrayList<statAramDataTemp> {
+        if (arrayAramMMRData.get().isNullOrEmpty()) {
+            resetArrayAramMMRData()
+        }
+        return arrayAramMMRData.get()!!
     }
 
     suspend fun addMatch(match: MatchDTO) {
@@ -196,6 +226,8 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
         if (arrayKORDLOL != other.arrayKORDLOL) return false
         if (_arraySavedParticipants != other._arraySavedParticipants) return false
         if (arraySavedParticipants != other.arraySavedParticipants) return false
+        if (_arrayAramMMRData != other._arrayAramMMRData) return false
+        if (arrayAramMMRData != other.arrayAramMMRData) return false
         if (_mapWinStreak != other._mapWinStreak) return false
         if (mapWinStreak != other.mapWinStreak) return false
 
@@ -218,6 +250,8 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
         result = 31 * result + arrayKORDLOL.hashCode()
         result = 31 * result + _arraySavedParticipants.hashCode()
         result = 31 * result + arraySavedParticipants.hashCode()
+        result = 31 * result + _arrayAramMMRData.hashCode()
+        result = 31 * result + arrayAramMMRData.hashCode()
         result = 31 * result + _mapWinStreak.hashCode()
         result = 31 * result + mapWinStreak.hashCode()
         return result

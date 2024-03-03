@@ -1,5 +1,5 @@
 group = "ru.descend"
-version = "1.5.0"
+version = "1.5.1"
 description = "Unofficial Bot for League of Legends"
 
 plugins {

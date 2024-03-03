@@ -32,6 +32,7 @@ import ru.descend.bot.postgre.tables.tableLOLPerson
 import ru.descend.bot.postgre.tables.tableMatch
 import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.savedObj.EnumMMRRank
+import statements.select
 import statements.selectAll
 import update
 import utils.toJson
@@ -73,7 +74,7 @@ fun main() {
                     return@collect
 
                 timerRequestReset((2).minutes)
-                timerMainInformation(it, (10).minutes)
+                timerMainInformation(it, (5).minutes)
             }
         }
     }
@@ -127,9 +128,9 @@ var statusLOLRequests = 0
 suspend fun showLeagueHistory(sqlData: SQLData) {
 
     sqlData.resetKORDLOL()
+    var isNewMatches = false
 
     launch {
-        var isHaveNewMatch = false
         sqlData.getKORDLOL().forEach {
             if (it.LOLperson != null && it.LOLperson?.LOL_puuid != null && it.LOLperson?.LOL_puuid != "")
                 sqlData.listCurrentUsers.get()?.add(it.LOLperson?.LOL_puuid)
@@ -151,20 +152,19 @@ suspend fun showLeagueHistory(sqlData: SQLData) {
                         if (sqlData.listCurrentUsers.get()?.contains(part.puuid) == true)
                             sqlData.listCurrentUsers.get()?.remove(part.puuid)
                     }
-                    isHaveNewMatch = true
+                    isNewMatches = true
                     sqlData.addMatch(match)
                 }
             }
         }
-        if (isHaveNewMatch) {
-            isHaveNewMatch = false
-            sqlData.resetWinStreak()
-            sqlData.resetSavedParticipants()
-        }
     }.join()
 
-    sqlData.resetWinStreak()
-    sqlData.resetSavedParticipants()
+    if (isNewMatches) {
+        sqlData.resetSavedParticipants()
+        sqlData.resetArrayAramMMRData()
+        sqlData.resetWinStreak()
+        isNewMatches = false
+    }
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
 
@@ -190,11 +190,11 @@ suspend fun showLeagueHistory(sqlData: SQLData) {
     }
 
     //Общая статистика по серверу - текст
-    editMessageGlobal(channelText, sqlData.guildSQL.messageId, {
-        editMessageSimpleContent(sqlData, it)
-    }) {
-        createMessageSimple(channelText, sqlData)
-    }
+//    editMessageGlobal(channelText, sqlData.guildSQL.messageId, {
+//        editMessageSimpleContent(sqlData, it)
+//    }) {
+//        createMessageSimple(channelText, sqlData)
+//    }
 }
 
 suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, editBody: (UserMessageModifyBuilder) -> Unit, createBody: suspend () -> Unit) {
@@ -253,7 +253,7 @@ fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData
     sqlData.mainDataList1.get()?.addAll(sqlData.getSavedParticipants().map { formatInt(it.kord_lol_id, 2) + "| " + formatInt(it.games, 3) + charStr + formatInt(it.win, 3) + charStr + formatInt(((it.win.toDouble() / it.games.toDouble()) * 100).toInt(), 2) + "%" })
     sqlData.mainDataList2.get()?.addAll(sqlData.getSavedParticipants().map {  it.kill.toFormatK() + charStr + formatInt(it.kill3, 3) + charStr + formatInt(it.kill4, 3) + charStr + formatInt(it.kill5, 2) })
 
-    builder.content = "**Статистика Общая**\nОбновлено: ${TimeStamp.now()}\n"
+    builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
         field {
             name = "Game/Win/WinRate"
@@ -308,44 +308,29 @@ fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLDa
 fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData) {
 
     //Последняя игра АРАМ. Нужна чтобы выделить жирным всех игроков учавствующих в этом матче
-    var codeLastAramMatch = tableMatch.selectAll().where { TableMatch::matchMode eq "ARAM" }.orderByDescending(TableMatch::matchId).limit(1).getEntity()
-    val arraySavedArams = tableParticipant.selectAll().where { TableParticipant::LOLperson inList sqlData.getKORDLOL().map { it.LOLperson?.id } }.where { TableMatch::matchMode eq "ARAM" }.where { TableParticipant::mmr neq 0.0 }.orderByDescending(TableParticipant::match).getEntities()
-
-    sqlData.getKORDLOL().forEach {
-        val newList = ArrayList<TableParticipant>()
-        newList.addAll(arraySavedArams.filter { pt -> pt.LOLperson?.id == it.LOLperson?.id })
-
-        var isBold = false
-        newList.forEach let@ { part ->
-            if (part.match?.id == codeLastAramMatch?.id) {
-                isBold = true
-                return@let
-            }
+    var codeLastAramMatch = tableMatch.select(TableMatch::matchId).where { TableMatch::matchMode eq "ARAM" }.orderByDescending(TableMatch::matchId).limit(1).getEntity()
+    val savedArray = sqlData.getArrayAramMMRData()
+    savedArray.forEach {
+        if (it.match_id == codeLastAramMatch?.matchId) {
+            it.bold = true
         }
-
-        if (newList.isEmpty()) newList.add(TableParticipant())
-        sqlData.listKordTemp.get()?.add(kordTemp(it,newList, isBold))
     }
 
-    codeLastAramMatch = null
-
-    sqlData.listKordTemp.get()?.sortBy { it.kordLOL.id }
     val charStr = " / "
 
     sqlData.clearMainDataList()
-
-    sqlData.mainDataList1.get().addAll(sqlData.listKordTemp.get()?.map {
-        if (it.isBold) "**" + formatInt(it.kordLOL.id, 2) + "| " + EnumMMRRank.getMMRRank(it.kordLOL.mmrAram).nameRank + "**"
-        else formatInt(it.kordLOL.id, 2) + "| " + EnumMMRRank.getMMRRank(it.kordLOL.mmrAram).nameRank
-    }?: listOf())
-    sqlData.mainDataList2.get().addAll(sqlData.listKordTemp.get()?.map {
-        if (it.isBold) "**" + it.kordLOL.mmrAram.toString() + charStr + it.kordLOL.mmrAramSaved + charStr + if (it.lastParts.size == 1 && it.lastParts[0].LOLperson == null) 0 else it.lastParts.size.toString() + "**"
-        else it.kordLOL.mmrAram.toString() + charStr + it.kordLOL.mmrAramSaved + charStr + if (it.lastParts.size == 1 && it.lastParts[0].LOLperson == null) 0 else it.lastParts.size
-    }?: listOf())
-    sqlData.mainDataList3.get().addAll(sqlData.listKordTemp.get()?.map {
-        if (it.isBold) "**" + LeagueMainObject.catchHeroForId(it.lastParts.first().championId.toString())?.name + charStr + it.lastParts.first().mmr + "**"
-        else LeagueMainObject.catchHeroForId(it.lastParts.first().championId.toString())?.name + charStr + it.lastParts.first().mmr
-    }?: listOf())
+    sqlData.mainDataList1.get().addAll(savedArray.map {
+        if (it.bold) "**" + formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank + "**"
+        else formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank
+    })
+    sqlData.mainDataList2.get().addAll(savedArray.map {
+        if (it.bold) "**" + it.mmr_aram + charStr + it.mmr_aram_saved + charStr + it.games + "**"
+        else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + it.games
+    })
+    sqlData.mainDataList3.get().addAll(savedArray.map {
+        if (it.bold) "**" + LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + "**"
+        else LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr
+    })
 
     builder.content = "**Статистика ММР**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {

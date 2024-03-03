@@ -68,7 +68,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
     private var mmrModificator = 1.0
     private var countFields = 0.0
 
-    private var baseModificator = 1.25 //25%
+    private var baseModificator = 1.3
 
     init {
         if (mmrTable != null) {
@@ -109,8 +109,6 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
 
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
             calculateField(TableParticipant::kda, TableMmr::kda)
-
-            if (countFields < 7) countFields++
 
             kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
                 calculateMMRaram(it)
@@ -279,12 +277,14 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
         var newSavedMMR = _newSavedMMR
         var minusMMR = _minusMMR
 
-        if (newSavedMMR > 0.0) {
-            newSavedMMR -= minusMMR                     //вычитаем ММР из общего числа бонусных ММР
-        }
-        if (newSavedMMR < 0.0) {                        //если вычитаем Больше чем есть в бонусных ММР - вычитаем остатки из minusMMR
-            minusMMR -= abs(newSavedMMR)
-            if (minusMMR < 0.0) minusMMR = 0.0          //сохранить или вычесть меньше 0 ММР нельзя
+        //если бонусных ММР больше или равно вычитаемых, всё просто
+        if (newSavedMMR >= minusMMR){
+            mmrExtendedText += ";removed $minusMMR from SavedMMR $newSavedMMR. minusMMR = 0"
+            newSavedMMR -= minusMMR
+            minusMMR = 0.0
+        } else {
+            mmrExtendedText += ";minusMMR $minusMMR removed savedMMR $newSavedMMR. newSavedMMR = 0"
+            minusMMR -= newSavedMMR
             newSavedMMR = 0.0
         }
 
