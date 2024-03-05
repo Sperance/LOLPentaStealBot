@@ -71,7 +71,7 @@ object LeagueMainObject {
                 statusLOLRequests = 1
                 val messageError = "catchMatchID failure: ${exec.code()} ${exec.message()} puuid: $puuid start: $start count: $count"
                 printLog(messageError)
-                guild.sendEmail(messageError)
+                guild.sendEmail("Error", messageError)
             }
         }catch (e: Exception) {
             statusLOLRequests = 1
@@ -92,7 +92,7 @@ object LeagueMainObject {
             statusLOLRequests = 1
             val messageError = "catchMatch failure: ${exec.code()} ${exec.message()} with matchId: $matchId"
             printLog(messageError)
-            guild.sendEmail(messageError)
+            guild.sendEmail("Error", messageError)
             return null
         }
         return exec.body()
@@ -108,7 +108,7 @@ object LeagueMainObject {
             statusLOLRequests = 1
             val messageError = "catchChampionMastery failure: ${exec.code()} ${exec.message()} with puuid: $puuid"
             printLog(messageError)
-            guild.sendEmail(messageError)
+            guild.sendEmail("Error", messageError)
             return null
         }
         return exec.body()
@@ -124,11 +124,11 @@ object LeagueMainObject {
             statusLOLRequests = 1
             val messageError = "catchActiveGame failure: ${exec.code()} ${exec.message()} with encryptedSummonerId: $encryptedSummonerId"
             printLog(messageError)
-            guild.sendEmail(messageError)
+            guild.sendEmail("Error", messageError)
             return null
         }
         if (exec.code() == 404 || exec.message() == "Data not found - spectator game info isn't found"){
-            guild.sendEmail("catchActiveGame failure: ${exec.code()} ${exec.message()} with encryptedSummonerId: $encryptedSummonerId")
+            guild.sendEmail("Error", "catchActiveGame failure: ${exec.code()} ${exec.message()} with encryptedSummonerId: $encryptedSummonerId")
             return null
         }
         return exec.body()

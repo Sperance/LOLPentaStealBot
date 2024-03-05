@@ -1,7 +1,6 @@
 package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
-import kotlinx.coroutines.Job
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.TableKORDPerson
@@ -9,22 +8,17 @@ import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableLOLPerson
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableParticipant
-import ru.descend.bot.postgre.tables.TableParticipantData
 import ru.descend.bot.postgre.tables.tableKORDLOL
 import ru.descend.bot.postgre.tables.tableKORDPerson
 import ru.descend.bot.postgre.tables.tableMatch
-import ru.descend.bot.postgre.tables.tableMmr
-import ru.descend.bot.postgre.tables.tableParticipant
-import ru.descend.bot.printLog
 import statements.select
 import statements.selectAll
 import java.lang.ref.WeakReference
 import java.util.WeakHashMap
-import kotlin.concurrent.getOrSet
 
 data class kordTemp(var kordLOL: TableKORD_LOL, var lastParts: ArrayList<TableParticipant>, var isBold: Boolean)
 data class statMainTemp(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int)
-data class statAramDataTemp(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int?, var champion_id: Int?, var mmr: Double?, var match_id: String?, var bold: Boolean)
+data class statAramDataTemp(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int?, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var bold: Boolean)
 
 class SQLData (var guild: Guild, var guildSQL: TableGuild) {
 
@@ -98,7 +92,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
         arrayKORDLOL.get()?.addAll(tableKORDLOL.getAll { TableKORD_LOL::guild eq guildSQL })
     }
 
-    private fun getMMR() = tableMmr.selectAll().getEntities()
+//    private fun getMMR() = tableMmr.selectAll().getEntities()
     fun getLOL(): ArrayList<TableLOLPerson> {
         val list =  ArrayList<TableLOLPerson>()
         tableKORDLOL.selectAll().where { TableKORD_LOL::guild eq guildSQL }.where { TableKORD_LOL::LOLperson neq null }.getEntities().forEach {
@@ -113,7 +107,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
 
     fun resetSavedParticipants() {
         _arraySavedParticipants.clear()
-        execQuery("SELECT * FROM get_player_stats()") {
+        execQuery("SELECT * FROM get_player_stats_param(${guildSQL.id})") {
             it?.let {
                 while (it.next()){
                     val id = it.getInt("id")
@@ -141,7 +135,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
 
     fun resetArrayAramMMRData() {
         _arrayAramMMRData.clear()
-        execQuery("SELECT * FROM get_aram_data()") {
+        execQuery("SELECT * FROM get_aram_data_param(${guildSQL.id})") {
             it?.let {
                 while (it.next()){
                     val id = it.getInt("id")
@@ -151,7 +145,8 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
                     val champion_id = it.getInt("champion_id")
                     val mmr = it.getDouble("mmr")
                     val match_id = it.getString("match_id")
-                    arrayAramMMRData.get()?.add(statAramDataTemp(id, mmr_aram, mmr_aram_saved, games, champion_id, mmr, match_id, false))
+                    val last_match_id = it.getString("last_match_id")
+                    arrayAramMMRData.get()?.add(statAramDataTemp(id, mmr_aram, mmr_aram_saved, games, champion_id, mmr, match_id, last_match_id, false))
                 }
             }
         }
@@ -164,7 +159,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
     }
 
     suspend fun addMatch(match: MatchDTO) {
-        guildSQL.addMatch(this, match, getKORDLOL(), getMMR())
+        guildSQL.addMatch(this, match, getKORDLOL())
     }
 
     private var _mapWinStreak = WeakHashMap<Int, Int>()
@@ -178,7 +173,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
     }
     fun resetWinStreak() {
         _mapWinStreak.clear()
-        execQuery("SELECT * FROM get_streak_results()"){
+        execQuery("SELECT * FROM get_streak_results_param(${guildSQL.id})"){
             it?.let {
                 while (it.next()){
                     val pers = it.getInt("PERS")

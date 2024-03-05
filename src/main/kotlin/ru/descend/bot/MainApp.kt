@@ -15,29 +15,19 @@ import dev.kord.rest.builder.message.modify.UserMessageModifyBuilder
 import dev.kord.rest.builder.message.modify.embed
 import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.toList
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.extensions.TimeStamp
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.TableMatch
-import ru.descend.bot.postgre.tables.TableParticipantData
 import ru.descend.bot.postgre.Postgre
 import ru.descend.bot.postgre.SQLData
 import ru.descend.bot.postgre.getGuild
-import ru.descend.bot.postgre.kordTemp
-import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.postgre.tables.tableLOLPerson
 import ru.descend.bot.postgre.tables.tableMatch
-import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.savedObj.EnumMMRRank
-import statements.select
-import statements.selectAll
 import update
-import utils.toJson
 import java.awt.Color
-import java.lang.ref.WeakReference
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -94,7 +84,6 @@ fun timerMainInformation(guild: Guild, duration: Duration) = launch {
         if (localData.get().guildSQL.botChannelId.isNotEmpty()) {
             localData.get().initDataList()
             showLeagueHistory(localData.get())
-            printMemoryUsage("begin clear")
             localData.get()?.clearMainDataList()
             localData.get()?.performClear()
         }
@@ -307,28 +296,19 @@ fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLDa
 
 fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData) {
 
-    //Последняя игра АРАМ. Нужна чтобы выделить жирным всех игроков учавствующих в этом матче
-    var codeLastAramMatch = tableMatch.select(TableMatch::matchId).where { TableMatch::matchMode eq "ARAM" }.orderByDescending(TableMatch::matchId).limit(1).getEntity()
-    val savedArray = sqlData.getArrayAramMMRData()
-    savedArray.forEach {
-        if (it.match_id == codeLastAramMatch?.matchId) {
-            it.bold = true
-        }
-    }
-
     val charStr = " / "
 
     sqlData.clearMainDataList()
-    sqlData.mainDataList1.get().addAll(savedArray.map {
-        if (it.bold) "**" + formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank + "**"
+    sqlData.mainDataList1.get().addAll(sqlData.getArrayAramMMRData().map {
+        if (it.match_id == it.last_match_id) "**" + formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank + "**"
         else formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank
     })
-    sqlData.mainDataList2.get().addAll(savedArray.map {
-        if (it.bold) "**" + it.mmr_aram + charStr + it.mmr_aram_saved + charStr + it.games + "**"
+    sqlData.mainDataList2.get().addAll(sqlData.getArrayAramMMRData().map {
+        if (it.match_id == it.last_match_id) "**" + it.mmr_aram + charStr + it.mmr_aram_saved + charStr + it.games + "**"
         else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + it.games
     })
-    sqlData.mainDataList3.get().addAll(savedArray.map {
-        if (it.bold) "**" + LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + "**"
+    sqlData.mainDataList3.get().addAll(sqlData.getArrayAramMMRData().map {
+        if (it.match_id == it.last_match_id) "**" + LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + "**"
         else LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr
     })
 

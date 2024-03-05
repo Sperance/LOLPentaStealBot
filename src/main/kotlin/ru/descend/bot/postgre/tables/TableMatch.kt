@@ -13,7 +13,6 @@ data class TableMatch(
     var matchDuration: Int = 0,
     var matchMode: String = "",
     var matchGameVersion: String = "",
-    var gameName: String = "",
     var bots: Boolean = false,
     var surrender: Boolean = false,
 
@@ -34,7 +33,6 @@ data class TableMatch(
         if (matchDuration != other.matchDuration) return false
         if (matchMode != other.matchMode) return false
         if (matchGameVersion != other.matchGameVersion) return false
-        if (gameName != other.gameName) return false
         if (bots != other.bots) return false
         if (surrender != other.surrender) return false
         if (guild != other.guild) return false
@@ -50,7 +48,6 @@ data class TableMatch(
         result = 31 * result + matchDuration
         result = 31 * result + matchMode.hashCode()
         result = 31 * result + matchGameVersion.hashCode()
-        result = 31 * result + gameName.hashCode()
         result = 31 * result + bots.hashCode()
         result = 31 * result + surrender.hashCode()
         result = 31 * result + (guild?.hashCode() ?: 0)

@@ -12,17 +12,21 @@
 | Modal    |           |             |
 
 ## Arguments
-| Commands             | Arguments               | Description                          |
-|----------------------|-------------------------|--------------------------------------|
-| initializeBotChannel | channel                 | Основной канал для бота              |
-| pkill                | Who, hero               | Запишите того, кто сделал Пентакилл  |
-| pstill               | hero, [Who], [FromWhom] | Запишите того, кто сделал Пентастилл |
-
-## Basics
-| Commands   | Arguments | Description                          |
-|------------|-----------|--------------------------------------|
-| statPKill  |           | Показать всех пентакиллеров сервера  |
-| statPStill |           | Показать всех пентастилерров сервера |
+| Commands           | Arguments                  | Description                                                   |
+|--------------------|----------------------------|---------------------------------------------------------------|
+| addSavedMMR        | user, savedMMR             | Добавить бонусные MMR пользователю                            |
+| clearDebugChannel  |                            | Очистка канала для системных сообщений                        |
+| clearMainChannel   |                            | Очистка основного канал для бота                              |
+| clearStatusChannel |                            | Очистка канала для сообщений бота                             |
+| initDebugChannel   | channel                    | Канал для системных сообщений                                 |
+| initMainChannel    | channel                    | Основной канал для бота                                       |
+| initStatusChannel  | channel                    | Канал для сообщений бота                                      |
+| pLoadMatches       | User, startIndex           | Прогрузить очередные 100 игр пользователя                     |
+| removeSavedMMR     | user, savedMMR             | Вычесть бонусные MMR пользователю                             |
+| resetMMRtable      |                            | Перезагрузка таблицы средних рейтингов                        |
+| userCreate         | User, Region, SummonerName | Создание учетной записи Лиги легенд и пользователя Discord    |
+| userDelete         | User                       | Удалить учётную запись из базы данных бота                    |
+| userDeleteFromId   | UserId                     | Удалить учётную запись из базы данных бота по ID пользователя |
 
 ## Utility
 | Commands | Arguments | Description                   |

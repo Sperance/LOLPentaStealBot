@@ -41,15 +41,6 @@ class PostgreTest {
         printLog("MMR: ${EnumMMRRank.getMMRRank(0.0)}")
         printLog("MMR: ${EnumMMRRank.getMMRRank(89.5)}")
     }
-    @Test
-    fun sendEmail() {
-        try {
-            val guild = tableGuild.first()
-            guild?.sendEmail("sample body message")
-        }catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
 
     @Test
     fun testMethod() {
@@ -58,6 +49,17 @@ class PostgreTest {
         listIds.add("RU_476092238")
         listIds.add("RE_476370823")
         listIds.add("RU_476367408")
+    }
+
+    @Test
+    fun testParamFunc() {
+        execQuery("select * from function_name(0)") {
+            it?.let {
+                while (it.next()) {
+                    printLog("value: ${it.row}")
+                }
+            }
+        }
     }
 
     @Test

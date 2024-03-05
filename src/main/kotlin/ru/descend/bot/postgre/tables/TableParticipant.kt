@@ -4,39 +4,9 @@ import Entity
 import column
 import databases.Database
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
+import ru.descend.bot.to2Digits
 import statements.selectAll
 import table
-
-data class TableParticipantData(
-    var part: TableParticipant? = null,
-    var statWins: Int = 0,
-    var statGames: Int = 0
-){
-    fun clearData() {
-        statWins = 0
-        statGames = 0
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as TableParticipantData
-
-        if (part != other.part) return false
-        if (statWins != other.statWins) return false
-        if (statGames != other.statGames) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = part?.hashCode() ?: 0
-        result = 31 * result + statWins
-        result = 31 * result + statGames
-        return result
-    }
-}
 
 data class TableParticipant(
     override var id: Int = 0,
@@ -63,14 +33,11 @@ data class TableParticipant(
     var damageTakenOnTeamPercentage: Double = 0.0,
     var teamDamagePercentage: Double = 0.0,
     var damagePerMinute: Double = 0.0,
-    var killParticipation: Double = 0.0,
     var kda: Double = 0.0,
     var mmr: Double = 0.0,
+    var mmrFlat: Double = 0.0,
     var minionsKills: Int = 0,
-    var baronKills: Int = 0,
-    var dragonKills: Int = 0,
     var inhibitorKills: Int = 0,
-    var nexusKills: Int = 0,
     var item0: Int = -1,
     var item1: Int = -1,
     var item2: Int = -1,
@@ -83,6 +50,18 @@ data class TableParticipant(
     var guildUid: String = "",
     var win: Boolean = false,
     var bot: Boolean = false,
+
+    var snowballsHit: Double = 0.0,
+    var skillshotsHit: Double = 0.0,
+    var summonerLevel: Int = -1,
+    var soloKills: Double = 0.0,
+    var survivedSingleDigitHpCount: Double = 0.0,
+    var magicDamageDealtToChampions: Int = -1,
+    var physicalDamageDealtToChampions: Int = -1,
+    var summonerName: String = "",
+    var summonerId: String = "",
+    var puuid: String = "",
+    var riotIdGameName: String = "",
 
     var match: TableMatch? = null,
     var LOLperson: TableLOLPerson? = null
@@ -117,16 +96,22 @@ data class TableParticipant(
         this.timeCCingOthers = participant.timeCCingOthers
         this.skillshotsDodged = if (participant.challenges == null) 0 else participant.challenges.skillshotsDodged.toInt()
         this.enemyChampionImmobilizations = if (participant.challenges == null) 0 else participant.challenges.enemyChampionImmobilizations.toInt()
-        this.damageTakenOnTeamPercentage = if (participant.challenges == null) 0.0 else participant.challenges.damageTakenOnTeamPercentage
-        this.damagePerMinute = if (participant.challenges == null) 0.0 else participant.challenges.damagePerMinute
-        this.killParticipation = if (participant.challenges == null) 0.0 else participant.challenges.killParticipation
-        this.kda = if (participant.challenges == null) 0.0 else participant.challenges.kda
-        this.teamDamagePercentage = if (participant.challenges == null) 0.0 else participant.challenges.teamDamagePercentage
+        this.damageTakenOnTeamPercentage = if (participant.challenges == null) 0.0 else participant.challenges.damageTakenOnTeamPercentage.to2Digits()
+        this.damagePerMinute = if (participant.challenges == null) 0.0 else participant.challenges.damagePerMinute.to2Digits()
+        this.kda = if (participant.challenges == null) 0.0 else participant.challenges.kda.to2Digits()
+        this.teamDamagePercentage = if (participant.challenges == null) 0.0 else participant.challenges.teamDamagePercentage.to2Digits()
+        this.snowballsHit = if (participant.challenges == null) 0.0 else participant.challenges.snowballsHit.to2Digits()
+        this.skillshotsHit = if (participant.challenges == null) 0.0 else participant.challenges.skillshotsHit.to2Digits()
+        this.soloKills = if (participant.challenges == null) 0.0 else participant.challenges.soloKills.to2Digits()
+        this.survivedSingleDigitHpCount = if (participant.challenges == null) 0.0 else participant.challenges.survivedSingleDigitHpCount.to2Digits()
+        this.magicDamageDealtToChampions = participant.magicDamageDealtToChampions
+        this.physicalDamageDealtToChampions = participant.physicalDamageDealtToChampions
         this.minionsKills = participant.totalMinionsKilled
-        this.baronKills = participant.baronKills
-        this.dragonKills = participant.dragonKills
         this.inhibitorKills = participant.inhibitorKills
-        this.nexusKills = participant.nexusKills
+        this.summonerLevel = participant.summonerLevel
+        this.summonerName = participant.summonerName
+        this.summonerId = participant.summonerId
+        this.puuid = participant.puuid
         this.item0 = participant.item0
         this.item1 = participant.item1
         this.item2 = participant.item2
@@ -183,14 +168,11 @@ data class TableParticipant(
         if (damageTakenOnTeamPercentage != other.damageTakenOnTeamPercentage) return false
         if (teamDamagePercentage != other.teamDamagePercentage) return false
         if (damagePerMinute != other.damagePerMinute) return false
-        if (killParticipation != other.killParticipation) return false
         if (kda != other.kda) return false
         if (mmr != other.mmr) return false
+        if (mmrFlat != other.mmrFlat) return false
         if (minionsKills != other.minionsKills) return false
-        if (baronKills != other.baronKills) return false
-        if (dragonKills != other.dragonKills) return false
         if (inhibitorKills != other.inhibitorKills) return false
-        if (nexusKills != other.nexusKills) return false
         if (item0 != other.item0) return false
         if (item1 != other.item1) return false
         if (item2 != other.item2) return false
@@ -234,14 +216,11 @@ data class TableParticipant(
         result = 31 * result + damageTakenOnTeamPercentage.hashCode()
         result = 31 * result + teamDamagePercentage.hashCode()
         result = 31 * result + damagePerMinute.hashCode()
-        result = 31 * result + killParticipation.hashCode()
         result = 31 * result + kda.hashCode()
         result = 31 * result + mmr.hashCode()
+        result = 31 * result + mmrFlat.hashCode()
         result = 31 * result + minionsKills
-        result = 31 * result + baronKills
-        result = 31 * result + dragonKills
         result = 31 * result + inhibitorKills
-        result = 31 * result + nexusKills
         result = 31 * result + item0
         result = 31 * result + item1
         result = 31 * result + item2

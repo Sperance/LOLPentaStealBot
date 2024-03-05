@@ -42,7 +42,6 @@ suspend fun Guild?.sendMessage(messageId: String, message: String, afterLaunchBo
     if (this == null) return
     if (messageId.isEmpty()) return
     if (message.isEmpty()) return
-    printLog(this, "[Message::$messageId] $message")
     launch {
         try {
             val channelText = getChannelOf<TextChannel>(Snowflake(messageId))

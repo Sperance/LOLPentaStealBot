@@ -39,7 +39,6 @@ data class TableGuild (
     var messageIdPentaData: String = "",
     var messageIdGlobalStatisticData: String = "",
     var messageIdMasteryData: String = "",
-    var messageIdRealTimeData: String = "",
     var messageIdArammmr: String = ""
 ): Entity() {
 
@@ -47,7 +46,7 @@ data class TableGuild (
     val KORDusers: List<TableKORDPerson> by oneToMany(TableKORDPerson::guild)
     val KORDLOL: List<TableKORD_LOL> by oneToMany(TableKORD_LOL::guild)
 
-    suspend fun addMatch(sqlData: SQLData, match: MatchDTO, kordLol: List<TableKORD_LOL>? = null, tableMMR: List<TableMmr>? = null) : TableMatch {
+    suspend fun addMatch(sqlData: SQLData, match: MatchDTO, kordLol: List<TableKORD_LOL>? = null) : TableMatch {
 
         var isBots = false
         var isSurrender = false
@@ -60,40 +59,21 @@ data class TableGuild (
             }
         }
 
-        val pMatch: TableMatch
-        val findMatchId = tableMatch.findIdOf { TableMatch::matchId eq match.metadata.matchId }
-        if (findMatchId != null && findMatchId > 0){
-            pMatch = TableMatch(
-                id = findMatchId,
-                matchId = match.metadata.matchId,
-                matchDate = match.info.gameStartTimestamp,
-                matchDateEnd = match.info.gameEndTimestamp,
-                matchDuration = match.info.gameDuration,
-                matchMode = match.info.gameMode,
-                matchGameVersion = match.info.gameVersion,
-                gameName = match.info.gameName,
-                guild = this,
-                bots = isBots,
-                surrender = isSurrender
-            )
-        } else {
-            pMatch = TableMatch(
-                matchId = match.metadata.matchId,
-                matchDate = match.info.gameStartTimestamp,
-                matchDateEnd = match.info.gameEndTimestamp,
-                matchDuration = match.info.gameDuration,
-                matchMode = match.info.gameMode,
-                matchGameVersion = match.info.gameVersion,
-                gameName = match.info.gameName,
-                guild = this,
-                bots = isBots,
-                surrender = isSurrender
-            ).save()!!
-        }
+        val pMatch: TableMatch = TableMatch(
+            matchId = match.metadata.matchId,
+            matchDate = match.info.gameStartTimestamp,
+            matchDateEnd = match.info.gameEndTimestamp,
+            matchDuration = match.info.gameDuration,
+            matchMode = match.info.gameMode,
+            matchGameVersion = match.info.gameVersion,
+            guild = this,
+            bots = isBots,
+            surrender = isSurrender
+        ).save()!!
 
         if (pMatch.id % 1000 == 0){
             asyncLaunch {
-                sendEmail("execute method GetAVGs()")
+                sendEmail("Sys", "execute method AVGs()")
                 execProcedure("call \"GetAVGs\"()")
             }
         }
@@ -106,7 +86,7 @@ data class TableGuild (
         match.info.participants.forEach {part ->
             var curLOL = tableLOLPerson.first { TableLOLPerson::LOL_puuid eq part.puuid }
 
-            if (kordLol != null && tableMMR != null && curLOL != null && !isBots && !isSurrender){
+            if (kordLol != null && curLOL != null && !isBots && !isSurrender){
                 kordLol.find { it.LOLperson?.id == curLOL?.id }?.let {
                     if (part.pentaKills > 0 || (part.quadraKills - part.pentaKills) > 0) {
                         asyncLaunch {
@@ -139,7 +119,7 @@ data class TableGuild (
 
                     //если чтото меняется у сохраненных пользователей - отсылаем Email
                     if (kordLol != null && kordLol.find { it.LOLperson?.id == curLOL.id } != null) {
-                        sqlData.guildSQL.sendEmail(textData)
+                        sqlData.guildSQL.sendEmail("Update data", textData)
                     }
 
                     curLOL.update(TableLOLPerson::LOL_summonerName, TableLOLPerson::LOL_riotIdTagline, TableLOLPerson::LOL_summonerId){
@@ -152,18 +132,18 @@ data class TableGuild (
 
             TableParticipant(part, pMatch, curLOL!!).save()
         }
-        if (kordLol != null && tableMMR != null) {
-            calculateMMR(sqlData, pMatch, isSurrender, isBots, kordLol, tableMMR)
+        if (kordLol != null) {
+            calculateMMR(sqlData, pMatch, isSurrender, isBots, kordLol)
         }
 
         return pMatch
     }
 
-    private fun calculateMMR(sqlData: SQLData, pMatch: TableMatch, isSurrender: Boolean, isBots: Boolean, kordLol: List<TableKORD_LOL>, tableMMR: List<TableMmr>) {
+    private fun calculateMMR(sqlData: SQLData, pMatch: TableMatch, isSurrender: Boolean, isBots: Boolean, kordLol: List<TableKORD_LOL>) {
         try {
             asyncLaunch {
                 val myParts = tableParticipant.selectAll().where { TableParticipant::match eq pMatch.id }.where { TableParticipant::LOLperson.inList(kordLol.map { it.LOLperson?.id }) }.getEntities()
-                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(sqlData, it, pMatch, kordLol, tableMMR.find { mmr -> mmr.champion == it.championName })}\n" }
+                val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(sqlData, it, pMatch, kordLol, tableMmr.selectAll().where { TableMmr::champion eq it.championName }.getEntity())}\n" }
                 sqlData.guild.sendMessage(messageIdDebug,
                     "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                             "${pMatch.matchDate.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
@@ -175,11 +155,11 @@ data class TableGuild (
         }
     }
 
-    fun sendEmail(message: String) {
+    fun sendEmail(theme: String, message: String) {
         try {
             GMailSender("llps.sys.bot@gmail.com", "esjk bphc hsjh otcx")
             .sendMail(
-                "LOLPentaStealBot - $name",
+                "[$name] $theme",
                 message,
                 "llps.sys.bot@gmail.com",
                 "kaltemeis@gmail.com"
@@ -218,7 +198,6 @@ data class TableGuild (
         if (messageIdPentaData != other.messageIdPentaData) return false
         if (messageIdGlobalStatisticData != other.messageIdGlobalStatisticData) return false
         if (messageIdMasteryData != other.messageIdMasteryData) return false
-        if (messageIdRealTimeData != other.messageIdRealTimeData) return false
         if (messageIdArammmr != other.messageIdArammmr) return false
 
         return true
@@ -239,7 +218,6 @@ data class TableGuild (
         result = 31 * result + messageIdPentaData.hashCode()
         result = 31 * result + messageIdGlobalStatisticData.hashCode()
         result = 31 * result + messageIdMasteryData.hashCode()
-        result = 31 * result + messageIdRealTimeData.hashCode()
         result = 31 * result + messageIdArammmr.hashCode()
         return result
     }

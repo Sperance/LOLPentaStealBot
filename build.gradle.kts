@@ -1,5 +1,5 @@
 group = "ru.descend"
-version = "1.5.1"
+version = "1.5.3"
 description = "Unofficial Bot for League of Legends"
 
 plugins {
@@ -36,20 +36,29 @@ dependencies {
 tasks {
     compileKotlin {
         kotlinOptions.jvmTarget = "17"
-//        dependsOn("writeProperties")
+       // dependsOn("writeProperties")
     }
 
-//    register<WriteProperties>("writeProperties") {
-//        property("name", project.name)
-//        property("description", project.description.toString())
-//        property("version", version.toString())
-//        property("url", "https://github.com/Sperance/LOLPentaStealBot")
+    register<WriteProperties>("writeProperties") {
+        property("name", project.name)
+        property("description", project.description.toString())
+        property("version", version.toString())
+        property("url", "https://github.com/Sperance/LOLPentaStealBot")
 //        setOutputFile("src/main/resources/bot.properties")
-//    }
+    }
+}
+
+tasks.withType<Tar> {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType<Zip> {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 tasks.withType<Jar> {
     manifest {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         attributes["Main-Class"] = "ru.descend.bot.MainAppKt"
         manifest.attributes["Class-Path"] = configurations
             .runtimeClasspath
@@ -59,8 +68,6 @@ tasks.withType<Jar> {
             }
     }
     archiveFileName.set("${project.name}_${version}.jar")
-
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     from(sourceSets.main.get().output)
 
