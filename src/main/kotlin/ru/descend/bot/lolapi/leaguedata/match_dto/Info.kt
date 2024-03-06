@@ -1,6 +1,7 @@
 package ru.descend.bot.lolapi.leaguedata.match_dto
 
 data class Info(
+    val endOfGameResult: String,
     val gameCreation: Long,
     val gameDuration: Int,
     val gameEndTimestamp: Long,

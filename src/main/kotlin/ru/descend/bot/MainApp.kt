@@ -118,72 +118,67 @@ suspend fun showLeagueHistory(sqlData: SQLData) {
 
     sqlData.resetKORDLOL()
     var isNewMatches = false
+    var isNewARAM = false
 
     launch {
-        sqlData.getKORDLOL().forEach {
-            if (it.LOLperson != null && it.LOLperson?.LOL_puuid != null && it.LOLperson?.LOL_puuid != "")
-                sqlData.listCurrentUsers.get()?.add(it.LOLperson?.LOL_puuid)
-        }
+        val checkMatches = ArrayList<String>()
         sqlData.getKORDLOL().forEach {
             if (it.LOLperson == null) return@forEach
             if (it.LOLperson?.LOL_puuid == "") return@forEach
-            val checkMatches = ArrayList<String>()
-            if (sqlData.listCurrentUsers.get()?.contains(it.LOLperson?.LOL_puuid) == false) {
-                printLog(sqlData.guild, "User ${it.LOLperson?.LOL_puuid} ${it.LOLperson?.LOL_summonerName} has skipped match query")
-                return@forEach
-            }
             LeagueMainObject.catchMatchID(sqlData.guildSQL, it.LOLperson!!.LOL_puuid, 0, 50).forEach ff@{ matchId ->
-                    if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
+                if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
-            sqlData.getNewMatches(checkMatches).forEach { newMatch ->
-                LeagueMainObject.catchMatch(sqlData.guildSQL, newMatch)?.let { match ->
-                    match.info.participants.forEach { part ->
-                        if (sqlData.listCurrentUsers.get()?.contains(part.puuid) == true)
-                            sqlData.listCurrentUsers.get()?.remove(part.puuid)
-                    }
-                    isNewMatches = true
-                    sqlData.addMatch(match)
-                }
+        }
+        sqlData.getNewMatches(checkMatches).forEach { newMatch ->
+            LeagueMainObject.catchMatch(sqlData.guildSQL, newMatch)?.let { match ->
+                isNewMatches = true
+                if (!isNewARAM) isNewARAM = match.info.gameMode == "ARAM"
+                sqlData.addMatch(match)
             }
         }
     }.join()
 
-    if (isNewMatches) {
+//    if (isNewMatches) {
         sqlData.resetSavedParticipants()
         sqlData.resetArrayAramMMRData()
         sqlData.resetWinStreak()
-        isNewMatches = false
-    }
+//    }
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
 
     //Таблица Главная - ID никнейм серияпобед
-    editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
-        editMessageMainDataContent(it, sqlData)
-    }) {
-        createMessageMainData(channelText, sqlData)
-    }
+//    if (isNewMatches) {
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
+            editMessageMainDataContent(it, sqlData)
+        }) {
+            createMessageMainData(channelText, sqlData)
+        }
+//    }
 
     //Таблица ММР - все про ММР арама
-    editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, {
-        editMessageAramMMRDataContent(it, sqlData)
-    }) {
-        createMessageAramMMRData(channelText, sqlData)
-    }
+//    if (isNewARAM) {
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, {
+            editMessageAramMMRDataContent(it, sqlData)
+        }) {
+            createMessageAramMMRData(channelText, sqlData)
+        }
+//    }
 
     //Таблица по играм\винрейту\сериям убийств
-    editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
-        editMessageGlobalStatisticContent(it, sqlData)
-    }) {
-        createMessageGlobalStatistic(channelText, sqlData)
-    }
+//    if (isNewMatches) {
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
+            editMessageGlobalStatisticContent(it, sqlData)
+        }) {
+            createMessageGlobalStatistic(channelText, sqlData)
+        }
+//    }
 
     //Общая статистика по серверу - текст
-//    editMessageGlobal(channelText, sqlData.guildSQL.messageId, {
-//        editMessageSimpleContent(sqlData, it)
-//    }) {
-//        createMessageSimple(channelText, sqlData)
-//    }
+    editMessageGlobal(channelText, sqlData.guildSQL.messageId, {
+        editMessageSimpleContent(sqlData, it)
+    }) {
+        createMessageSimple(channelText, sqlData)
+    }
 }
 
 suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, editBody: (UserMessageModifyBuilder) -> Unit, createBody: suspend () -> Unit) {
@@ -224,9 +219,7 @@ suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData)
 
 fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder) {
     builder.content = "**Статистика по Серверу:** ${TimeStamp.now()}\n" +
-            "**Игр на сервере:** ${tableMatch.count { TableMatch::guild eq sqlData.guildSQL }}\n" +
-            "**Пользователей в базе:** ${sqlData.getLOL().size}\n" +
-            "**Игроков в базе:** ${tableLOLPerson.size}\n" +
+            "**Пользователей в базе:** ${sqlData.getKORDLOL().size}\n" +
             "**Версия игры:** ${LeagueMainObject.LOL_VERSION}\n" +
             "**Количество чемпионов:** ${LeagueMainObject.LOL_HEROES}"
 

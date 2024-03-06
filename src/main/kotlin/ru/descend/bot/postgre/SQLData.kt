@@ -1,6 +1,7 @@
 package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
+import kotlinx.coroutines.delay
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.TableKORDPerson
@@ -28,9 +29,6 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
     private var _listMainData = ArrayList<TableKORD_LOL>()
     var listMainData = WeakReference(_listMainData)
 
-    private var _listCurrentUsers = ArrayList<String?>()
-    var listCurrentUsers = WeakReference(_listCurrentUsers)
-
     var mainDataList1: ThreadLocal<java.util.ArrayList<Any?>> = ThreadLocal.withInitial{ ArrayList() }
     var mainDataList2: ThreadLocal<java.util.ArrayList<Any?>> = ThreadLocal.withInitial{ ArrayList() }
     var mainDataList3: ThreadLocal<java.util.ArrayList<Any?>> = ThreadLocal.withInitial{ ArrayList() }
@@ -42,7 +40,6 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
 
         listKordTemp.clear()
         listMainData.clear()
-        listCurrentUsers.clear()
 
         arrayKORDLOL.clear()
         arraySavedParticipants.clear()
@@ -68,7 +65,6 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
     private fun clearDataList() {
         _listKordTemp.clear()
         _listMainData.clear()
-        _listCurrentUsers.clear()
     }
 
     private fun clearPGData() {
@@ -212,8 +208,6 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
         if (listKordTemp != other.listKordTemp) return false
         if (_listMainData != other._listMainData) return false
         if (listMainData != other.listMainData) return false
-        if (_listCurrentUsers != other._listCurrentUsers) return false
-        if (listCurrentUsers != other.listCurrentUsers) return false
         if (mainDataList1 != other.mainDataList1) return false
         if (mainDataList2 != other.mainDataList2) return false
         if (mainDataList3 != other.mainDataList3) return false
@@ -236,8 +230,6 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
         result = 31 * result + listKordTemp.hashCode()
         result = 31 * result + _listMainData.hashCode()
         result = 31 * result + listMainData.hashCode()
-        result = 31 * result + _listCurrentUsers.hashCode()
-        result = 31 * result + listCurrentUsers.hashCode()
         result = 31 * result + mainDataList1.hashCode()
         result = 31 * result + mainDataList2.hashCode()
         result = 31 * result + mainDataList3.hashCode()

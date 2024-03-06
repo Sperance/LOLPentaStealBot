@@ -105,16 +105,18 @@ data class TableGuild (
                     LOL_puuid = part.puuid,
                     LOL_summonerId = part.summonerId,
                     LOL_summonerName = part.summonerName,
-                    LOL_riotIdName = part.riotIdName,
+                    LOL_riotIdName = part.riotIdGameName,
                     LOL_riotIdTagline = part.riotIdTagline).save()
             }
 
             //Вдруг что изменится в профиле игрока
             if (curLOL != null) {
-                if (curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId) {
+                if (curLOL.LOL_summonerLevel != part.summonerLevel || curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName) {
                     val textData = "[addMatch::update] LOL_summonerName: old ${curLOL.LOL_summonerName} new ${part.summonerName}" +
                             " LOL_riotIdTagline: old ${curLOL.LOL_riotIdTagline} new ${part.riotIdTagline}" +
-                            " LOL_summonerId: old ${curLOL.LOL_summonerId} new ${part.summonerId}"
+                            " LOL_summonerId: old ${curLOL.LOL_summonerId} new ${part.summonerId}" +
+                            " LOL_riotIdName: old ${curLOL.LOL_riotIdName} new ${part.riotIdGameName}" +
+                            " LOL_summonerLevel: old: ${curLOL.LOL_summonerLevel} new ${part.summonerLevel}"
                     printLog(sqlData.guild, textData)
 
                     //если чтото меняется у сохраненных пользователей - отсылаем Email
@@ -122,10 +124,12 @@ data class TableGuild (
                         sqlData.guildSQL.sendEmail("Update data", textData)
                     }
 
-                    curLOL.update(TableLOLPerson::LOL_summonerName, TableLOLPerson::LOL_riotIdTagline, TableLOLPerson::LOL_summonerId){
+                    curLOL.update(TableLOLPerson::LOL_summonerName, TableLOLPerson::LOL_riotIdTagline, TableLOLPerson::LOL_summonerId, TableLOLPerson::LOL_riotIdName, TableLOLPerson::LOL_summonerLevel){
                         LOL_summonerName = part.summonerName
                         LOL_summonerId = part.summonerId
                         LOL_riotIdTagline = part.riotIdTagline
+                        LOL_riotIdName = part.riotIdGameName
+                        LOL_summonerLevel = part.summonerLevel
                     }
                 }
             }

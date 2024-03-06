@@ -16,7 +16,8 @@ data class TableLOLPerson(
     var LOL_summonerName: String = "",
     var LOL_riotIdName: String? = "",
     var LOL_riotIdTagline: String? = "",
-    var LOL_region: String? = ""
+    var LOL_region: String? = "",
+    var LOL_summonerLevel: Int = 0
 ): Entity() {
     val KORDpersons: List<TableKORDPerson> by manyToMany(TableKORD_LOL::LOLperson, TableKORD_LOL::KORDperson)
 
@@ -28,6 +29,7 @@ data class TableLOLPerson(
             this.LOL_accountId = it.accountId
             this.LOL_summonerName = it.name
             this.LOL_region = region
+            this.LOL_summonerLevel = it.summonerLevel
         }
     }
 
@@ -45,6 +47,7 @@ data class TableLOLPerson(
         if (LOL_riotIdName != other.LOL_riotIdName) return false
         if (LOL_riotIdTagline != other.LOL_riotIdTagline) return false
         if (LOL_region != other.LOL_region) return false
+        if (LOL_summonerLevel != other.LOL_summonerLevel) return false
 
         return true
     }
@@ -58,6 +61,7 @@ data class TableLOLPerson(
         result = 31 * result + (LOL_riotIdName?.hashCode() ?: 0)
         result = 31 * result + (LOL_riotIdTagline?.hashCode() ?: 0)
         result = 31 * result + (LOL_region?.hashCode() ?: 0)
+        result = 31 * result + LOL_summonerLevel
         return result
     }
 }

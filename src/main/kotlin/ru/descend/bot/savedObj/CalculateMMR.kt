@@ -1,5 +1,6 @@
 package ru.descend.bot.savedObj
 
+import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData
 import ru.descend.bot.postgre.tables.TableKORD_LOL
@@ -109,12 +110,13 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
             calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
             calculateField(TableParticipant::kda, TableMmr::kda)
 
-            kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
-                calculateMMRaram(it)
-            }
-
-            if (match.matchMode == "ARAM") {
-                sqlData.guildSQL.sendEmail("${match.matchId} (${match.id})", mmrEmailText)
+            launch {
+                kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
+                    calculateMMRaram(it)
+                }
+                if (match.matchMode == "ARAM") {
+                    sqlData.guildSQL.sendEmail("${match.matchId} (${match.id})", mmrEmailText)
+                }
             }
             mmrEmailText = ""
         } else {
@@ -122,7 +124,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
         }
     }
 
-    private fun calculateMMRaram(kordlol: TableKORD_LOL?) {
+    private suspend fun calculateMMRaram(kordlol: TableKORD_LOL?) {
         if (kordlol == null) return
         if (match.matchMode != "ARAM") return
         if (match.surrender) return
@@ -193,7 +195,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
     /**
      * Подсчет ММР которое даётся игроку (при победе)
      */
-    private fun calcAddingMMR(kordlol: TableKORD_LOL) : Double {
+    private suspend fun calcAddingMMR(kordlol: TableKORD_LOL) : Double {
         //Текущее значение ММР + новое значение ММР
         var addedValue = mmrValue.to2Digits()
 //        var value = kordlol.mmrAram + mmrValue

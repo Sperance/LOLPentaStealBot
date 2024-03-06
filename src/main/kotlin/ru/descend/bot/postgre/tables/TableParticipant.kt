@@ -5,7 +5,6 @@ import column
 import databases.Database
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.to2Digits
-import statements.selectAll
 import table
 
 data class TableParticipant(
@@ -51,17 +50,26 @@ data class TableParticipant(
     var win: Boolean = false,
     var bot: Boolean = false,
 
-    var snowballsHit: Double = 0.0,
-    var skillshotsHit: Double = 0.0,
-    var summonerLevel: Int = -1,
-    var soloKills: Double = 0.0,
-    var survivedSingleDigitHpCount: Double = 0.0,
-    var magicDamageDealtToChampions: Int = -1,
-    var physicalDamageDealtToChampions: Int = -1,
-    var summonerName: String = "",
-    var summonerId: String = "",
-    var puuid: String = "",
-    var riotIdGameName: String = "",
+    var snowballsHit: Int = 0, //snowballs_hit
+    var skillshotsHit: Int = 0, //skillshots_hit
+    var summonerLevel: Int = 0, //summoner_level
+    var soloKills: Int = 0, //solo_kills
+    var survivedSingleDigitHpCount: Int = 0, //survived_single_digit_hp_count
+    var magicDamageDealtToChampions: Int = 0, //magic_damage_dealt_to_champions
+    var physicalDamageDealtToChampions: Int = 0, //physical_damage_dealt_to_champions
+    var trueDamageDealtToChampions: Int = 0, //true_damage_dealt_to_champions
+    var effectiveHealAndShielding: Double = 0.0, //effective_heal_and_shielding
+    var damageSelfMitigated: Int = 0, //damage_self_mitigated
+    var largestCriticalStrike: Int = 0, //largest_critical_strike
+    var survivedThreeImmobilizesInFight: Int = 0, //survived_three_immobilizes_in_fight
+    var totalTimeCCDealt: Int = 0, //total_time_c_c_dealt
+    var tookLargeDamageSurvived: Int = 0, //took_large_damage_survived
+    var longestTimeSpentLiving: Int = 0, //longest_time_spent_living
+    var totalTimeSpentDead: Int = 0, //total_time_spent_dead
+    var summonerName: String = "", //summoner_name
+    var summonerId: String = "", //summoner_id
+    var puuid: String = "", //puuid
+    var riotIdGameName: String = "", //riot_id_game_name
 
     var match: TableMatch? = null,
     var LOLperson: TableLOLPerson? = null
@@ -87,25 +95,34 @@ data class TableParticipant(
         this.assists = participant.assists
         this.deaths = participant.deaths
         this.goldEarned = participant.goldEarned
-        this.skillsCast = if (participant.challenges == null) 0 else participant.challenges.abilityUses.toInt()
+        this.skillsCast = if (participant.challenges != null) participant.challenges.abilityUses else 0
         this.totalDmgToChampions = participant.totalDamageDealtToChampions
         this.totalHealsOnTeammates = participant.totalHealsOnTeammates
         this.totalDamageShieldedOnTeammates = participant.totalDamageShieldedOnTeammates
         this.totalDamageTaken = participant.totalDamageTaken
         this.damageDealtToBuildings = participant.damageDealtToBuildings
         this.timeCCingOthers = participant.timeCCingOthers
-        this.skillshotsDodged = if (participant.challenges == null) 0 else participant.challenges.skillshotsDodged.toInt()
-        this.enemyChampionImmobilizations = if (participant.challenges == null) 0 else participant.challenges.enemyChampionImmobilizations.toInt()
-        this.damageTakenOnTeamPercentage = if (participant.challenges == null) 0.0 else participant.challenges.damageTakenOnTeamPercentage.to2Digits()
-        this.damagePerMinute = if (participant.challenges == null) 0.0 else participant.challenges.damagePerMinute.to2Digits()
-        this.kda = if (participant.challenges == null) 0.0 else participant.challenges.kda.to2Digits()
-        this.teamDamagePercentage = if (participant.challenges == null) 0.0 else participant.challenges.teamDamagePercentage.to2Digits()
-        this.snowballsHit = if (participant.challenges == null) 0.0 else participant.challenges.snowballsHit.to2Digits()
-        this.skillshotsHit = if (participant.challenges == null) 0.0 else participant.challenges.skillshotsHit.to2Digits()
-        this.soloKills = if (participant.challenges == null) 0.0 else participant.challenges.soloKills.to2Digits()
-        this.survivedSingleDigitHpCount = if (participant.challenges == null) 0.0 else participant.challenges.survivedSingleDigitHpCount.to2Digits()
+        this.skillshotsDodged = participant.challenges?.skillshotsDodged?:0
+        this.enemyChampionImmobilizations = participant.challenges?.enemyChampionImmobilizations?:0
+        this.survivedThreeImmobilizesInFight = participant.challenges?.survivedThreeImmobilizesInFight?:0
+        this.tookLargeDamageSurvived = participant.challenges?.tookLargeDamageSurvived?:0
+        this.effectiveHealAndShielding = participant.challenges?.effectiveHealAndShielding?:0.0
+        this.damageTakenOnTeamPercentage = participant.challenges?.damageTakenOnTeamPercentage?.to2Digits()?:0.0
+        this.damagePerMinute = participant.challenges?.damagePerMinute?.to2Digits()?:0.0
+        this.kda = participant.challenges?.kda?.to2Digits()?:0.0
+        this.teamDamagePercentage = participant.challenges?.teamDamagePercentage?.to2Digits()?:0.0
+        this.snowballsHit = participant.challenges?.snowballsHit?:0
+        this.skillshotsHit = participant.challenges?.skillshotsHit?:0
+        this.soloKills = participant.challenges?.soloKills?:0
+        this.survivedSingleDigitHpCount = participant.challenges?.survivedSingleDigitHpCount?:0
         this.magicDamageDealtToChampions = participant.magicDamageDealtToChampions
         this.physicalDamageDealtToChampions = participant.physicalDamageDealtToChampions
+        this.trueDamageDealtToChampions = participant.trueDamageDealtToChampions
+        this.damageSelfMitigated = participant.damageSelfMitigated
+        this.largestCriticalStrike = participant.largestCriticalStrike
+        this.longestTimeSpentLiving = participant.longestTimeSpentLiving
+        this.totalTimeCCDealt = participant.totalTimeCCDealt
+        this.totalTimeSpentDead = participant.totalTimeSpentDead
         this.minionsKills = participant.totalMinionsKilled
         this.inhibitorKills = participant.inhibitorKills
         this.summonerLevel = participant.summonerLevel
@@ -185,6 +202,26 @@ data class TableParticipant(
         if (guildUid != other.guildUid) return false
         if (win != other.win) return false
         if (bot != other.bot) return false
+        if (snowballsHit != other.snowballsHit) return false
+        if (skillshotsHit != other.skillshotsHit) return false
+        if (summonerLevel != other.summonerLevel) return false
+        if (soloKills != other.soloKills) return false
+        if (survivedSingleDigitHpCount != other.survivedSingleDigitHpCount) return false
+        if (magicDamageDealtToChampions != other.magicDamageDealtToChampions) return false
+        if (physicalDamageDealtToChampions != other.physicalDamageDealtToChampions) return false
+        if (trueDamageDealtToChampions != other.trueDamageDealtToChampions) return false
+        if (effectiveHealAndShielding != other.effectiveHealAndShielding) return false
+        if (damageSelfMitigated != other.damageSelfMitigated) return false
+        if (largestCriticalStrike != other.largestCriticalStrike) return false
+        if (survivedThreeImmobilizesInFight != other.survivedThreeImmobilizesInFight) return false
+        if (totalTimeCCDealt != other.totalTimeCCDealt) return false
+        if (tookLargeDamageSurvived != other.tookLargeDamageSurvived) return false
+        if (longestTimeSpentLiving != other.longestTimeSpentLiving) return false
+        if (totalTimeSpentDead != other.totalTimeSpentDead) return false
+        if (summonerName != other.summonerName) return false
+        if (summonerId != other.summonerId) return false
+        if (puuid != other.puuid) return false
+        if (riotIdGameName != other.riotIdGameName) return false
         if (match != other.match) return false
         if (LOLperson != other.LOLperson) return false
 
@@ -233,6 +270,26 @@ data class TableParticipant(
         result = 31 * result + guildUid.hashCode()
         result = 31 * result + win.hashCode()
         result = 31 * result + bot.hashCode()
+        result = 31 * result + snowballsHit
+        result = 31 * result + skillshotsHit
+        result = 31 * result + summonerLevel
+        result = 31 * result + soloKills
+        result = 31 * result + survivedSingleDigitHpCount
+        result = 31 * result + magicDamageDealtToChampions
+        result = 31 * result + physicalDamageDealtToChampions
+        result = 31 * result + trueDamageDealtToChampions
+        result = 31 * result + effectiveHealAndShielding.hashCode()
+        result = 31 * result + damageSelfMitigated
+        result = 31 * result + largestCriticalStrike
+        result = 31 * result + survivedThreeImmobilizesInFight
+        result = 31 * result + totalTimeCCDealt
+        result = 31 * result + tookLargeDamageSurvived
+        result = 31 * result + longestTimeSpentLiving
+        result = 31 * result + totalTimeSpentDead
+        result = 31 * result + summonerName.hashCode()
+        result = 31 * result + summonerId.hashCode()
+        result = 31 * result + puuid.hashCode()
+        result = 31 * result + riotIdGameName.hashCode()
         result = 31 * result + (match?.hashCode() ?: 0)
         result = 31 * result + (LOLperson?.hashCode() ?: 0)
         return result
