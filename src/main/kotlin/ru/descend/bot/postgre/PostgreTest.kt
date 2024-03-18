@@ -1,15 +1,17 @@
 package ru.descend.bot.postgre
 
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.junit.Test
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import ru.descend.bot.catchToken
-import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueApi
-import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.mail.GMailSender
+import ru.descend.bot.lolapi.dataclasses.SavedPartSteal
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.TableParticipant
@@ -17,12 +19,18 @@ import ru.descend.bot.postgre.tables.tableGuild
 import ru.descend.bot.postgre.tables.tableParticipant
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.EnumMMRRank
-import ru.descend.bot.to2Digits
-import ru.descend.bot.toFormatDateTime
+import ru.descend.bot.savedObj.getStrongDate
+import ru.descend.bot.test.ChatMessage
+import ru.descend.bot.test.Message
+import ru.descend.bot.test.OpenAIAPIClient
+import ru.descend.bot.test.OpenAIRequestModel
+import ru.descend.bot.test.OpenAIResponseModel
+import ru.descend.bot.toDate
 import statements.selectAll
 import update
+import java.io.IOException
 import java.lang.ref.WeakReference
-import kotlin.time.Duration.Companion.seconds
+import java.time.Duration
 
 
 class PostgreTest {
@@ -31,7 +39,7 @@ class PostgreTest {
 //    private val arrayMatches = getArrayFromCollection<FireMatch>(collectionGuild("1141730148194996295", F_MATCHES), 5)
 
     init {
-        Postgre.initializePostgreSQL()
+//        Postgre.initializePostgreSQL()
     }
 
     @Test
@@ -52,17 +60,6 @@ class PostgreTest {
     }
 
     @Test
-    fun testParamFunc() {
-        execQuery("select * from function_name(0)") {
-            it?.let {
-                while (it.next()) {
-                    printLog("value: ${it.row}")
-                }
-            }
-        }
-    }
-
-    @Test
     fun testsss() {
         val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
         val dragonService = leagueApi.dragonService
@@ -80,17 +77,111 @@ class PostgreTest {
         }
     }
 
+    private val client = OkHttpClient()
+
+    @Test
+    fun test_() {
+
+        val apiService = OpenAIAPIClient.create()
+
+        val messageList = listOf(Message("user", "say hello world"))
+        val requestModel = OpenAIRequestModel("gpt-3.5-turbo",messageList, 0.7f)
+
+        val call: Call<OpenAIResponseModel> = apiService.getCompletion(requestModel)
+        val res = call.execute()
+
+        printLog("1: ${res.message()}")
+        printLog("2: ${res.code()}")
+
+//        call.enqueue(object : Callback<OpenAIResponseModel> {
+//            override fun onResponse(call: Call<OpenAIResponseModel>, response: Response<OpenAIResponseModel>) {
+//                if (response.isSuccessful && response.body() != null) {
+//                    val responseBody = response.body()
+//                    val generatedText = responseBody?.choices?.get(0)?.message?.content
+//                    printLog("MSG: $generatedText")
+//                } else {
+//                    // Handle API error
+//                    printLog("ERR1: \"API error\"")
+//                }
+//            }
+//            override fun onFailure(call: Call<OpenAIResponseModel>, t: Throwable) {
+//                // Handle network or request failure
+//                printLog("MSG: \"API onFailure: ${t.message}\"")
+//            }
+//        })
+    }
+
+    @Test
+    fun test_chatgpt() {
+
+        runBlocking {
+
+            val request = Request.Builder()
+                .url("https://api.openai.com/v1/models")
+                .get()
+                .addHeader("Authorization", "Bearer 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")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+
+                printLog("networkResponse: ${response.networkResponse}")
+                if (!response.isSuccessful) throw IOException("Unexpected code $response")
+                for ((name, value) in response.headers) {
+                    println("$name: $value")
+                }
+
+                println(response.body!!.string())
+            }
+        }
+
+    }
+
     @Test
     fun testtimeline() {
         val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
         val service = leagueApi.leagueService
 
-        val exec = service.getMatchTimeline("RU_479019514").execute()
+        val exec = service.getMatchTimeline("RU_481300486").execute()
         exec.body()?.let {
+            val mapPUUID = HashMap<Long, String>()
+            it.info.participants.forEach { part ->
+                mapPUUID[part.participantId] = part.puuid
+            }
+
+            var lastDate = System.currentTimeMillis()
+            var removedPart: SavedPartSteal? = null
+            var isNextCheck = false
+            val arrayQuadras = ArrayList<SavedPartSteal>()
+
             it.info.frames.forEach { frame ->
-                frame.events.forEach { event ->
-                    if (event.killerId != null && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL"))
-                        printLog("EVENT: killerId:${event.killerId} killStreakLength:${event.killStreakLength} multiKillLength:${event.multiKillLength} type:${event.type} ${event.timestamp.toFormatDateTime()}")
+                frame.events.forEach lets@ { event ->
+                    if (event.killerId != null && event.type.contains("CHAMPION")) {
+                        val betw = Duration.between(lastDate.toDate().toInstant(), event.timestamp.toDate().toInstant())
+                        val resDate = getStrongDate(event.timestamp)
+                        lastDate = event.timestamp
+
+                        printLog("EVENT: team:${if (event.killerId <= 5) "BLUE" else "RED"} killerId:${event.killerId} multiKillLength:${event.multiKillLength ?: 0} killType: ${event.killType?:""} type:${event.type} ${resDate.timeSec} STAMP: ${event.timestamp} BETsec: ${betw.toSeconds()}")
+
+                        if (isNextCheck && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL")) {
+                            arrayQuadras.forEach saved@ { sPart ->
+                                if (sPart.team == (if (event.killerId <= 5) "BLUE" else "RED") &&
+                                    sPart.participantId != event.killerId) {
+                                    printLog("PENTESTEAL. Чел PUUID ${mapPUUID[event.killerId]} состилил Пенту у ${sPart.puuid}")
+                                    removedPart = sPart
+                                    return@saved
+                                }
+                            }
+                            if (removedPart != null) {
+                                arrayQuadras.remove(removedPart)
+                                removedPart = null
+                            }
+                            isNextCheck = false
+                        }
+                        if (event.multiKillLength == 4L) {
+                            arrayQuadras.add(SavedPartSteal(event.killerId, mapPUUID[event.killerId]?:"", if (event.killerId <= 5) "BLUE" else "RED", event.timestamp))
+                            isNextCheck = true
+                        }
+                    }
                 }
             }
         }

@@ -2,6 +2,14 @@ package ru.descend.bot.postgre
 
 import config
 import databases.PostgreSQL
+import io.r2dbc.spi.ConnectionFactory
+import io.r2dbc.spi.ConnectionFactoryOptions
+import io.r2dbc.spi.Option
+import org.komapper.core.dsl.Meta
+import org.komapper.core.dsl.QueryDsl
+import org.komapper.r2dbc.R2dbcDatabase
+import org.komapper.tx.core.TransactionAttribute
+import org.komapper.tx.core.TransactionProperty
 import ru.descend.bot.postgre.tables.tableGuild
 import ru.descend.bot.postgre.tables.tableKORDLOL
 import ru.descend.bot.postgre.tables.tableKORDPerson

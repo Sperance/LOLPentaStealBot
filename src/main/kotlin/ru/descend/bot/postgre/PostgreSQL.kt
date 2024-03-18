@@ -1,6 +1,7 @@
 package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
+import kotlinx.coroutines.delay
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.tableGuild
 import ru.descend.bot.printLog
@@ -20,16 +21,15 @@ fun getGuild(guild: Guild): TableGuild {
 fun execProcedure(text: String) {
     printLog("[execProcedure] $text")
     val state = Postgre.newStatement
-    state.queryTimeout = 5
+    state.queryTimeout = 10
     state.execute(text)
-    Postgre.closeAllStatements()
 }
 
-fun execQuery(query: String, body: (ResultSet?) -> Unit) {
+suspend fun execQuery(query: String, body: (ResultSet?) -> Unit) {
+    delay(500)
     printLog("[execQuery] $query")
     val state = Postgre.newStatement
-    state.queryTimeout = 5
+    state.queryTimeout = 10
     val value = state.executeQuery(query)
     body.invoke(value)
-    Postgre.closeAllStatements()
 }

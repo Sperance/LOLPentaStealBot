@@ -79,7 +79,7 @@ fun getStrongDate(date: Long?): StrongDate {
         Calendar.FRIDAY -> "пятница"
         Calendar.SATURDAY -> "суббота"
         Calendar.SUNDAY -> "воскресенье"
-        else -> {""}
+        else -> ""
     }
 
     val dayOfWeekNameSimple:String = when (calendar.get(Calendar.DAY_OF_WEEK)){
@@ -97,6 +97,7 @@ fun getStrongDate(date: Long?): StrongDate {
     val month = calendar.get(Calendar.MONTH)
 
     val timeText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(calendar.time)
+    val timeSSText = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(calendar.time)
     val dateText = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(calendar.time)
     val year = calendar.get(Calendar.YEAR)
 
@@ -105,7 +106,7 @@ fun getStrongDate(date: Long?): StrongDate {
     val second = calendar.get(Calendar.SECOND).toLong()
     val milliseconds = calendar.get(Calendar.MILLISECOND).toLong()
 
-    return StrongDate(dayOfWeekName = dayOfWeekName, dayOfWeekNameSimple = dayOfWeekNameSimple, dayOfWeek = dayName, time = timeText, date = dateText, timeLong = calendar.timeInMillis, year = year, dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH), month = month, seconds = second, milliseconds = milliseconds, minutes = minute, hours = hours)
+    return StrongDate(dayOfWeekName = dayOfWeekName, dayOfWeekNameSimple = dayOfWeekNameSimple, dayOfWeek = dayName, time = timeText, timeSec = timeSSText, date = dateText, timeLong = calendar.timeInMillis, year = year, dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH), month = month, seconds = second, milliseconds = milliseconds, minutes = minute, hours = hours)
 }
 
 /**
@@ -115,53 +116,57 @@ data class StrongDate(
     /**
      * Наименование для недели
      */
-    val dayOfWeekName: String,
+    var dayOfWeekName: String,
     /**
      * Наименование для недели (в коротком виде)
      */
-    val dayOfWeekNameSimple: String,
+    var dayOfWeekNameSimple: String,
     /**
      * День недели
      */
-    val dayOfWeek: Int,
+    var dayOfWeek: Int,
     /**
      * Время HH:mm
      */
-    val time: String,
+    var time: String,
+    /**
+     * Время HH:mm:ss
+     */
+    var timeSec: String,
     /**
      * Дата dd-MM-yyyy
      */
-    val date: String,
+    var date: String,
     /**
      * Дата в миллисекундах
      */
-    val timeLong: Long,
+    var timeLong: Long,
     /**
      * Часы
      */
-    val hours: Long,
+    var hours: Long,
     /**
      * Минуты
      */
-    val minutes: Long,
+    var minutes: Long,
     /**
      * Секунды
      */
-    val seconds: Long,
+    var seconds: Long,
     /**
      * Миллисекунды
      */
-    val milliseconds: Long,
+    var milliseconds: Long,
     /**
      * День в месяце
      */
-    val dayOfMonth: Int,
+    var dayOfMonth: Int,
     /**
      * Номер месяца
      */
-    val month: Int,
+    var month: Int,
     /**
      * Год
      */
-    val year: Int
+    var year: Int
 )

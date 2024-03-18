@@ -1,37 +1,38 @@
-package ru.descend.bot.postgre.tables
+package ru.descend.bot.postgre.r2dbc.model
 
-import Entity
-import column
-import databases.Database
 import dev.kord.core.entity.Guild
+import org.komapper.annotation.KomapperAutoIncrement
+import org.komapper.annotation.KomapperCreatedAt
+import org.komapper.annotation.KomapperEntity
+import org.komapper.annotation.KomapperId
+import org.komapper.annotation.KomapperTable
+import org.komapper.annotation.KomapperUpdatedAt
+import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.asyncLaunch
-import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mail.GMailSender
-import ru.descend.bot.postgre.SQLData
+import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.execProcedure
 import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.model.Matches
-import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.CalculateMMR
 import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDateTime
-import save
-import statements.selectAll
-import table
-import update
+import java.time.LocalDateTime
 
-data class TableGuild (
-    override var id: Int = 0,
+@KomapperEntity
+@KomapperTable("tbl_guilds")
+data class Guilds(
+    @KomapperId
+    @KomapperAutoIncrement
+    val id: Int = 0,
+
     var idGuild: String = "",
     var name: String = "",
-    var applicationId: String? = null,
     var description: String = "",
     var ownerId: String = "",
 
@@ -43,14 +44,15 @@ data class TableGuild (
     var messageIdPentaData: String = "",
     var messageIdGlobalStatisticData: String = "",
     var messageIdMasteryData: String = "",
-    var messageIdArammmr: String = ""
-): Entity() {
+    var messageIdArammmr: String = "",
 
-    val matches: List<TableMatch> by oneToMany(TableMatch::guild)
-    val KORDusers: List<TableKORDPerson> by oneToMany(TableKORDPerson::guild)
-    val KORDLOL: List<TableKORD_LOL> by oneToMany(TableKORD_LOL::guild)
+    @KomapperCreatedAt
+    val createdAt: LocalDateTime = LocalDateTime.MIN,
+    @KomapperUpdatedAt
+    val updatedAt: LocalDateTime = LocalDateTime.MIN
+) {
 
-    suspend fun addMatch(sqlData: SQLData, match: MatchDTO, kordLol: List<TableKORD_LOL>? = null) : TableMatch {
+    suspend fun addMatch(sqlData: SQLData_R2DBC, match: MatchDTO, kordLol: List<KORDLOLs>? = null) : Matches {
 
         var isBots = false
         var isSurrender = false
@@ -63,30 +65,18 @@ data class TableGuild (
             }
         }
 
-        val pMatch: TableMatch = TableMatch(
+        val pMatch = Matches.addMatch(Matches(
             matchId = match.metadata.matchId,
-            matchDate = match.info.gameStartTimestamp,
+            matchDateStart = match.info.gameStartTimestamp,
             matchDateEnd = match.info.gameEndTimestamp,
             matchDuration = match.info.gameDuration,
             matchMode = match.info.gameMode,
             matchGameVersion = match.info.gameVersion,
-            guild = this,
+            guild_id = this.id,
             bots = isBots,
             surrender = isSurrender
-        ).save()!!
-
-//        val mch = R2DBC.addMatch(Matches(
-//            matchId = match.metadata.matchId,
-//            matchDateStart = match.info.gameStartTimestamp,
-//            matchDateEnd = match.info.gameEndTimestamp,
-//            matchDuration = match.info.gameDuration,
-//            matchMode = match.info.gameMode,
-//            matchGameVersion = match.info.gameVersion,
-//            guild_id = this.id,
-//            bots = isBots,
-//            surrender = isSurrender
-//        ))
-//        printLog("[R2DBC] added match: ${mch?.id} ${mch?.matchId}")
+        ))!!
+        printLog("[R2DBC] added match: ${pMatch.id} ${pMatch.matchId}")
 
         if (pMatch.id % 1000 == 0){
             asyncLaunch {
@@ -101,15 +91,15 @@ data class TableGuild (
         }
 
         match.info.participants.forEach {part ->
-            var curLOL = tableLOLPerson.first { TableLOLPerson::LOL_puuid eq part.puuid }
+            var curLOL = R2DBC.getLOLforPUUID(part.puuid)
 
             if (kordLol != null && curLOL != null && !isBots && !isSurrender){
-                kordLol.find { it.LOLperson?.id == curLOL?.id }?.let {
+                kordLol.find { it.LOL_id == curLOL?.id }?.let {
                     if (part.pentaKills > 0 || (part.quadraKills - part.pentaKills) > 0) {
                         asyncLaunch {
                             if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
                                 val textPentas = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                                sqlData.guild.sendMessage(messageIdStatus, "Поздравляем!!!\n${it.asUser(sqlData.guild).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
+                                sqlData.guild.sendMessage(messageIdStatus, "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
                             }
                         }
                     }
@@ -118,12 +108,13 @@ data class TableGuild (
 
             //Создаем нового игрока в БД
             if (curLOL == null) {
-                curLOL = TableLOLPerson(
+                curLOL = LOLs.addLOL(LOLs(
                     LOL_puuid = part.puuid,
                     LOL_summonerId = part.summonerId,
                     LOL_summonerName = part.summonerName,
                     LOL_riotIdName = part.riotIdGameName,
-                    LOL_riotIdTagline = part.riotIdTagline).save()
+                    LOL_riotIdTagline = part.riotIdTagline)
+                )
             }
 
             //Вдруг что изменится в профиле игрока
@@ -137,78 +128,72 @@ data class TableGuild (
                     printLog(sqlData.guild, textData)
 
                     //если чтото меняется у сохраненных пользователей - отсылаем Email
-                    if (kordLol != null && kordLol.find { it.LOLperson?.id == curLOL.id } != null) {
+                    if (kordLol != null && kordLol.find { it.LOL_id == curLOL.id } != null) {
                         sqlData.guildSQL.sendEmail("Update data", textData)
                     }
 
-                    curLOL.update(TableLOLPerson::LOL_summonerName, TableLOLPerson::LOL_riotIdTagline, TableLOLPerson::LOL_summonerId, TableLOLPerson::LOL_riotIdName, TableLOLPerson::LOL_summonerLevel){
-                        LOL_summonerName = part.summonerName
-                        LOL_summonerId = part.summonerId
-                        LOL_riotIdTagline = part.riotIdTagline
-                        LOL_riotIdName = part.riotIdGameName
-                        LOL_summonerLevel = part.summonerLevel
-                    }
+//                    curLOL.update(TableLOLPerson::LOL_summonerName, TableLOLPerson::LOL_riotIdTagline, TableLOLPerson::LOL_summonerId, TableLOLPerson::LOL_riotIdName, TableLOLPerson::LOL_summonerLevel){
+//                        LOL_summonerName = part.summonerName
+//                        LOL_summonerId = part.summonerId
+//                        LOL_riotIdTagline = part.riotIdTagline
+//                        LOL_riotIdName = part.riotIdGameName
+//                        LOL_summonerLevel = part.summonerLevel
+//                    }
                 }
             }
 
-            TableParticipant(part, pMatch, curLOL!!).save()
-//            Participants.addParticipant(Participants(part, mch!!, curLOL))
+            Participants.addParticipant(Participants(part, pMatch, curLOL!!))
         }
 
-        if (kordLol != null) {
-            calculateMMR(sqlData, pMatch, isSurrender, isBots, kordLol)
-        }
+//        if (kordLol != null) {
+//            calculateMMR(sqlData, pMatch, isSurrender, isBots, kordLol)
+//        }
 
         return pMatch
-    }
-
-    private suspend fun calculateMMR(sqlData: SQLData, pMatch: TableMatch, isSurrender: Boolean, isBots: Boolean, kordLol: List<TableKORD_LOL>) {
-        val myParts = tableParticipant.selectAll().where { TableParticipant::match eq pMatch.id }.where { TableParticipant::LOLperson.inList(kordLol.map { it.LOLperson?.id }) }.getEntities()
-        var users = ""
-        myParts.forEach {
-            users += (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(sqlData, it, pMatch, kordLol, tableMmr.selectAll().where { TableMmr::champion eq it.championName }.getEntity()).init()}\n"
-        }
-//        val users = myParts.joinToString { (it.LOLperson?.LOL_summonerName?:"") + " hero: ${it.championName} ${CalculateMMR(sqlData, it, pMatch, kordLol, tableMmr.selectAll().where { TableMmr::champion eq it.championName }.getEntity()).init()}\n" }
-        sqlData.guild.sendMessage(messageIdDebug,
-            "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
-                    "${pMatch.matchDate.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
-                    "Mode: ${pMatch.matchMode} Surrender: $isSurrender Bots: $isBots\n" +
-                    "Users: $users")
     }
 
     fun sendEmail(theme: String, message: String) {
         try {
             GMailSender("llps.sys.bot@gmail.com", "esjk bphc hsjh otcx")
-            .sendMail(
-                "[$name] $theme",
-                message,
-                "llps.sys.bot@gmail.com",
-                "kaltemeis@gmail.com"
-            )
+                .sendMail(
+                    "[$name] $theme",
+                    message,
+                    "llps.sys.bot@gmail.com",
+                    "kaltemeis@gmail.com"
+                )
         }catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    fun initGuild(guild: Guild) : TableGuild? {
-        this.idGuild = guild.id.value.toString()
-        this.name = guild.name
-        this.applicationId = guild.applicationId?.value.toString()
-        this.description = guild.description ?: ""
-        this.ownerId = guild.ownerId.value.toString()
-        return save()
+    companion object {
+        suspend fun addGuild(value: Guild) : Guilds? {
+            var curGuild = Guilds()
+            curGuild.idGuild = value.id.value.toString()
+            curGuild.name = value.name
+            curGuild.description = value.description ?: ""
+            curGuild.ownerId = value.ownerId.value.toString()
+
+            var result: Guilds? = null
+            R2DBC.db.withTransaction {
+                result = R2DBC.db.runQuery {
+                    QueryDsl.insert(R2DBC.tbl_guilds).single(curGuild)
+                }
+                printLog("[R2DBC::addParticipant] added guild id ${result?.id} with idGuild ${result?.idGuild}")
+            }
+            return result
+        }
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as TableGuild
+        other as Guilds
 
         if (id != other.id) return false
         if (idGuild != other.idGuild) return false
         if (name != other.name) return false
-        if (applicationId != other.applicationId) return false
         if (description != other.description) return false
         if (ownerId != other.ownerId) return false
         if (botChannelId != other.botChannelId) return false
@@ -220,6 +205,8 @@ data class TableGuild (
         if (messageIdGlobalStatisticData != other.messageIdGlobalStatisticData) return false
         if (messageIdMasteryData != other.messageIdMasteryData) return false
         if (messageIdArammmr != other.messageIdArammmr) return false
+        if (createdAt != other.createdAt) return false
+        if (updatedAt != other.updatedAt) return false
 
         return true
     }
@@ -228,7 +215,6 @@ data class TableGuild (
         var result = id
         result = 31 * result + idGuild.hashCode()
         result = 31 * result + name.hashCode()
-        result = 31 * result + (applicationId?.hashCode() ?: 0)
         result = 31 * result + description.hashCode()
         result = 31 * result + ownerId.hashCode()
         result = 31 * result + botChannelId.hashCode()
@@ -240,10 +226,8 @@ data class TableGuild (
         result = 31 * result + messageIdGlobalStatisticData.hashCode()
         result = 31 * result + messageIdMasteryData.hashCode()
         result = 31 * result + messageIdArammmr.hashCode()
+        result = 31 * result + createdAt.hashCode()
+        result = 31 * result + updatedAt.hashCode()
         return result
     }
-}
-
-val tableGuild = table<TableGuild, Database> {
-    column(TableGuild::idGuild).unique()
 }

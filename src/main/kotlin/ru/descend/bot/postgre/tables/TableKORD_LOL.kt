@@ -48,6 +48,16 @@ data class TableKORD_LOL(
         }
     }
 
+    fun getNickName() : String {
+        if (LOLperson == null) return ""
+        return if (LOLperson?.LOL_riotIdName.isNullOrEmpty()) LOLperson?.LOL_summonerName?:""
+        else LOLperson?.LOL_riotIdName?:""
+    }
+
+    fun getNickNameWithTag() : String {
+        return getNickName() + "#" + LOLperson?.LOL_riotIdTagline
+    }
+
     fun asUser(guild: Guild) : User {
         if (KORDperson == null) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
         return User(UserData(Snowflake(KORDperson!!.KORD_id.toLong()), KORDperson!!.KORD_name, KORDperson!!.KORD_discriminator), guild.kord)

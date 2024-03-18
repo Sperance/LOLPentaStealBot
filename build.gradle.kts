@@ -5,18 +5,40 @@ description = "Unofficial Bot for League of Legends"
 plugins {
     application
     id("java")
+    id("com.google.devtools.ksp") version "1.9.23-1.0.19"
 
-    kotlin("jvm") version "1.9.20"
-    kotlin("plugin.serialization") version "1.9.20"
+    kotlin("jvm") version "1.9.23"
+    kotlin("plugin.serialization") version "1.9.23"
 }
 
 repositories {
     mavenCentral()
+    mavenLocal()
     google()
     maven("https://jitpack.io")
 }
 
+val komapperVersion = "1.17.0"
+
 dependencies {
+    platform("org.komapper:komapper-platform:$komapperVersion").let {
+        implementation(it)
+        ksp(it)
+    }
+    implementation("org.komapper:komapper-tx-core:1.12.1")
+    implementation("org.komapper:komapper-template:$komapperVersion")
+    implementation("org.komapper:komapper-starter-jdbc:$komapperVersion")
+    implementation("org.komapper:komapper-starter-r2dbc:$komapperVersion")
+    implementation("org.komapper:komapper-dialect-postgresql-r2dbc")
+    implementation("org.komapper:komapper-dialect-postgresql-jdbc")
+    ksp("org.komapper:komapper-processor")
+
+    implementation("com.aallam.openai:openai-client:3.7.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
     implementation("me.jakejmattson", "DiscordKt", "0.23.4")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.github.jr-selphius:LeagueOfLegendsAPI:1.0.0")
@@ -77,6 +99,8 @@ tasks.withType<Jar> {
     })
 }
 
-tasks.test {
-    useJUnitPlatform()
+tasks {
+    withType<Test>().configureEach {
+        useJUnitPlatform()
+    }
 }

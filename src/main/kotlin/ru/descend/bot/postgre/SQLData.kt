@@ -2,6 +2,7 @@ package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
 import kotlinx.coroutines.delay
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.postgre.tables.TableKORDPerson
@@ -12,6 +13,7 @@ import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.postgre.tables.tableKORDLOL
 import ru.descend.bot.postgre.tables.tableKORDPerson
 import ru.descend.bot.postgre.tables.tableMatch
+import ru.descend.bot.postgre.tables.tableParticipant
 import statements.select
 import statements.selectAll
 import java.lang.ref.WeakReference
@@ -101,7 +103,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
     private var _arraySavedParticipants = ArrayList<statMainTemp>()
     private var arraySavedParticipants = WeakReference(_arraySavedParticipants)
 
-    fun resetSavedParticipants() {
+    suspend fun resetSavedParticipants() {
         _arraySavedParticipants.clear()
         execQuery("SELECT * FROM get_player_stats_param(${guildSQL.id})") {
             it?.let {
@@ -119,7 +121,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
             }
         }
     }
-    fun getSavedParticipants() : ArrayList<statMainTemp> {
+    suspend fun getSavedParticipants() : ArrayList<statMainTemp> {
         if (arraySavedParticipants.get().isNullOrEmpty()) {
             resetSavedParticipants()
         }
@@ -129,7 +131,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
     private var _arrayAramMMRData = ArrayList<statAramDataTemp>()
     private var arrayAramMMRData = WeakReference(_arrayAramMMRData)
 
-    fun resetArrayAramMMRData() {
+    suspend fun resetArrayAramMMRData() {
         _arrayAramMMRData.clear()
         execQuery("SELECT * FROM get_aram_data_param(${guildSQL.id})") {
             it?.let {
@@ -147,7 +149,7 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
             }
         }
     }
-    fun getArrayAramMMRData() : ArrayList<statAramDataTemp> {
+    suspend fun getArrayAramMMRData() : ArrayList<statAramDataTemp> {
         if (arrayAramMMRData.get().isNullOrEmpty()) {
             resetArrayAramMMRData()
         }
@@ -156,18 +158,58 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
 
     suspend fun addMatch(match: MatchDTO) {
         guildSQL.addMatch(this, match, getKORDLOL())
+        calculatePentaSteal(match)
+    }
+
+    private suspend fun calculatePentaSteal(match: MatchDTO) {
+        var isNeedCalculate = false
+        match.info.participants.forEach {
+            if (it.quadraKills - it.pentaKills > 0) {
+                isNeedCalculate = true
+                return@forEach
+            }
+        }
+        if (isNeedCalculate) {
+            val parts = tableParticipant.selectAll().where { TableMatch::matchId eq match.metadata.matchId }.getEntities()
+            LeagueMainObject.catchPentaSteal(match.metadata.matchId).forEach {pair ->
+                val firstPart = parts.find { it.puuid == pair.first }
+                var secondPart = parts.find { it.puuid == pair.second }
+
+                if (firstPart == null) {
+                    guildSQL.sendEmail("Error", "Participant with PUUID ${pair.first} not found in SQL. Match:${match.metadata.matchId}")
+                    return
+                }
+
+                if (secondPart == null) {
+                    guildSQL.sendEmail("Error", "Participant with PUUID ${pair.second} not found in SQL. Match:${match.metadata.matchId}")
+                    return
+                }
+
+                if (firstPart == secondPart) {
+                    guildSQL.sendEmail("Error", "Participants with PUUID ${pair.first} are Equals. Match:${match.metadata.matchId}")
+                    return
+                }
+
+                if (getKORDLOL().find { it.LOLperson?.LOL_puuid == firstPart.puuid } == null && getKORDLOL().find { it.LOLperson?.LOL_puuid == secondPart.puuid } == null) {
+                    guildSQL.sendEmail("PENTASTEAL (${match.metadata.matchId})", "ХЗ какой чел ${firstPart.LOLperson?.LOL_riotIdName} на ${firstPart.championName} состили Пенту у хз кого ${secondPart.LOLperson?.LOL_riotIdName} на ${secondPart.championName}")
+                    return
+                }
+
+                guildSQL.sendEmail("PENTASTEAL (${match.metadata.matchId})", "Чел ${firstPart.LOLperson?.LOL_riotIdName} на ${firstPart.championName} состили Пенту у ${secondPart.LOLperson?.LOL_riotIdName} на ${secondPart.championName}")
+            }
+        }
     }
 
     private var _mapWinStreak = WeakHashMap<Int, Int>()
     private var mapWinStreak = WeakReference(_mapWinStreak)
 
-    fun getWinStreak() : WeakHashMap<Int, Int> {
+    suspend fun getWinStreak() : WeakHashMap<Int, Int> {
         if (mapWinStreak.get().isNullOrEmpty()) {
             resetWinStreak()
         }
         return mapWinStreak.get()!!
     }
-    fun resetWinStreak() {
+    suspend fun resetWinStreak() {
         _mapWinStreak.clear()
         execQuery("SELECT * FROM get_streak_results_param(${guildSQL.id})"){
             it?.let {
