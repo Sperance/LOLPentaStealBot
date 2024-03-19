@@ -25,8 +25,7 @@ fun execProcedure(text: String) {
     state.execute(text)
 }
 
-suspend fun execQuery(query: String, body: (ResultSet?) -> Unit) {
-    delay(500)
+fun execQuery(query: String, body: (ResultSet?) -> Unit) {
     printLog("[execQuery] $query")
     val state = Postgre.newStatement
     state.queryTimeout = 10

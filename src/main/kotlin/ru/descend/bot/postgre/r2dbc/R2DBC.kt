@@ -2,23 +2,22 @@ package ru.descend.bot.postgre.r2dbc
 
 import dev.kord.core.entity.Guild
 import io.r2dbc.spi.ConnectionFactoryOptions
-import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.postgre.r2dbc.model.Guilds
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.model.guilds
-import ru.descend.bot.postgre.r2dbc.model.korDs
-import ru.descend.bot.postgre.r2dbc.model.kordloLs
-import ru.descend.bot.postgre.r2dbc.model.loLs
-import ru.descend.bot.postgre.r2dbc.model.matches
-import ru.descend.bot.postgre.r2dbc.model.mmRs
-import ru.descend.bot.postgre.r2dbc.model.participants
-import ru.descend.bot.postgre.tables.TableGuild
-import ru.descend.bot.postgre.tables.tableGuild
-import ru.descend.bot.printLog
+import ru.descend.bot.postgre.r2dbc.model.tbl_KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.tbl_KORDs
+import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
+import ru.descend.bot.postgre.r2dbc.model.tbl_MMRs
+import ru.descend.bot.postgre.r2dbc.model.tbl_guilds
+import ru.descend.bot.postgre.r2dbc.model.tbl_matches
+import ru.descend.bot.postgre.r2dbc.model.tbl_participants
 
 /**
  * https://www.komapper.org/docs/
@@ -34,42 +33,49 @@ object R2DBC {
         .option(ConnectionFactoryOptions.DATABASE, "postgres")
         .build()
 
-    val tbl_participants = Meta.participants
-    val tbl_matches = Meta.matches
-    val tbl_guilds = Meta.guilds
-    val tbl_mmrs = Meta.mmRs
-    val tbl_lols = Meta.loLs
-    val tbl_kords = Meta.korDs
-    val tbl_kordlols = Meta.kordloLs
     val db = R2dbcDatabase(connectionFactory)
 
     suspend fun initialize() {
         db.withTransaction {
             db.runQuery {
-                QueryDsl.create(tbl_participants)
+                QueryDsl.create(tbl_guilds)
+            }
+            db.runQuery {
+                QueryDsl.create(tbl_KORDLOLs)
+            }
+            db.runQuery {
+                QueryDsl.create(tbl_KORDs)
+            }
+            db.runQuery {
+                QueryDsl.create(tbl_LOLs)
             }
             db.runQuery {
                 QueryDsl.create(tbl_matches)
             }
             db.runQuery {
-                QueryDsl.create(tbl_guilds)
+                QueryDsl.create(tbl_MMRs)
             }
             db.runQuery {
-                QueryDsl.create(tbl_mmrs)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_lols)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_kords)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_kordlols)
+                QueryDsl.create(tbl_participants)
             }
         }
     }
 
-    suspend fun getGuild(guild: Guild): Guilds? {
+    suspend fun getParticipantsForMatch(match_id: Int) : List<Participants> {
+        var value: List<Participants>? = null
+
+        db.withTransaction {
+            value = db.runQuery {
+                QueryDsl.from(tbl_participants).where {
+                    tbl_participants.match_id eq match_id
+                }
+            }
+        }
+
+        return value?: listOf()
+    }
+
+    suspend fun getGuild(guild: Guild): Guilds {
         var myGuild: Guilds? = null
 
         db.withTransaction {
@@ -79,20 +85,8 @@ object R2DBC {
         }
 
         if (myGuild == null) {
-            myGuild = Guilds.addGuild(guild)
+            myGuild = Guilds.add(guild)
         }
-        return myGuild
-    }
-
-    suspend fun getLOLforPUUID(puuid: String): LOLs? {
-        var value: LOLs? = null
-
-        db.withTransaction {
-            value = db.runQuery {
-                QueryDsl.from(tbl_lols).where { tbl_lols.LOL_puuid eq puuid }.limit(1)
-            }.first()
-        }
-
-        return value
+        return myGuild!!
     }
 }

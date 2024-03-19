@@ -6,10 +6,14 @@ import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
+import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
+import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.printLog
 import java.time.LocalDateTime
+
+val tbl_matches = Meta.matches
 
 @KomapperEntity
 @KomapperTable("tbl_matches")
@@ -36,15 +40,23 @@ data class Matches(
 ) {
 
     companion object {
-        suspend fun addMatch(value: Matches) : Matches? {
+        suspend fun add(value: Matches) : Matches? {
             var result: Matches? = null
             R2DBC.db.withTransaction {
                 result = R2DBC.db.runQuery {
-                    QueryDsl.insert(R2DBC.tbl_matches).single(value)
+                    QueryDsl.insert(tbl_matches).single(value)
                 }
                 printLog("[R2DBC::addParticipant] added match id ${result?.id} with matchId ${result?.matchId}")
             }
             return result
+        }
+
+        suspend fun resetData(guilds: Guilds) : List<Matches> {
+            return R2DBC.db.withTransaction {
+                R2DBC.db.runQuery {
+                    QueryDsl.from(tbl_matches).where { tbl_matches.guild_id eq guilds.id }
+                }
+            }
         }
     }
 

@@ -1,63 +1,17 @@
 package ru.descend.bot.savedObj
 
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.postgre.SQLData
-import ru.descend.bot.postgre.tables.TableKORD_LOL
-import ru.descend.bot.postgre.tables.TableMatch
-import ru.descend.bot.postgre.tables.TableMmr
-import ru.descend.bot.postgre.tables.TableParticipant
+import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.MMRs
+import ru.descend.bot.postgre.r2dbc.model.Matches
+import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.printLog
 import ru.descend.bot.to2Digits
-import update
 import kotlin.math.abs
 import kotlin.reflect.KMutableProperty1
 
-private const val modRank = 70.0
-private const val modTitle = 100.0
-
-enum class EnumMMRRank(val nameRank: String, val minMMR: Double, val rankValue: Int) {
-    UNRANKED("Нет ранга", 0.0, 0),
-    PAPER_III("Бумага III", UNRANKED.minMMR + modRank, 1),
-    PAPER_II("Бумага II", PAPER_III.minMMR + modRank, 1),
-    PAPER_I("Бумага I", PAPER_II.minMMR + modRank, 1),
-    WOOD_III("Дерево III", PAPER_I.minMMR + modTitle, 2),
-    WOOD_II("Дерево II", WOOD_III.minMMR + modRank, 2),
-    WOOD_I("Дерево I", WOOD_II.minMMR + modRank, 2),
-    IRON_III("Железо III", WOOD_I.minMMR + modTitle, 3),
-    IRON_II("Железо II", IRON_III.minMMR + modRank, 3),
-    IRON_I("Железо I", IRON_II.minMMR + modRank, 3),
-    BRONZE_III("Бронза III", IRON_I.minMMR + modTitle, 4),
-    BRONZE_II("Бронза II", BRONZE_III.minMMR + modRank, 4),
-    BRONZE_I("Бронза I", BRONZE_II.minMMR + modRank, 4),
-    SILVER_III("Серебро III", BRONZE_I.minMMR + modTitle, 5),
-    SILVER_II("Серебро II", SILVER_III.minMMR + modRank, 5),
-    SILVER_I("Серебро I", SILVER_II.minMMR + modRank, 5),
-    GOLD_III("Золото III", SILVER_I.minMMR + modTitle, 6),
-    GOLD_II("Золото II", GOLD_III.minMMR + modRank, 6),
-    GOLD_I("Золото I", GOLD_II.minMMR + modRank, 6),
-    PLATINUM_III("Платина III", GOLD_I.minMMR + modTitle, 7),
-    PLATINUM_II("Платина II", PLATINUM_III.minMMR + modRank, 7),
-    PLATINUM_I("Платина I", PLATINUM_II.minMMR + modRank, 7),
-    DIAMOND_III("Алмаз III", PLATINUM_I.minMMR + modTitle, 8),
-    DIAMOND_II("Алмаз II", DIAMOND_III.minMMR + modRank, 8),
-    DIAMOND_I("Алмаз I", DIAMOND_II.minMMR + modRank, 8),
-    MASTER_III("Мастер III", DIAMOND_I.minMMR + modTitle, 9),
-    MASTER_II("Мастер II", MASTER_III.minMMR + modRank, 9),
-    MASTER_I("Мастер I", MASTER_II.minMMR + modRank, 9),
-    CHALLENGER("Челленджер", MASTER_I.minMMR + modTitle, 10)
-    ;
-
-    companion object {
-        fun getMMRRank(mmr: Double) : EnumMMRRank {
-            entries.forEach {
-                if (it.minMMR >= mmr) return it
-            }
-            return UNRANKED
-        }
-    }
-}
-
-class CalculateMMR(private var sqlData: SQLData, private var participant: TableParticipant, var match: TableMatch, var kordlol: List<TableKORD_LOL>, private var mmrTable: TableMmr?) {
+class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant: Participants, var match: Matches, var kordlol: List<KORDLOLs>, private var mmrTable: MMRs?) {
 
     private var mmrValue = 0.0
     private var mmrEmailText = ""
@@ -66,7 +20,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
 
     private var baseModificator = 1.3
 
-    init {
+    suspend fun init() {
         if (mmrTable != null) {
             mmrModificator = (match.matchDuration.toDouble().fromDoubleValue(mmrTable!!.matchDuration) / 100.0).to2Digits()
             if (mmrModificator < 0) {
@@ -86,27 +40,27 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
             mmrEmailText += "isFighterTank: $isFighterTank, isMageSupport: $isMageSupport\n"
 
             countFields = 0.0
-            calculateField(TableParticipant::minionsKills, TableMmr::minions)
-            calculateField(TableParticipant::skillsCast, TableMmr::skills)
+            calculateField(Participants::minionsKills, MMRs::minions)
+            calculateField(Participants::skillsCast, MMRs::skills)
 
             if (isMageSupport) {
-                calculateField(TableParticipant::totalDamageShieldedOnTeammates, TableMmr::shielded, minValue = 300.0)
-                calculateField(TableParticipant::totalHealsOnTeammates, TableMmr::healed, minValue = 300.0)
+                calculateField(Participants::totalDamageShieldedOnTeammates, MMRs::shielded, minValue = 300.0)
+                calculateField(Participants::totalHealsOnTeammates, MMRs::healed, minValue = 300.0)
             }
 
-            calculateField(TableParticipant::damageDealtToBuildings, TableMmr::dmgBuilding, minValue = 500.0, maxMMR = 1.0)
-            calculateField(TableParticipant::timeCCingOthers, TableMmr::controlEnemy, minValue = 3.0)
+            calculateField(Participants::damageDealtToBuildings, MMRs::dmgBuilding, minValue = 500.0, maxMMR = 1.0)
+            calculateField(Participants::timeCCingOthers, MMRs::controlEnemy, minValue = 3.0)
 
             if (!isMageSupport && isFighterTank) {
-                calculateField(TableParticipant::enemyChampionImmobilizations, TableMmr::immobiliz, minValue = 5.0)
-                calculateField(TableParticipant::damageTakenOnTeamPercentage, TableMmr::dmgTakenPerc)
+                calculateField(Participants::enemyChampionImmobilizations, MMRs::immobiliz, minValue = 5.0)
+                calculateField(Participants::damageTakenOnTeamPercentage, MMRs::dmgTakenPerc)
             }
-            calculateField(TableParticipant::skillshotsDodged, TableMmr::skillDodge, minValue = 20.0, maxMMR = 1.0)
+            calculateField(Participants::skillshotsDodged, MMRs::skillDodge, minValue = 20.0, maxMMR = 1.0)
 
-            calculateField(TableParticipant::teamDamagePercentage, TableMmr::dmgDealPerc)
-            calculateField(TableParticipant::kda, TableMmr::kda)
+            calculateField(Participants::teamDamagePercentage, MMRs::dmgDealPerc)
+            calculateField(Participants::kda, MMRs::kda)
 
-            kordlol.find { it.LOLperson?.LOL_puuid == participant.LOLperson?.LOL_puuid }?.let {
+            kordlol.find { it.LOL_id == participant.LOLperson_id }?.let {
                 calculateMMRaram(it)
             }
             if (match.matchMode == "ARAM") {
@@ -117,13 +71,13 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
         }
     }
 
-    private fun calculateMMRaram(kordlol: TableKORD_LOL?) {
+    private suspend fun calculateMMRaram(kordlol: KORDLOLs?) {
         if (kordlol == null) return
         if (match.matchMode != "ARAM") return
         if (match.surrender) return
         if (match.bots) return
 
-        mmrEmailText += "\n[BEGIN] User(kordlol_id): ${kordlol.id} Summoner: ${kordlol.LOLperson?.LOL_summonerName} Champion: ${participant.championName} Win: ${participant.win}\n"
+        mmrEmailText += "\n[BEGIN] User(kordlol_id): ${kordlol.id} Summoner: ${sqlData.getLOL(kordlol.LOL_id)?.LOL_summonerName} Champion: ${participant.championName} Win: ${participant.win}\n"
         mmrEmailText += "[BEGIN] MMR: ${kordlol.mmrAram.to2Digits()} SavedMMR: ${kordlol.mmrAramSaved.to2Digits()}\n"
 
         val partMMR: Double
@@ -147,14 +101,14 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
 
         newSavedMMR += calcRankAramMMR(kordlol.mmrAram, newAramValue)
         mmrEmailText += "\n[COMPLETED] calculateMMR: ${mmrValue.to2Digits()} mmrAram: ${newAramValue.to2Digits()} mmrAramSaved: ${newSavedMMR.to2Digits()} participant MMR: ${partMMR.to2Digits()} flat: ${mmrValue.to2Digits()}\n"
-        kordlol.update(TableKORD_LOL::mmrAram, TableKORD_LOL::mmrAramSaved){
-            mmrAram = newAramValue.to2Digits()
-            mmrAramSaved = newSavedMMR.to2Digits()
-        }
-        participant.update(TableParticipant::mmr, TableParticipant::mmrFlat){
-            mmr = partMMR.to2Digits()
-            mmrFlat = mmrValue.to2Digits()
-        }
+
+        kordlol.mmrAram = newAramValue.to2Digits()
+        kordlol.mmrAramSaved = newSavedMMR.to2Digits()
+        kordlol.update()
+
+        participant.mmr = partMMR.to2Digits()
+        participant.mmrFlat = mmrValue.to2Digits()
+        participant.update()
     }
 
     /**
@@ -188,7 +142,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
     /**
      * Подсчет ММР которое даётся игроку (при победе)
      */
-    private fun calcAddingMMR(kordlol: TableKORD_LOL) : Double {
+    private suspend fun calcAddingMMR(kordlol: KORDLOLs) : Double {
         //Текущее значение ММР + новое значение ММР
         var addedValue = mmrValue.to2Digits()
 //        var value = kordlol.mmrAram + mmrValue
@@ -196,7 +150,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
         mmrEmailText += "\n[calcAddingMMR] текущее значение ММР: ${kordlol.mmrAram} Из них посчитано добавочных: $addedValue\n"
 
         //обработка добавочного ММР за лузстрик
-        val looseStreak = sqlData.getWinStreak()[kordlol.LOLperson?.id]?:0
+        val looseStreak = sqlData.getWinStreak()[kordlol.LOL_id]?:0
         if (looseStreak < -2) {
             addedValue += (abs(looseStreak) * 0.3).to2Digits()
             mmrEmailText += "[calcAddingMMR] лузстрик: $looseStreak. Добавляем ММР к получаемым: ${(abs(looseStreak) * 0.3).to2Digits()} получилось ММР: $addedValue\n"
@@ -226,7 +180,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
     /**
      * Подсчет ММР которое вычитается из игрока (при поражении)
      */
-    private fun calcRemoveMMR(kordlol: TableKORD_LOL) : Double {
+    private fun calcRemoveMMR(kordlol: KORDLOLs) : Double {
         var value: Double
 
         value = if (mmrValue < countFields) {
@@ -270,7 +224,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
     /**
      * Подсчет увеличения бонусных ММР
      */
-    private fun calcAddSavedMMR(kordlol: TableKORD_LOL) : Double {
+    private fun calcAddSavedMMR(kordlol: KORDLOLs) : Double {
         val value: Double
 
         //текущее значение бонусных ММР
@@ -334,7 +288,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
         return Pair(newSavedMMR, minusMMR)
     }
 
-    private fun calculateField(propertyParticipant: KMutableProperty1<TableParticipant, *>, propertyMmr: KMutableProperty1<TableMmr, *>, minValue: Double? = null, maxMMR: Double? = null) {
+    private fun calculateField(propertyParticipant: KMutableProperty1<Participants, *>, propertyMmr: KMutableProperty1<MMRs, *>, minValue: Double? = null, maxMMR: Double? = null) {
         if (mmrTable == null) return
 
         val valuePropertyMmr = ((propertyMmr.invoke(mmrTable!!) as Double) * baseModificator).to2Digits()
@@ -395,11 +349,12 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as CalculateMMR
+        other as CalculateMMR_2
 
         if (sqlData != other.sqlData) return false
         if (participant != other.participant) return false
         if (match != other.match) return false
+        if (kordlol != other.kordlol) return false
         if (mmrTable != other.mmrTable) return false
         if (mmrValue != other.mmrValue) return false
         if (mmrEmailText != other.mmrEmailText) return false
@@ -414,6 +369,7 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
         var result = sqlData.hashCode()
         result = 31 * result + participant.hashCode()
         result = 31 * result + match.hashCode()
+        result = 31 * result + kordlol.hashCode()
         result = 31 * result + (mmrTable?.hashCode() ?: 0)
         result = 31 * result + mmrValue.hashCode()
         result = 31 * result + mmrEmailText.hashCode()
@@ -422,4 +378,6 @@ class CalculateMMR(private var sqlData: SQLData, private var participant: TableP
         result = 31 * result + baseModificator.hashCode()
         return result
     }
+
+
 }

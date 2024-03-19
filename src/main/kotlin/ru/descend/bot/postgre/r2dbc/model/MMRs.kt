@@ -1,12 +1,15 @@
 package ru.descend.bot.postgre.r2dbc.model
 
 import org.komapper.annotation.KomapperAutoIncrement
-import org.komapper.annotation.KomapperCreatedAt
 import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
-import org.komapper.annotation.KomapperUpdatedAt
-import java.time.LocalDateTime
+import org.komapper.core.dsl.Meta
+import org.komapper.core.dsl.QueryDsl
+import org.komapper.r2dbc.R2dbcDatabase
+import ru.descend.bot.postgre.r2dbc.R2DBC
+
+val tbl_MMRs = Meta.mmRs
 
 @KomapperEntity
 @KomapperTable("tbl_MMRs")
@@ -29,6 +32,17 @@ data class MMRs(
     var dmgDealPerc: Double = 0.0,
     var kda: Double = 0.0
 ) {
+
+    companion object {
+        suspend fun resetData() : List<MMRs> {
+            return R2DBC.db.withTransaction {
+                R2DBC.db.runQuery {
+                    QueryDsl.from(tbl_MMRs)
+                }
+            }
+        }
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

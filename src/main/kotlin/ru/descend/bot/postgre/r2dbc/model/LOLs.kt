@@ -6,12 +6,16 @@ import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
+import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
+import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.printLog
 import java.time.LocalDateTime
+
+val tbl_LOLs = Meta.loLs
 
 @KomapperEntity
 @KomapperTable("tbl_LOLs")
@@ -47,16 +51,35 @@ data class LOLs(
         }
     }
 
+    suspend fun update() : LOLs? {
+        var result: LOLs? = null
+        R2DBC.db.withTransaction {
+            result = R2DBC.db.runQuery {
+                QueryDsl.update(tbl_LOLs).single(this@LOLs)
+            }
+            printLog("[LOLs::update] updated lol id ${result?.id}")
+        }
+        return result
+    }
+
     companion object {
-        suspend fun addLOL(value: LOLs) : LOLs? {
+        suspend fun add(value: LOLs) : LOLs? {
             var result: LOLs? = null
             R2DBC.db.withTransaction {
                 result = R2DBC.db.runQuery {
-                    QueryDsl.insert(R2DBC.tbl_lols).single(value)
+                    QueryDsl.insert(tbl_LOLs).single(value)
                 }
                 printLog("[R2DBC::addLOL] added lol id ${result?.id} with puuid ${result?.LOL_puuid}")
             }
             return result
+        }
+
+        suspend fun resetData() : List<LOLs> {
+            return R2DBC.db.withTransaction {
+                R2DBC.db.runQuery {
+                    QueryDsl.from(tbl_LOLs)
+                }
+            }
         }
     }
 

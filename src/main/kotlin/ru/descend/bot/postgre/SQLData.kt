@@ -203,13 +203,13 @@ class SQLData (var guild: Guild, var guildSQL: TableGuild) {
     private var _mapWinStreak = WeakHashMap<Int, Int>()
     private var mapWinStreak = WeakReference(_mapWinStreak)
 
-    suspend fun getWinStreak() : WeakHashMap<Int, Int> {
+    fun getWinStreak() : WeakHashMap<Int, Int> {
         if (mapWinStreak.get().isNullOrEmpty()) {
             resetWinStreak()
         }
         return mapWinStreak.get()!!
     }
-    suspend fun resetWinStreak() {
+    fun resetWinStreak() {
         _mapWinStreak.clear()
         execQuery("SELECT * FROM get_streak_results_param(${guildSQL.id})"){
             it?.let {

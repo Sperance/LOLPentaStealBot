@@ -8,11 +8,17 @@ import org.komapper.core.dsl.query.string
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.WorkData
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.MMRs
+import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
+import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
+import ru.descend.bot.postgre.r2dbc.model.tbl_matches
+import ru.descend.bot.postgre.r2dbc.model.tbl_participants
 import ru.descend.bot.postgre.tables.TableKORD_LOL
 import ru.descend.bot.postgre.tables.TableMatch
 import ru.descend.bot.postgre.tables.tableParticipant
@@ -25,28 +31,65 @@ data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var m
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
-    var listKordTemp = ArrayList<kordTemp>()
-    var listMainData = ArrayList<TableKORD_LOL>()
+    var listKordTemp = ArrayList<kordTemp_r2>()
+    var listMainData = ArrayList<KORDLOLs>()
 
     var mainDataList1: ThreadLocal<java.util.ArrayList<Any?>> = ThreadLocal.withInitial{ ArrayList() }
     var mainDataList2: ThreadLocal<java.util.ArrayList<Any?>> = ThreadLocal.withInitial{ ArrayList() }
     var mainDataList3: ThreadLocal<java.util.ArrayList<Any?>> = ThreadLocal.withInitial{ ArrayList() }
 
+    val dataGuild = WorkData<Guilds>()
+    val dataKORDLOL = WorkData<KORDLOLs>()
+    val dataKORD = WorkData<KORDs>()
+    val dataLOL = WorkData<LOLs>()
+    val dataMatches = WorkData<Matches>()
+    val dataMMR = WorkData<MMRs>()
+    val dataParticipants = WorkData<Participants>()
+
+    val dataSavedLOL = WorkData<LOLs>()
+    val dataSavedParticipants = WorkData<Participants>()
+
+    fun initialize() {
+        dataGuild.bodyReset = { Guilds.resetData() }
+        dataKORDLOL.bodyReset = { KORDLOLs.resetData(guildSQL) }
+        dataKORD.bodyReset = { KORDs.resetData(guildSQL) }
+        dataLOL.bodyReset = { LOLs.resetData() }
+        dataMatches.bodyReset = { Matches.resetData(guildSQL) }
+        dataMMR.bodyReset = { MMRs.resetData() }
+        dataParticipants.bodyReset = { Participants.resetData(guildSQL) }
+
+        dataSavedLOL.bodyReset = {
+            val kordLol_lol_id = dataKORDLOL.get().map { it.LOL_id }
+            R2DBC.db.withTransaction {
+                R2DBC.db.runQuery {
+                    QueryDsl.from(tbl_LOLs).where { tbl_LOLs.id.inList(kordLol_lol_id) }
+                }
+            }
+        }
+
+        dataSavedParticipants.bodyReset = {
+            val kordLol_lol_id = dataKORDLOL.get().map { it.LOL_id }
+            R2DBC.db.withTransaction {
+                R2DBC.db.runQuery {
+                    QueryDsl.from(tbl_participants).where { tbl_participants.LOLperson_id.inList(kordLol_lol_id) }
+                }
+            }
+        }
+    }
+
     fun performClear() {
         clearMainDataList()
 
-        listKordTemp.clear()
-        listMainData.clear()
+        dataGuild.clear()
+        dataKORDLOL.clear()
+        dataKORD.clear()
+        dataLOL.clear()
+        dataMatches.clear()
+        dataMMR.clear()
+        dataParticipants.clear()
 
-        arrayKORDLOL.clear()
-        arrayLOL.clear()
-        arraySavedParticipants.clear()
-        arrayAramMMRData.clear()
-        mapWinStreak.clear()
-
-        mainDataList1.remove()
-        mainDataList2.remove()
-        mainDataList3.remove()
+        dataSavedLOL.clear()
+        dataSavedParticipants.clear()
     }
 
     fun clearMainDataList() {
@@ -56,56 +99,14 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     /*-----*/
-
-    private var arrayKORDLOL = ArrayList<KORDLOLs>()
-    suspend fun getKORDLOL(): ArrayList<KORDLOLs> {
-        if (arrayKORDLOL.isEmpty()) { resetKORDLOL() }
-        return arrayKORDLOL
-    }
+    suspend fun getKORDLOL() = dataKORDLOL.get()
     suspend fun getKORDLOL(id: Int) = getKORDLOL().find { it.id == id }
-    suspend fun resetKORDLOL() {
-        arrayKORDLOL.clear()
-        R2DBC.db.withTransaction {
-            arrayKORDLOL.addAll (R2DBC.db.runQuery {
-                QueryDsl.from(R2DBC.tbl_kordlols).where { R2DBC.tbl_kordlols.guild_id eq guildSQL.id }
-            })
-        }
-    }
-
     /*-----*/
-
-    private var arrayLOL = ArrayList<LOLs>()
-    suspend fun getLOL(): ArrayList<LOLs> {
-        if (arrayLOL.isEmpty()) { resetLOL() }
-        return arrayLOL
-    }
+    suspend fun getLOL() = dataLOL.get()
     suspend fun getLOL(id: Int) = getLOL().find { it.id == id }
-    suspend fun resetLOL() {
-        arrayLOL.clear()
-        R2DBC.db.withTransaction {
-            arrayLOL.addAll (R2DBC.db.runQuery {
-                QueryDsl.from(R2DBC.tbl_lols)
-            })
-        }
-    }
-
     /*-----*/
-
-    private var arrayKORD = ArrayList<KORDs>()
-    suspend fun getKORD(): ArrayList<KORDs> {
-        if (arrayKORD.isEmpty()) { resetKORD() }
-        return arrayKORD
-    }
+    suspend fun getKORD() = dataKORD.get()
     suspend fun geKORD(id: Int) = getKORD().find { it.id == id }
-    suspend fun resetKORD() {
-        arrayKORD.clear()
-        R2DBC.db.withTransaction {
-            arrayKORD.addAll (R2DBC.db.runQuery {
-                QueryDsl.from(R2DBC.tbl_kords)
-            })
-        }
-    }
-
     /*-----*/
 
     private var arraySavedParticipants = ArrayList<statMainTemp_r2>()
@@ -230,18 +231,15 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
-        R2DBC.db.withTransaction {
-            R2DBC.db.runQuery {
-                QueryDsl.from(R2DBC.tbl_matches).where {
-                    R2DBC.tbl_matches.guild_id eq 1
-                    R2DBC.tbl_matches.matchId.inList(list)
-                }
-            }.forEach {
-                list.remove(it.matchId)
-            }
-        }
+        dataMatches.get().forEach { list.remove(it.matchId) }
         return list
     }
+
+    suspend fun getSavedParticipantsForMatch(matchId: Int) = dataSavedParticipants.get().filter { it.match_id == matchId }
+
+    suspend fun getLOLforPUUID(puuid: String) = getLOL().find { it.LOL_puuid == puuid }
+
+    suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -256,14 +254,22 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         if (mainDataList1 != other.mainDataList1) return false
         if (mainDataList2 != other.mainDataList2) return false
         if (mainDataList3 != other.mainDataList3) return false
-        if (arrayKORDLOL != other.arrayKORDLOL) return false
-        if (arrayLOL != other.arrayLOL) return false
+        if (dataGuild != other.dataGuild) return false
+        if (dataKORDLOL != other.dataKORDLOL) return false
+        if (dataKORD != other.dataKORD) return false
+        if (dataLOL != other.dataLOL) return false
+        if (dataMatches != other.dataMatches) return false
+        if (dataMMR != other.dataMMR) return false
+        if (dataParticipants != other.dataParticipants) return false
+        if (dataSavedLOL != other.dataSavedLOL) return false
+        if (dataSavedParticipants != other.dataSavedParticipants) return false
         if (arraySavedParticipants != other.arraySavedParticipants) return false
         if (arrayAramMMRData != other.arrayAramMMRData) return false
         if (mapWinStreak != other.mapWinStreak) return false
 
         return true
     }
+
     override fun hashCode(): Int {
         var result = guild.hashCode()
         result = 31 * result + guildSQL.hashCode()
@@ -272,8 +278,15 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         result = 31 * result + mainDataList1.hashCode()
         result = 31 * result + mainDataList2.hashCode()
         result = 31 * result + mainDataList3.hashCode()
-        result = 31 * result + arrayKORDLOL.hashCode()
-        result = 31 * result + arrayLOL.hashCode()
+        result = 31 * result + dataGuild.hashCode()
+        result = 31 * result + dataKORDLOL.hashCode()
+        result = 31 * result + dataKORD.hashCode()
+        result = 31 * result + dataLOL.hashCode()
+        result = 31 * result + dataMatches.hashCode()
+        result = 31 * result + dataMMR.hashCode()
+        result = 31 * result + dataParticipants.hashCode()
+        result = 31 * result + dataSavedLOL.hashCode()
+        result = 31 * result + dataSavedParticipants.hashCode()
         result = 31 * result + arraySavedParticipants.hashCode()
         result = 31 * result + arrayAramMMRData.hashCode()
         result = 31 * result + mapWinStreak.hashCode()

@@ -11,8 +11,15 @@ import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
+import org.komapper.core.dsl.Meta
+import org.komapper.core.dsl.QueryDsl
+import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.printLog
 import java.time.LocalDateTime
+
+val tbl_KORDLOLs = Meta.kordloLs
 
 @KomapperEntity
 @KomapperTable("tbl_KORDLOLs")
@@ -34,6 +41,17 @@ data class KORDLOLs(
     val updatedAt: LocalDateTime = LocalDateTime.MIN
 ) {
 
+    suspend fun update() : KORDLOLs? {
+        var result: KORDLOLs? = null
+        R2DBC.db.withTransaction {
+            result = R2DBC.db.runQuery {
+                QueryDsl.update(tbl_KORDLOLs).single(this@KORDLOLs)
+            }
+            printLog("[LOLs::update] updated KORDLOL id ${result?.id}")
+        }
+        return result
+    }
+
     suspend fun getNickName(data: SQLData_R2DBC) : String {
         if (LOL_id == -1) return ""
         return if (data.getLOL(LOL_id)?.LOL_riotIdName.isNullOrEmpty()) data.getLOL(LOL_id)?.LOL_summonerName?:""
@@ -47,6 +65,16 @@ data class KORDLOLs(
     suspend fun asUser(guild: Guild, data: SQLData_R2DBC) : User {
         if (KORD_id == -1) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
         return User(UserData(Snowflake(data.geKORD(KORD_id)!!.KORD_id.toLong()), data.geKORD(KORD_id)!!.KORD_name, data.geKORD(KORD_id)!!.KORD_discriminator), guild.kord)
+    }
+
+    companion object {
+        suspend fun resetData(guild: Guilds) : List<KORDLOLs> {
+            return R2DBC.db.withTransaction {
+                R2DBC.db.runQuery {
+                    QueryDsl.from(tbl_KORDLOLs).where { tbl_KORDLOLs.guild_id eq guild.id }
+                }
+            }
+        }
     }
 
     override fun equals(other: Any?): Boolean {

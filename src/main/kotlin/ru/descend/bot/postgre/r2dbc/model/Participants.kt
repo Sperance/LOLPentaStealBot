@@ -6,15 +6,16 @@ import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
+import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
+import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.tables.TableLOLPerson
-import ru.descend.bot.postgre.tables.TableMatch
-import ru.descend.bot.postgre.tables.TableParticipant
 import ru.descend.bot.printLog
 import ru.descend.bot.to2Digits
 import java.time.LocalDateTime
+
+val tbl_participants = Meta.participants
 
 @KomapperEntity
 @KomapperTable("tbl_participants")
@@ -86,16 +87,35 @@ data class Participants(
     val updatedAt: LocalDateTime = LocalDateTime.MIN
 ) {
 
+    suspend fun update() : Participants? {
+        var result: Participants? = null
+        R2DBC.db.withTransaction {
+            result = R2DBC.db.runQuery {
+                QueryDsl.update(tbl_participants).single(this@Participants)
+            }
+            printLog("[LOLs::update] updated Participants id ${result?.id}")
+        }
+        return result
+    }
+
     companion object {
-        suspend fun addParticipant(value: Participants) : Participants? {
+        suspend fun add(value: Participants) : Participants? {
             var result: Participants? = null
             R2DBC.db.withTransaction {
                 result = R2DBC.db.runQuery {
-                    QueryDsl.insert(R2DBC.tbl_participants).single(value)
+                    QueryDsl.insert(tbl_participants).single(value)
                 }
                 printLog("[R2DBC::addParticipant] added participant id ${result?.id} with match_id ${result?.match_id}")
             }
             return result
+        }
+
+        suspend fun resetData(guilds: Guilds) : List<Participants> {
+            return R2DBC.db.withTransaction {
+                R2DBC.db.runQuery {
+                    QueryDsl.from(tbl_participants).where { tbl_participants.guild_id eq guilds.id }
+                }
+            }
         }
     }
 

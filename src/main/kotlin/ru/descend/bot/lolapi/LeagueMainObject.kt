@@ -9,6 +9,7 @@ import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
 import ru.descend.bot.lolapi.leaguedata.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.postgre.PostgreTest
+import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.tables.TableGuild
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.getStrongDate
@@ -60,7 +61,7 @@ object LeagueMainObject {
         return namesAllHero
     }
 
-    suspend fun catchMatchID(guild: TableGuild, puuid: String, start: Int, count: Int) : ArrayList<String> {
+    suspend fun catchMatchID(guild: Guilds, puuid: String, start: Int, count: Int) : ArrayList<String> {
         val result = ArrayList<String>()
         globalLOLRequests++
         delay(checkRiotQuota())
@@ -87,7 +88,7 @@ object LeagueMainObject {
         return result
     }
 
-    suspend fun catchMatch(guild: TableGuild, matchId: String) : MatchDTO? {
+    suspend fun catchMatch(guild: Guilds, matchId: String) : MatchDTO? {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
