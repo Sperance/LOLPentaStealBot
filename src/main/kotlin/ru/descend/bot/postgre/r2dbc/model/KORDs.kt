@@ -1,5 +1,6 @@
 package ru.descend.bot.postgre.r2dbc.model
 
+import dev.kord.core.entity.User
 import org.komapper.annotation.KomapperAutoIncrement
 import org.komapper.annotation.KomapperCreatedAt
 import org.komapper.annotation.KomapperEntity
@@ -8,9 +9,10 @@ import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
-import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.calculateUpdate
 import java.time.LocalDateTime
 
 val tbl_KORDs = Meta.korDs
@@ -20,38 +22,50 @@ val tbl_KORDs = Meta.korDs
 data class KORDs(
     @KomapperId
     @KomapperAutoIncrement
-    val id: Int = 0,
+    var id: Int = 0,
+
+    var guild_id: Int = -1,
 
     var KORD_id: String = "",
     var KORD_name: String = "",
     var KORD_discriminator: String = "",
 
-    var guild_id: Int = -1,
-
     @KomapperCreatedAt
-    val createdAt: LocalDateTime = LocalDateTime.MIN,
+    var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
-    val updatedAt: LocalDateTime = LocalDateTime.MIN
-) {
+    var updatedAt: LocalDateTime = LocalDateTime.MIN
+) : InterfaceR2DBC<KORDs> {
 
-    suspend fun update() : KORDs? {
-        var result: KORDs? = null
-        R2DBC.db.withTransaction {
-            result = R2DBC.db.runQuery {
-                QueryDsl.update(tbl_KORDs).single(this@KORDs)
-            }
-            printLog("[KORDs::update] updated KORD id ${result?.id}")
-        }
-        return result
+    constructor(guild: Guilds, user: User) : this() {
+        this.guild_id = guild.id
+        this.KORD_id = user.id.value.toString()
+        this.KORD_name = user.username
+        this.KORD_discriminator = user.discriminator
     }
 
-    companion object {
-        suspend fun resetData(guild: Guilds) : List<KORDs> {
-            return R2DBC.db.withTransaction {
-                R2DBC.db.runQuery {
-                    QueryDsl.from(tbl_KORDs).where { tbl_KORDs.guild_id eq guild.id }
-                }
-            }
+    override suspend fun save() : KORDs {
+        val result = R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.insert(tbl_KORDs).single(this@KORDs) }
+        }
+        this.id = result.id
+        this.updatedAt = result.updatedAt
+        this.createdAt = result.createdAt
+        printLog("[KORDs::save] $this")
+        return this
+    }
+
+    override suspend fun update() : KORDs {
+        val before = R2DBC.getKORDs { tbl_KORDs.id eq this@KORDs.id }.firstOrNull()
+        printLog("[KORDs::update] $this { ${calculateUpdate(before, this)} }")
+        return R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.update(tbl_KORDs).single(this@KORDs) }
+        }
+    }
+
+    override suspend fun delete() {
+        printLog("[KORDs::delete] $this")
+        R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.delete(tbl_KORDs).single(this@KORDs) }
         }
     }
 
@@ -81,5 +95,9 @@ data class KORDs(
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return "KORDs(id=$id, KORD_id='$KORD_id', KORD_name='$KORD_name', guild_id=$guild_id)"
     }
 }

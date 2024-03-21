@@ -8,10 +8,11 @@ import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
-import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.calculateUpdate
 import ru.descend.bot.to2Digits
 import java.time.LocalDateTime
 
@@ -22,7 +23,11 @@ val tbl_participants = Meta.participants
 data class Participants(
     @KomapperId
     @KomapperAutoIncrement
-    val id: Int = 0,
+    var id: Int = 0,
+
+    var match_id: Int = -1,
+    var LOLperson_id: Int = -1,
+    var guild_id: Int = -1,
 
     var championId: Int = -1,
     var championName: String = "",
@@ -71,53 +76,12 @@ data class Participants(
     var tookLargeDamageSurvived: Int = 0, //took_large_damage_survived
     var longestTimeSpentLiving: Int = 0, //longest_time_spent_living
     var totalTimeSpentDead: Int = 0, //total_time_spent_dead
-    var summonerName: String = "", //summoner_name
-    var summonerId: String = "", //summoner_id
-    var puuid: String = "", //puuid
-    var riotIdGameName: String = "", //riot_id_game_name
-    var riotIdTagline: String = "", //---
-
-    var match_id: Int = -1,
-    var LOLperson_id: Int = -1,
-    var guild_id: Int = -1,
 
     @KomapperCreatedAt
-    val createdAt: LocalDateTime = LocalDateTime.MIN,
+    var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
-    val updatedAt: LocalDateTime = LocalDateTime.MIN
-) {
-
-    suspend fun update() : Participants? {
-        var result: Participants? = null
-        R2DBC.db.withTransaction {
-            result = R2DBC.db.runQuery {
-                QueryDsl.update(tbl_participants).single(this@Participants)
-            }
-            printLog("[LOLs::update] updated Participants id ${result?.id}")
-        }
-        return result
-    }
-
-    companion object {
-        suspend fun add(value: Participants) : Participants? {
-            var result: Participants? = null
-            R2DBC.db.withTransaction {
-                result = R2DBC.db.runQuery {
-                    QueryDsl.insert(tbl_participants).single(value)
-                }
-                printLog("[R2DBC::addParticipant] added participant id ${result?.id} with match_id ${result?.match_id}")
-            }
-            return result
-        }
-
-        suspend fun resetData(guilds: Guilds) : List<Participants> {
-            return R2DBC.db.withTransaction {
-                R2DBC.db.runQuery {
-                    QueryDsl.from(tbl_participants).where { tbl_participants.guild_id eq guilds.id }
-                }
-            }
-        }
-    }
+    var updatedAt: LocalDateTime = LocalDateTime.MIN
+) : InterfaceR2DBC<Participants> {
 
     constructor(participant: Participant, match: Matches, LOLperson: LOLs) : this() {
         val kill5 = participant.pentaKills
@@ -170,14 +134,35 @@ data class Participants(
         this.minionsKills = participant.totalMinionsKilled
         this.inhibitorKills = participant.inhibitorKills
         this.summonerLevel = participant.summonerLevel
-        this.summonerName = participant.summonerName
-        this.summonerId = participant.summonerId
-        this.puuid = participant.puuid
         this.profileIcon = participant.profileIcon
         this.team = participant.teamId
         this.win = participant.win
-        this.riotIdGameName = participant.riotIdGameName
-        this.riotIdTagline = participant.riotIdTagline
+    }
+
+    override suspend fun save() : Participants {
+        val result = R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.insert(tbl_participants).single(this@Participants) }
+        }
+        this.id = result.id
+        this.updatedAt = result.updatedAt
+        this.createdAt = result.createdAt
+        printLog("[Participants::save] $this")
+        return this
+    }
+
+    override suspend fun update() : Participants {
+        val before = R2DBC.getParticipants { tbl_participants.id eq this@Participants.id }.firstOrNull()
+        printLog("[Participants::update] $this { ${calculateUpdate(before, this)} }")
+        return R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.update(tbl_participants).single(this@Participants) }
+        }
+    }
+
+    override suspend fun delete() {
+        printLog("[Participants::delete] $this")
+        R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.delete(tbl_participants).single(this@Participants) }
+        }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -233,13 +218,9 @@ data class Participants(
         if (tookLargeDamageSurvived != other.tookLargeDamageSurvived) return false
         if (longestTimeSpentLiving != other.longestTimeSpentLiving) return false
         if (totalTimeSpentDead != other.totalTimeSpentDead) return false
-        if (summonerName != other.summonerName) return false
-        if (summonerId != other.summonerId) return false
-        if (puuid != other.puuid) return false
-        if (riotIdGameName != other.riotIdGameName) return false
-        if (riotIdTagline != other.riotIdTagline) return false
         if (match_id != other.match_id) return false
         if (LOLperson_id != other.LOLperson_id) return false
+        if (guild_id != other.guild_id) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
 
@@ -294,15 +275,15 @@ data class Participants(
         result = 31 * result + tookLargeDamageSurvived
         result = 31 * result + longestTimeSpentLiving
         result = 31 * result + totalTimeSpentDead
-        result = 31 * result + summonerName.hashCode()
-        result = 31 * result + summonerId.hashCode()
-        result = 31 * result + puuid.hashCode()
-        result = 31 * result + riotIdGameName.hashCode()
-        result = 31 * result + riotIdTagline.hashCode()
         result = 31 * result + match_id
         result = 31 * result + LOLperson_id
+        result = 31 * result + guild_id
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return "Participants(id=$id, match_id=$match_id, LOLperson_id=$LOLperson_id, guild_id=$guild_id, championName='$championName')"
     }
 }

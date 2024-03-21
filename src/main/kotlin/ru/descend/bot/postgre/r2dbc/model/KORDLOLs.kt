@@ -13,10 +13,12 @@ import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
-import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.calculateUpdate
+import ru.descend.bot.toStringUID
 import java.time.LocalDateTime
 
 val tbl_KORDLOLs = Meta.kordloLs
@@ -26,31 +28,48 @@ val tbl_KORDLOLs = Meta.kordloLs
 data class KORDLOLs(
     @KomapperId
     @KomapperAutoIncrement
-    val id: Int = 0,
-
-    var mmrAram: Double = 0.0,
-    var mmrAramSaved: Double = 0.0,
+    var id: Int = 0,
 
     var KORD_id: Int = -1,
     var LOL_id: Int = -1,
     var guild_id: Int = -1,
 
-    @KomapperCreatedAt
-    val createdAt: LocalDateTime = LocalDateTime.MIN,
-    @KomapperUpdatedAt
-    val updatedAt: LocalDateTime = LocalDateTime.MIN
-) {
+    var mmrAram: Double = 0.0,
+    var mmrAramSaved: Double = 0.0,
 
-    suspend fun update() : KORDLOLs? {
-        var result: KORDLOLs? = null
-        R2DBC.db.withTransaction {
-            result = R2DBC.db.runQuery {
-                QueryDsl.update(tbl_KORDLOLs).single(this@KORDLOLs)
-            }
-            printLog("[LOLs::update] updated KORDLOL id ${result?.id}")
+    @KomapperCreatedAt
+    var createdAt: LocalDateTime = LocalDateTime.MIN,
+    @KomapperUpdatedAt
+    var updatedAt: LocalDateTime = LocalDateTime.MIN
+) : InterfaceR2DBC<KORDLOLs> {
+
+    override suspend fun save() : KORDLOLs {
+        val result = R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.insert(tbl_KORDLOLs).single(this@KORDLOLs) }
         }
-        return result
+        this.id = result.id
+        this.updatedAt = result.updatedAt
+        this.createdAt = result.createdAt
+        printLog("[KORDLOLs::save] $this")
+        return this
     }
+
+    override suspend fun update() : KORDLOLs {
+        val before = R2DBC.getKORDLOLs { tbl_KORDLOLs.id eq this@KORDLOLs.id }.firstOrNull()
+        printLog("[KORDLOLs::update] $this { ${calculateUpdate(before, this)} }")
+        return R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.update(tbl_KORDLOLs).single(this@KORDLOLs) }
+        }
+    }
+
+    override suspend fun delete() {
+        printLog("[KORDLOLs::delete] $this")
+        R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.delete(tbl_KORDLOLs).single(this@KORDLOLs) }
+        }
+    }
+
+    /*********************************/
 
     suspend fun getNickName(data: SQLData_R2DBC) : String {
         if (LOL_id == -1) return ""
@@ -65,16 +84,6 @@ data class KORDLOLs(
     suspend fun asUser(guild: Guild, data: SQLData_R2DBC) : User {
         if (KORD_id == -1) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
         return User(UserData(Snowflake(data.geKORD(KORD_id)!!.KORD_id.toLong()), data.geKORD(KORD_id)!!.KORD_name, data.geKORD(KORD_id)!!.KORD_discriminator), guild.kord)
-    }
-
-    companion object {
-        suspend fun resetData(guild: Guilds) : List<KORDLOLs> {
-            return R2DBC.db.withTransaction {
-                R2DBC.db.runQuery {
-                    QueryDsl.from(tbl_KORDLOLs).where { tbl_KORDLOLs.guild_id eq guild.id }
-                }
-            }
-        }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -105,5 +114,9 @@ data class KORDLOLs(
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return "KORDLOLs(id=$id, mmrAram=$mmrAram, mmrAramSaved=$mmrAramSaved, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
     }
 }

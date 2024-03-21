@@ -5,8 +5,8 @@ class WorkData<T> {
     private val listData = ArrayList<T>()
     var bodyReset: (suspend () -> List<T>)? = null
 
-    suspend fun get() : ArrayList<T> {
-        if (isEmpty()) reset()
+    suspend fun get(reset: Boolean = false) : ArrayList<T> {
+        if (isEmpty() || reset) reset()
         return listData
     }
 

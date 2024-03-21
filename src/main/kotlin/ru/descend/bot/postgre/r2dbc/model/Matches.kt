@@ -8,9 +8,10 @@ import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
-import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.calculateUpdate
 import java.time.LocalDateTime
 
 val tbl_matches = Meta.matches
@@ -20,7 +21,9 @@ val tbl_matches = Meta.matches
 data class Matches(
     @KomapperId
     @KomapperAutoIncrement
-    val id: Int = 0,
+    var id: Int = 0,
+
+    var guild_id: Int = -1,
 
     var matchId: String = "",
     var matchDateStart: Long = 0,
@@ -31,32 +34,35 @@ data class Matches(
     var bots: Boolean = false,
     var surrender: Boolean = false,
 
-    var guild_id: Int = -1,
-
     @KomapperCreatedAt
-    val createdAt: LocalDateTime = LocalDateTime.MIN,
+    var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
-    val updatedAt: LocalDateTime = LocalDateTime.MIN
-) {
+    var updatedAt: LocalDateTime = LocalDateTime.MIN
+) : InterfaceR2DBC<Matches> {
 
-    companion object {
-        suspend fun add(value: Matches) : Matches? {
-            var result: Matches? = null
-            R2DBC.db.withTransaction {
-                result = R2DBC.db.runQuery {
-                    QueryDsl.insert(tbl_matches).single(value)
-                }
-                printLog("[R2DBC::addParticipant] added match id ${result?.id} with matchId ${result?.matchId}")
-            }
-            return result
+    override suspend fun save() : Matches {
+        val result = R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.insert(tbl_matches).single(this@Matches) }
         }
+        this.id = result.id
+        this.updatedAt = result.updatedAt
+        this.createdAt = result.createdAt
+        printLog("[Matches::save] $this")
+        return this
+    }
 
-        suspend fun resetData(guilds: Guilds) : List<Matches> {
-            return R2DBC.db.withTransaction {
-                R2DBC.db.runQuery {
-                    QueryDsl.from(tbl_matches).where { tbl_matches.guild_id eq guilds.id }
-                }
-            }
+    override suspend fun update() : Matches {
+        val before = R2DBC.getMatches { tbl_matches.id eq this@Matches.id }.firstOrNull()
+        printLog("[Matches::update] $this { ${calculateUpdate(before, this)} }")
+        return R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.update(tbl_matches).single(this@Matches) }
+        }
+    }
+
+    override suspend fun delete() {
+        printLog("[Matches::delete] $this")
+        R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.delete(tbl_matches).single(this@Matches) }
         }
     }
 
@@ -96,5 +102,9 @@ data class Matches(
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode', guild_id=$guild_id)"
     }
 }

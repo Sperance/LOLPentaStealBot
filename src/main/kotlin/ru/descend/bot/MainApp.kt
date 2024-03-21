@@ -18,14 +18,10 @@ import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.extensions.TimeStamp
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.postgre.tables.TableGuild
-import ru.descend.bot.postgre.Postgre
-import ru.descend.bot.postgre.SQLData
 import ru.descend.bot.postgre.SQLData_R2DBC
-import ru.descend.bot.postgre.getGuild
 import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.savedObj.EnumMMRRank
-import update
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -65,7 +61,6 @@ fun main() {
 //                Postgre.testInnerPostgre()
                 timerRequestReset((2).minutes)
                 timerMainInformation(it, (5).minutes)
-                Postgre.closeAllStatements()
             }
         }
     }
@@ -98,10 +93,9 @@ fun timerMainInformation(guild: Guild, duration: Duration) = launch {
 private suspend fun firstInitialize() {
     LeagueMainObject.catchHeroNames()
     R2DBC.initialize()
-    Postgre.initializePostgreSQL()
 }
 
-suspend fun removeMessage(guild: Guild, guildSQL: TableGuild) {
+suspend fun removeMessage(guild: Guild, guildSQL: Guilds) {
     if (guildSQL.botChannelId.isNotEmpty()) {
         guild.getChannelOf<TextChannel>(Snowflake(guildSQL.botChannelId)).messages.collect {
             if (it.id.value.toString() in listOf(guildSQL.messageId, guildSQL.messageIdPentaData, guildSQL.messageIdGlobalStatisticData, guildSQL.messageIdMasteryData, guildSQL.messageIdMain, guildSQL.messageIdArammmr)) {
@@ -124,12 +118,14 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         val checkMatches = ArrayList<String>()
         sqlData.dataSavedLOL.get().forEach {
             if (it.LOL_puuid == "") return@forEach
-            LeagueMainObject.catchMatchID(sqlData.guildSQL, it.LOL_puuid, 0, 50).forEach ff@{ matchId ->
+            LeagueMainObject.catchMatchID(sqlData, it.LOL_puuid, 5, 5).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
-        sqlData.getNewMatches(checkMatches).forEach { newMatch ->
-            LeagueMainObject.catchMatch(sqlData.guildSQL, newMatch)?.let { match ->
+        var listChecked = sqlData.getNewMatches(checkMatches)
+        listChecked.sortByDescending { it }
+        listChecked.forEach { newMatch ->
+            LeagueMainObject.catchMatch(sqlData, newMatch)?.let { match ->
                 sqlData.addMatch(match)
             }
         }
@@ -178,7 +174,7 @@ suspend fun createMessageMainData(channelText: TextChannel, sqlData: SQLData_R2D
     channelText.getMessage(message.id).edit { editMessageMainDataContent(this, sqlData) }
 
     sqlData.guildSQL.messageIdMain = message.id.value.toString()
-    sqlData.guildSQL = sqlData.guildSQL.update()!!
+    sqlData.guildSQL = sqlData.guildSQL.update()
 }
 
 suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLData_R2DBC) {
@@ -188,7 +184,7 @@ suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLD
     }
 
     sqlData.guildSQL.messageIdGlobalStatisticData = message.id.value.toString()
-    sqlData.guildSQL = sqlData.guildSQL.update()!!
+    sqlData.guildSQL = sqlData.guildSQL.update()
 }
 
 //suspend fun createMessageSimple(channelText: TextChannel, sqlData: SQLData) {
@@ -202,7 +198,7 @@ suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData_
     channelText.getMessage(message.id).edit { editMessageAramMMRDataContent(this, sqlData) }
 
     sqlData.guildSQL.messageIdArammmr = message.id.value.toString()
-    sqlData.guildSQL = sqlData.guildSQL.update()!!
+    sqlData.guildSQL = sqlData.guildSQL.update()
 }
 
 //fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder) {

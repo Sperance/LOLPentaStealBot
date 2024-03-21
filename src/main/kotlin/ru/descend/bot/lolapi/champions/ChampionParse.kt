@@ -1,7 +1,6 @@
 package ru.descend.bot.lolapi.champions
 
 import com.google.gson.annotations.SerializedName
-import ru.descend.bot.postgre.tables.TableParticipant
 
 data class ChampionsDTO(
     val type: String,

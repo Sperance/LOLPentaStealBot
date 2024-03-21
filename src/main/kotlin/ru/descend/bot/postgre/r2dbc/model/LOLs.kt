@@ -8,11 +8,12 @@ import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
-import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.calculateUpdate
 import java.time.LocalDateTime
 
 val tbl_LOLs = Meta.loLs
@@ -22,7 +23,7 @@ val tbl_LOLs = Meta.loLs
 data class LOLs(
     @KomapperId
     @KomapperAutoIncrement
-    val id: Int = 0,
+    var id: Int = 0,
 
     var LOL_puuid: String = "",
     var LOL_summonerId: String = "",
@@ -34,10 +35,10 @@ data class LOLs(
     var LOL_summonerLevel: Int = 1,
 
     @KomapperCreatedAt
-    val createdAt: LocalDateTime = LocalDateTime.MIN,
+    var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
-    val updatedAt: LocalDateTime = LocalDateTime.MIN
-) {
+    var updatedAt: LocalDateTime = LocalDateTime.MIN
+) : InterfaceR2DBC<LOLs> {
 
     constructor(region: String, summonerName: String) : this() {
         val leagueApi = LeagueApi(catchToken()[1], region)
@@ -51,35 +52,29 @@ data class LOLs(
         }
     }
 
-    suspend fun update() : LOLs? {
-        var result: LOLs? = null
-        R2DBC.db.withTransaction {
-            result = R2DBC.db.runQuery {
-                QueryDsl.update(tbl_LOLs).single(this@LOLs)
-            }
-            printLog("[LOLs::update] updated lol id ${result?.id}")
+    override suspend fun save() : LOLs {
+        val result = R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.insert(tbl_LOLs).single(this@LOLs) }
         }
-        return result
+        this.id = result.id
+        this.updatedAt = result.updatedAt
+        this.createdAt = result.createdAt
+        printLog("[LOLs::save] $this")
+        return this
     }
 
-    companion object {
-        suspend fun add(value: LOLs) : LOLs? {
-            var result: LOLs? = null
-            R2DBC.db.withTransaction {
-                result = R2DBC.db.runQuery {
-                    QueryDsl.insert(tbl_LOLs).single(value)
-                }
-                printLog("[R2DBC::addLOL] added lol id ${result?.id} with puuid ${result?.LOL_puuid}")
-            }
-            return result
+    override suspend fun update() : LOLs {
+        val before = R2DBC.getLOLs { tbl_LOLs.id eq this@LOLs.id }.firstOrNull()
+        printLog("[LOLs::update] $this { ${calculateUpdate(before, this)} }")
+        return R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.update(tbl_LOLs).single(this@LOLs) }
         }
+    }
 
-        suspend fun resetData() : List<LOLs> {
-            return R2DBC.db.withTransaction {
-                R2DBC.db.runQuery {
-                    QueryDsl.from(tbl_LOLs)
-                }
-            }
+    override suspend fun delete() {
+        printLog("[LOLs::delete] $this")
+        R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.delete(tbl_LOLs).single(this@LOLs) }
         }
     }
 
@@ -117,5 +112,9 @@ data class LOLs(
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return "LOLs(id=$id, puuid='$LOL_puuid', summonerName='$LOL_summonerName', riotIdName=$LOL_riotIdName)"
     }
 }

@@ -6,8 +6,10 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
-import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
+import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.calculateUpdate
 
 val tbl_MMRs = Meta.mmRs
 
@@ -16,7 +18,7 @@ val tbl_MMRs = Meta.mmRs
 data class MMRs(
     @KomapperId
     @KomapperAutoIncrement
-    val id: Int = 0,
+    var id: Int = 0,
 
     var champion: String = "",
     var matchDuration: Double = 0.0,
@@ -31,15 +33,29 @@ data class MMRs(
     var dmgTakenPerc: Double = 0.0,
     var dmgDealPerc: Double = 0.0,
     var kda: Double = 0.0
-) {
+) : InterfaceR2DBC<MMRs> {
 
-    companion object {
-        suspend fun resetData() : List<MMRs> {
-            return R2DBC.db.withTransaction {
-                R2DBC.db.runQuery {
-                    QueryDsl.from(tbl_MMRs)
-                }
-            }
+    override suspend fun save() : MMRs {
+        val result = R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.insert(tbl_MMRs).single(this@MMRs) }
+        }
+        this.id = result.id
+        printLog("[MMRs::save] $this")
+        return this
+    }
+
+    override suspend fun update() : MMRs {
+        val before = R2DBC.getMMRs { tbl_MMRs.id eq this@MMRs.id }.firstOrNull()
+        printLog("[MMRs::update] $this { ${calculateUpdate(before, this)} }")
+        return R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.update(tbl_MMRs).single(this@MMRs) }
+        }
+    }
+
+    override suspend fun delete() {
+        printLog("[MMRs::delete] $this")
+        R2DBC.db.withTransaction {
+            R2DBC.db.runQuery { QueryDsl.delete(tbl_MMRs).single(this@MMRs) }
         }
     }
 
@@ -83,5 +99,9 @@ data class MMRs(
         result = 31 * result + dmgDealPerc.hashCode()
         result = 31 * result + kda.hashCode()
         return result
+    }
+
+    override fun toString(): String {
+        return "MMRs(id=$id, champion='$champion')"
     }
 }

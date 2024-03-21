@@ -5,8 +5,12 @@ import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
+import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
+import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
+import ru.descend.bot.lowDescriptor
+import ru.descend.bot.mail.GMailSender
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.WorkData
 import ru.descend.bot.postgre.r2dbc.model.Guilds
@@ -16,12 +20,17 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
+import ru.descend.bot.postgre.r2dbc.model.tbl_KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.tbl_KORDs
 import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
 import ru.descend.bot.postgre.r2dbc.model.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.tbl_participants
-import ru.descend.bot.postgre.tables.TableKORD_LOL
-import ru.descend.bot.postgre.tables.TableMatch
-import ru.descend.bot.postgre.tables.tableParticipant
+import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.CalculateMMR_2
+import ru.descend.bot.savedObj.isCurrentDay
+import ru.descend.bot.sendMessage
+import ru.descend.bot.toDate
+import ru.descend.bot.toFormatDateTime
 import statements.selectAll
 import java.util.WeakHashMap
 
@@ -50,13 +59,13 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     val dataSavedParticipants = WorkData<Participants>()
 
     fun initialize() {
-        dataGuild.bodyReset = { Guilds.resetData() }
-        dataKORDLOL.bodyReset = { KORDLOLs.resetData(guildSQL) }
-        dataKORD.bodyReset = { KORDs.resetData(guildSQL) }
-        dataLOL.bodyReset = { LOLs.resetData() }
-        dataMatches.bodyReset = { Matches.resetData(guildSQL) }
-        dataMMR.bodyReset = { MMRs.resetData() }
-        dataParticipants.bodyReset = { Participants.resetData(guildSQL) }
+        dataGuild.bodyReset = { R2DBC.getGuilds(null) }
+        dataKORDLOL.bodyReset = { R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq guildSQL.id } }
+        dataKORD.bodyReset = { R2DBC.getKORDs { tbl_KORDs.guild_id eq guildSQL.id } }
+        dataLOL.bodyReset = { R2DBC.getLOLs(null) }
+        dataMatches.bodyReset = { R2DBC.getMatches { tbl_matches.guild_id eq guildSQL.id } }
+        dataMMR.bodyReset = { R2DBC.getMMRs(null) }
+        dataParticipants.bodyReset = { R2DBC.getParticipants { tbl_participants.guild_id eq guildSQL.id } }
 
         dataSavedLOL.bodyReset = {
             val kordLol_lol_id = dataKORDLOL.get().map { it.LOL_id }
@@ -99,30 +108,30 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     /*-----*/
-    suspend fun getKORDLOL() = dataKORDLOL.get()
+    suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
     suspend fun getKORDLOL(id: Int) = getKORDLOL().find { it.id == id }
     /*-----*/
-    suspend fun getLOL() = dataLOL.get()
+    suspend fun getLOL(reset: Boolean = false) = dataLOL.get(reset)
     suspend fun getLOL(id: Int) = getLOL().find { it.id == id }
     /*-----*/
-    suspend fun getKORD() = dataKORD.get()
+    suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
     suspend fun geKORD(id: Int) = getKORD().find { it.id == id }
     /*-----*/
 
     private var arraySavedParticipants = ArrayList<statMainTemp_r2>()
     suspend fun resetSavedParticipants() {
         arraySavedParticipants.clear()
-        execQuery("SELECT * FROM get_player_stats_param(${guildSQL.id})") {
-            it?.let {
-                while (it.next()){
-                    val id = it.getInt("id")
-                    val games = it.getInt("games")
-                    val win = it.getInt("win")
-                    val kill = it.getInt("kill")
-                    val kill2 = it.getInt("kill2")
-                    val kill3 = it.getInt("kill3")
-                    val kill4 = it.getInt("kill4")
-                    val kill5 = it.getInt("kill5")
+        R2DBC.db.withTransaction {
+            R2DBC.db.runQuery {
+                QueryDsl.fromTemplate("SELECT * FROM get_player_stats_param(${guildSQL.id})").select {
+                    val id = it.int("id")?:0
+                    val games = it.int("games")?:0
+                    val win = it.int("win")?:0
+                    val kill = it.int("kill")?:0
+                    val kill2 = it.int("kill2")?:0
+                    val kill3 = it.int("kill3")?:0
+                    val kill4 = it.int("kill4")?:0
+                    val kill5 = it.int("kill5")?:0
                     arraySavedParticipants.add(statMainTemp_r2(id, games, win, kill, kill2, kill3, kill4, kill5))
                 }
             }
@@ -162,11 +171,11 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     /*-----*/
 
     suspend fun addMatch(match: MatchDTO) {
-        guildSQL.addMatch(this, match, getKORDLOL())
-        calculatePentaSteal(match)
+        val newMatch = addMatch(this, match, getKORDLOL())
+        calculatePentaSteal(match, newMatch)
     }
 
-    private suspend fun calculatePentaSteal(match: MatchDTO) {
+    private suspend fun calculatePentaSteal(match: MatchDTO, mch: Matches) {
         var isNeedCalculate = false
         match.info.participants.forEach {
             if (it.quadraKills - it.pentaKills > 0) {
@@ -175,32 +184,32 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             }
         }
         if (isNeedCalculate) {
-            val parts = tableParticipant.selectAll().where { TableMatch::matchId eq match.metadata.matchId }.getEntities()
+            val parts = getParticipantsForMatch(mch.id)
             LeagueMainObject.catchPentaSteal(match.metadata.matchId).forEach {pair ->
-                val firstPart = parts.find { it.puuid == pair.first }
-                var secondPart = parts.find { it.puuid == pair.second }
+                val firstPart = parts.find { getLOL(it.LOLperson_id)?.LOL_puuid == pair.first }
+                var secondPart = parts.find { getLOL(it.LOLperson_id)?.LOL_puuid == pair.second }
 
                 if (firstPart == null) {
-                    guildSQL.sendEmail("Error", "Participant with PUUID ${pair.first} not found in SQL. Match:${match.metadata.matchId}")
+                    sendEmail("Error", "Participant with PUUID ${pair.first} not found in SQL. Match:${match.metadata.matchId}")
                     return
                 }
 
                 if (secondPart == null) {
-                    guildSQL.sendEmail("Error", "Participant with PUUID ${pair.second} not found in SQL. Match:${match.metadata.matchId}")
+                    sendEmail("Error", "Participant with PUUID ${pair.second} not found in SQL. Match:${match.metadata.matchId}")
                     return
                 }
 
                 if (firstPart == secondPart) {
-                    guildSQL.sendEmail("Error", "Participants with PUUID ${pair.first} are Equals. Match:${match.metadata.matchId}")
+                    sendEmail("Error", "Participants with PUUID ${pair.first} are Equals. Match:${match.metadata.matchId}")
                     return
                 }
 
-                if (getKORDLOL().find { kl -> getLOL(kl.LOL_id)?.LOL_puuid == firstPart.puuid } == null && getKORDLOL().find { kl -> getLOL(kl.LOL_id)?.LOL_puuid == secondPart.puuid } == null) {
-                    guildSQL.sendEmail("PENTASTEAL (${match.metadata.matchId})", "ХЗ какой чел ${firstPart.LOLperson?.LOL_riotIdName} на ${firstPart.championName} состили Пенту у хз кого ${secondPart.LOLperson?.LOL_riotIdName} на ${secondPart.championName}")
+                if (getKORDLOL().find { kl -> kl.LOL_id == firstPart.LOLperson_id } == null && getKORDLOL().find { kl -> kl.LOL_id == secondPart.LOLperson_id } == null) {
+                    sendEmail("PENTASTEAL (${match.metadata.matchId})", "ХЗ какой чел ${getLOL(firstPart.LOLperson_id)?.LOL_riotIdName} на ${firstPart.championName} состили Пенту у хз кого ${getLOL(secondPart.LOLperson_id)?.LOL_riotIdName} на ${secondPart.championName}\n\n${pair.third}")
                     return
                 }
 
-                guildSQL.sendEmail("PENTASTEAL (${match.metadata.matchId})", "Чел ${firstPart.LOLperson?.LOL_riotIdName} на ${firstPart.championName} состили Пенту у ${secondPart.LOLperson?.LOL_riotIdName} на ${secondPart.championName}")
+                sendEmail("PENTASTEAL (${match.metadata.matchId})", "Чел ${getLOL(firstPart.LOLperson_id)?.LOL_riotIdName} на ${firstPart.championName} состили Пенту у ${getLOL(secondPart.LOLperson_id)?.LOL_riotIdName} на ${secondPart.championName}\n\n${pair.third}")
             }
         }
     }
@@ -218,12 +227,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                     val pers = row.int("PERS")
                     val res = row.int("RES")?:0
                     val ZN = row.string("ZN")?:""
-                    if (ZN == "+") {
-                        mapWinStreak.put(pers, res)
-                    } else if (ZN == "-") {
-                        mapWinStreak.put(pers, -res)
-                    } else {
-                        Unit
+                    when (ZN) {
+                        "+" -> mapWinStreak[pers] = res
+                        "-" -> mapWinStreak[pers] = -res
+                        else -> Unit
                     }
                 }
             }
@@ -236,10 +243,128 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun getSavedParticipantsForMatch(matchId: Int) = dataSavedParticipants.get().filter { it.match_id == matchId }
+    suspend fun getParticipantsForMatch(matchId: Int) = dataParticipants.get().filter { it.match_id == matchId }
 
     suspend fun getLOLforPUUID(puuid: String) = getLOL().find { it.LOL_puuid == puuid }
 
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
+
+    fun sendEmail(theme: String, message: String) {
+        try {
+            GMailSender("llps.sys.bot@gmail.com", "esjk bphc hsjh otcx")
+                .sendMail(
+                    "[${guildSQL.name}] $theme",
+                    message,
+                    "llps.sys.bot@gmail.com",
+                    "kaltemeis@gmail.com"
+                )
+        }catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun executeProcedure(body: String) {
+        QueryDsl.executeScript(body)
+    }
+
+    suspend fun addMatch(sqlData: SQLData_R2DBC, match: MatchDTO, kordLol: List<KORDLOLs>? = null) : Matches {
+
+        var isBots = false
+        var isSurrender = false
+        match.info.participants.forEach {
+            if (it.summonerId == "BOT" || it.puuid == "BOT") {
+                isBots = true
+            }
+            if (it.gameEndedInEarlySurrender || it.teamEarlySurrendered) {
+                isSurrender = true
+            }
+        }
+
+        val pMatch = Matches(
+            matchId = match.metadata.matchId,
+            matchDateStart = match.info.gameStartTimestamp,
+            matchDateEnd = match.info.gameEndTimestamp,
+            matchDuration = match.info.gameDuration,
+            matchMode = match.info.gameMode,
+            matchGameVersion = match.info.gameVersion,
+            guild_id = guildSQL.id,
+            bots = isBots,
+            surrender = isSurrender
+        ).save()
+        printLog("[R2DBC] added match: ${pMatch.id} ${pMatch.matchId}")
+
+        if (pMatch.id % 1000 == 0){
+            asyncLaunch {
+                sqlData.sendEmail("Sys", "execute method AVGs()")
+                executeProcedure("call \"GetAVGs\"()")
+            }
+        }
+
+        val arrayHeroName = ArrayList<Participant>()
+        match.info.participants.forEach {part ->
+            arrayHeroName.add(part)
+        }
+
+        match.info.participants.forEach {part ->
+            var curLOL = sqlData.getLOLforPUUID(part.puuid)
+
+            if (kordLol != null && curLOL != null && !isBots && !isSurrender){
+                kordLol.find { it.LOL_id == curLOL?.id }?.let {
+                    if (part.pentaKills > 0 || (part.quadraKills - part.pentaKills) > 0) {
+                        asyncLaunch {
+                            if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
+                                val textPentas = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
+                                sqlData.guild.sendMessage(guildSQL.messageIdStatus, "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
+                            }
+                        }
+                    }
+                }
+            }
+
+            //Создаем нового игрока в БД
+            if (curLOL == null) {
+                curLOL = LOLs(LOL_puuid = part.puuid,
+                    LOL_summonerId = part.summonerId,
+                    LOL_summonerName = part.summonerName,
+                    LOL_riotIdName = part.riotIdGameName,
+                    LOL_riotIdTagline = part.riotIdTagline).save()
+            }
+
+            //Вдруг что изменится в профиле игрока
+            if (curLOL.LOL_summonerLevel != part.summonerLevel || curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName) {
+                curLOL.LOL_summonerName = part.summonerName
+                curLOL.LOL_riotIdTagline = part.riotIdTagline
+                curLOL.LOL_summonerId = part.summonerId
+                curLOL.LOL_riotIdName = part.riotIdGameName
+                curLOL.LOL_summonerLevel = part.summonerLevel
+                curLOL = curLOL.update()
+            }
+
+            Participants(part, pMatch, curLOL).save()
+        }
+
+        if (kordLol != null) {
+            calculateMMR(pMatch, isSurrender, isBots, kordLol)
+        }
+
+        return pMatch
+    }
+
+    private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
+        var users = ""
+        val myParts = getSavedParticipantsForMatch(pMatch.id)
+
+        myParts.forEach {
+            val data = CalculateMMR_2(this, it, pMatch, kordLol, getMMRforChampion(it.championName))
+            data.init()
+            users += getLOL(it.LOLperson_id)?.LOL_summonerName + " hero: ${it.championName} $data\n"
+        }
+        guild.sendMessage(guildSQL.messageIdDebug,
+            "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
+                    "${pMatch.matchDateStart.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
+                    "Mode: ${pMatch.matchMode} Surrender: $isSurrender Bots: $isBots\n" +
+                    "Users: $users")
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
