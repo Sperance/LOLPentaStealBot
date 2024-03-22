@@ -25,6 +25,7 @@ data class LOLs(
     @KomapperAutoIncrement
     var id: Int = 0,
 
+    var oldID: Int = 0,
     var LOL_puuid: String = "",
     var LOL_summonerId: String = "",
     var LOL_accountId: String = "",

@@ -26,6 +26,7 @@ data class KORDs(
 
     var guild_id: Int = -1,
 
+    var oldID: Int = 0,
     var KORD_id: String = "",
     var KORD_name: String = "",
     var KORD_discriminator: String = "",

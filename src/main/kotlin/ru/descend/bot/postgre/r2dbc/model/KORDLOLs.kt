@@ -34,6 +34,8 @@ data class KORDLOLs(
     var LOL_id: Int = -1,
     var guild_id: Int = -1,
 
+    var oldID: Int = 0,
+    var showCode: Int = 0,
     var mmrAram: Double = 0.0,
     var mmrAramSaved: Double = 0.0,
 
@@ -45,11 +47,13 @@ data class KORDLOLs(
 
     override suspend fun save() : KORDLOLs {
         val result = R2DBC.db.withTransaction {
+            this.showCode = R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq this@KORDLOLs.guild_id }.size
             R2DBC.db.runQuery { QueryDsl.insert(tbl_KORDLOLs).single(this@KORDLOLs) }
         }
         this.id = result.id
         this.updatedAt = result.updatedAt
         this.createdAt = result.createdAt
+        this.showCode = result.showCode
         printLog("[KORDLOLs::save] $this")
         return this
     }
@@ -117,6 +121,6 @@ data class KORDLOLs(
     }
 
     override fun toString(): String {
-        return "KORDLOLs(id=$id, mmrAram=$mmrAram, mmrAramSaved=$mmrAramSaved, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
+        return "KORDLOLs(id=$id, showCode=$showCode, mmrAram=$mmrAram, mmrAramSaved=$mmrAramSaved, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
     }
 }

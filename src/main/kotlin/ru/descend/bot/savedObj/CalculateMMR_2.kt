@@ -190,16 +190,8 @@ class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant
     private suspend fun calcAddingMMR(kordlol: KORDLOLs) : Double {
         //Текущее значение ММР + новое значение ММР
         var addedValue = mmrValue.to2Digits()
-//        var value = kordlol.mmrAram + mmrValue
 
         mmrEmailText += "\n[calcAddingMMR] текущее значение ММР: ${kordlol.mmrAram} Из них посчитано добавочных: $addedValue\n"
-
-        //обработка добавочного ММР за лузстрик
-        val looseStreak = sqlData.getWinStreak()[kordlol.LOL_id]?:0
-        if (looseStreak < -2) {
-            addedValue += (abs(looseStreak) * 0.3).to2Digits()
-            mmrEmailText += "[calcAddingMMR] лузстрик: $looseStreak. Добавляем ММР к получаемым: ${(abs(looseStreak) * 0.3).to2Digits()} получилось ММР: $addedValue\n"
-        }
 
         val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
 
@@ -230,11 +222,11 @@ class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant
 
         value = if (mmrValue < countFields) {
             //кол-во всех полей минус текущий ММР (сколько нехватило до Нормы)
-            (countFields - mmrValue) * 2.0
+            (countFields - mmrValue) * 1.5
         } else {
             //иначе если катали лучше Нормы - снимаем жалкую единичку
             1.0
-        }
+        }.to2Digits()
 
         mmrEmailText += "\n[calcRemoveMMR] Начало снимания ММР: ${value.to2Digits()}\n"
 

@@ -62,7 +62,6 @@ data class Participants(
 
     var snowballsHit: Int = 0, //snowballs_hit
     var skillshotsHit: Int = 0, //skillshots_hit
-    var summonerLevel: Int = 0, //summoner_level
     var soloKills: Int = 0, //solo_kills
     var survivedSingleDigitHpCount: Int = 0, //survived_single_digit_hp_count
     var magicDamageDealtToChampions: Int = 0, //magic_damage_dealt_to_champions
@@ -133,7 +132,6 @@ data class Participants(
         this.totalTimeSpentDead = participant.totalTimeSpentDead
         this.minionsKills = participant.totalMinionsKilled
         this.inhibitorKills = participant.inhibitorKills
-        this.summonerLevel = participant.summonerLevel
         this.profileIcon = participant.profileIcon
         this.team = participant.teamId
         this.win = participant.win
@@ -204,7 +202,6 @@ data class Participants(
         if (win != other.win) return false
         if (snowballsHit != other.snowballsHit) return false
         if (skillshotsHit != other.skillshotsHit) return false
-        if (summonerLevel != other.summonerLevel) return false
         if (soloKills != other.soloKills) return false
         if (survivedSingleDigitHpCount != other.survivedSingleDigitHpCount) return false
         if (magicDamageDealtToChampions != other.magicDamageDealtToChampions) return false
@@ -261,7 +258,6 @@ data class Participants(
         result = 31 * result + win.hashCode()
         result = 31 * result + snowballsHit
         result = 31 * result + skillshotsHit
-        result = 31 * result + summonerLevel
         result = 31 * result + soloKills
         result = 31 * result + survivedSingleDigitHpCount
         result = 31 * result + magicDamageDealtToChampions
