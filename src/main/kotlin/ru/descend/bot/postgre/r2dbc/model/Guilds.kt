@@ -58,7 +58,7 @@ data class Guilds(
 ) : InterfaceR2DBC<Guilds> {
 
     suspend fun add(value: Guild) : Guilds {
-        var curGuild = Guilds()
+        val curGuild = Guilds()
         curGuild.idGuild = value.id.value.toString()
         curGuild.name = value.name
         curGuild.description = value.description ?: ""

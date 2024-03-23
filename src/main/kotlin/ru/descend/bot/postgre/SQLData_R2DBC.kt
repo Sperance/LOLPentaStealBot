@@ -31,7 +31,6 @@ import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDateTime
-import statements.selectAll
 import java.util.WeakHashMap
 
 data class kordTemp_r2(var kordLOL: KORDLOLs, var lastParts: ArrayList<Participants>, var isBold: Boolean)

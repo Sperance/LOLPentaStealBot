@@ -34,7 +34,6 @@ dependencies {
     ksp("org.komapper:komapper-processor")
 
     implementation("com.aallam.openai:openai-client:3.7.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
@@ -51,8 +50,6 @@ dependencies {
 
     implementation ("com.sun.mail:android-mail:1.6.7")
     implementation ("com.sun.mail:android-activation:1.6.7")
-
-    implementation("com.github.SergeyHSE7:Kotlin-ORM:01c23e02a5ede73647c5f4fc1cdefb8014b700c1")
 }
 
 tasks {
