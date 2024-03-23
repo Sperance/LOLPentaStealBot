@@ -4,7 +4,10 @@ import dev.kord.core.entity.Guild
 import io.r2dbc.spi.ConnectionFactoryOptions
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.expression.WhereDeclaration
+import org.komapper.core.dsl.query.Query
+import org.komapper.core.dsl.query.QueryScope
 import org.komapper.r2dbc.R2dbcDatabase
+import org.komapper.tx.core.CoroutineTransactionOperator
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -19,6 +22,7 @@ import ru.descend.bot.postgre.r2dbc.model.tbl_MMRs
 import ru.descend.bot.postgre.r2dbc.model.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.tbl_participants
+import ru.descend.bot.printLog
 
 /**
  * https://www.komapper.org/docs/
@@ -34,7 +38,10 @@ object R2DBC {
         .option(ConnectionFactoryOptions.DATABASE, "postgres")
         .build()
 
-    val db = R2dbcDatabase(connectionFactory)
+    private val db = R2dbcDatabase(connectionFactory)
+
+    suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
+    suspend fun <T> runTransaction(block: suspend (CoroutineTransactionOperator) -> T) = db.withTransaction { block.invoke(it) }
 
     suspend fun initialize() {
         db.withTransaction {

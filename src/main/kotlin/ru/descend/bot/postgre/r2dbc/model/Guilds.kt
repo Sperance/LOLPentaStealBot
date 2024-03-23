@@ -9,22 +9,10 @@ import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import org.komapper.core.dsl.QueryDsl
-import ru.descend.bot.asyncLaunch
-import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
-import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
-import ru.descend.bot.lowDescriptor
-import ru.descend.bot.mail.GMailSender
-import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.CalculateMMR_2
 import ru.descend.bot.savedObj.calculateUpdate
-import ru.descend.bot.savedObj.isCurrentDay
-import ru.descend.bot.sendMessage
-import ru.descend.bot.toDate
-import ru.descend.bot.toFormatDateTime
 import java.time.LocalDateTime
 
 val tbl_guilds = Meta.guilds
@@ -34,7 +22,7 @@ val tbl_guilds = Meta.guilds
 data class Guilds(
     @KomapperId
     @KomapperAutoIncrement
-    var id: Int = 0,
+    val id: Int = 0,
 
     var idGuild: String = "",
     var name: String = "",
@@ -67,29 +55,21 @@ data class Guilds(
     }
 
     override suspend fun save() : Guilds {
-        val result = R2DBC.db.withTransaction {
-            R2DBC.db.runQuery { QueryDsl.insert(tbl_guilds).single(this@Guilds) }
-        }
-        this.id = result.id
-        this.updatedAt = result.updatedAt
-        this.createdAt = result.createdAt
-        printLog("[Guilds::save] $this")
-        return this
+        val result = R2DBC.runQuery(QueryDsl.insert(tbl_guilds).single(this@Guilds))
+        printLog("[Guilds::save] $result")
+        return result
     }
 
     override suspend fun update() : Guilds {
-        val before = R2DBC.getGuilds { tbl_guilds.id eq this@Guilds.id }.firstOrNull()
-        printLog("[Guilds::update] $this { ${calculateUpdate(before, this)} }")
-        return R2DBC.db.withTransaction {
-            R2DBC.db.runQuery { QueryDsl.update(tbl_guilds).single(this@Guilds) }
-        }
+        val before = this
+        val after = R2DBC.runQuery(QueryDsl.update(tbl_guilds).single(this@Guilds))
+        printLog("[Guilds::update] $this { ${calculateUpdate(before, after)} }")
+        return after
     }
 
     override suspend fun delete() {
         printLog("[Guilds::delete] $this")
-        R2DBC.db.withTransaction {
-            R2DBC.db.runQuery { QueryDsl.delete(tbl_guilds).single(this@Guilds) }
-        }
+        R2DBC.runQuery(QueryDsl.delete(tbl_guilds).single(this@Guilds))
     }
 
     override fun equals(other: Any?): Boolean {

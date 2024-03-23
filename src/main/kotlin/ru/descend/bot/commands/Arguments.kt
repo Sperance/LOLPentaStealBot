@@ -129,12 +129,7 @@ fun arguments() = commands("Arguments") {
             val textMessage = if (dataKORD == null) {
                 "Пользователя не существует в базе"
             } else {
-                val kordlol = R2DBC.getKORDLOLs { tbl_KORDLOLs.KORD_id eq dataKORD.id }.firstOrNull()
-                if (kordlol != null) {
-                    R2DBC.getLOLs { tbl_LOLs.id eq kordlol.LOL_id }.firstOrNull()?.delete()
-                    R2DBC.getKORDs { tbl_KORDs.id eq kordlol.KORD_id }.firstOrNull()?.delete()
-                    kordlol.delete()
-                }
+                dataKORD.deleteWithKORDLOL()
                 "Удаление произошло успешно"
             }
             respond(textMessage)
@@ -149,10 +144,8 @@ fun arguments() = commands("Arguments") {
             val textMessage = if (dataUser == null){
                 "Пользователя не существует в базе"
             } else {
-                asyncLaunch {
-                    dataUser.mmrAramSaved += savedMMR.toDouble().to2Digits()
-                    dataUser.update()
-                }
+                dataUser.mmrAramSaved += savedMMR.toDouble().to2Digits()
+                dataUser.update()
                 "Сохранение успешно произведено"
             }
             respond(textMessage)
@@ -167,10 +160,8 @@ fun arguments() = commands("Arguments") {
             val textMessage = if (dataUser == null){
                 "Пользователя не существует в базе"
             } else {
-                asyncLaunch {
-                    dataUser.mmrAramSaved -= savedMMR.toDouble().to2Digits()
-                    dataUser.update()
-                }
+                dataUser.mmrAramSaved -= savedMMR.toDouble().to2Digits()
+                dataUser.update()
                 "Сохранение успешно произведено"
             }
             respond(textMessage)
@@ -184,9 +175,7 @@ fun arguments() = commands("Arguments") {
 
             val kordlol = R2DBC.getKORDLOLs { tbl_KORDLOLs.id eq UserId }.firstOrNull()
             val textMessage = if (kordlol != null) {
-                R2DBC.getLOLs { tbl_LOLs.id eq kordlol.LOL_id }.firstOrNull()?.delete()
-                R2DBC.getKORDs { tbl_KORDs.id eq kordlol.KORD_id }.firstOrNull()?.delete()
-                kordlol.delete()
+                kordlol.deleteWithKORD()
                 "Удаление прошло успешно"
             } else {
                 "Пользователя с ID $UserId не существует"

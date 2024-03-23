@@ -23,7 +23,7 @@ val tbl_LOLs = Meta.loLs
 data class LOLs(
     @KomapperId
     @KomapperAutoIncrement
-    var id: Int = 0,
+    val id: Int = 0,
 
     var oldID: Int = 0,
     var LOL_puuid: String = "",
@@ -54,29 +54,21 @@ data class LOLs(
     }
 
     override suspend fun save() : LOLs {
-        val result = R2DBC.db.withTransaction {
-            R2DBC.db.runQuery { QueryDsl.insert(tbl_LOLs).single(this@LOLs) }
-        }
-        this.id = result.id
-        this.updatedAt = result.updatedAt
-        this.createdAt = result.createdAt
-        printLog("[LOLs::save] $this")
-        return this
+        val result = R2DBC.runQuery(QueryDsl.insert(tbl_LOLs).single(this@LOLs))
+        printLog("[LOLs::save] $result")
+        return result
     }
 
     override suspend fun update() : LOLs {
-        val before = R2DBC.getLOLs { tbl_LOLs.id eq this@LOLs.id }.firstOrNull()
-        printLog("[LOLs::update] $this { ${calculateUpdate(before, this)} }")
-        return R2DBC.db.withTransaction {
-            R2DBC.db.runQuery { QueryDsl.update(tbl_LOLs).single(this@LOLs) }
-        }
+        val before = this
+        val after = R2DBC.runQuery(QueryDsl.update(tbl_LOLs).single(this@LOLs))
+        printLog("[LOLs::update] $this { ${calculateUpdate(before, after)} }")
+        return after
     }
 
     override suspend fun delete() {
         printLog("[LOLs::delete] $this")
-        R2DBC.db.withTransaction {
-            R2DBC.db.runQuery { QueryDsl.delete(tbl_LOLs).single(this@LOLs) }
-        }
+        R2DBC.runQuery(QueryDsl.delete(tbl_LOLs).single(this@LOLs))
     }
 
     override fun equals(other: Any?): Boolean {

@@ -18,7 +18,6 @@ import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.calculateUpdate
-import ru.descend.bot.toStringUID
 import java.time.LocalDateTime
 
 val tbl_KORDLOLs = Meta.kordloLs
@@ -28,7 +27,7 @@ val tbl_KORDLOLs = Meta.kordloLs
 data class KORDLOLs(
     @KomapperId
     @KomapperAutoIncrement
-    var id: Int = 0,
+    val id: Int = 0,
 
     var KORD_id: Int = -1,
     var LOL_id: Int = -1,
@@ -46,31 +45,32 @@ data class KORDLOLs(
 ) : InterfaceR2DBC<KORDLOLs> {
 
     override suspend fun save() : KORDLOLs {
-        val result = R2DBC.db.withTransaction {
+        val result = R2DBC.runTransaction {
             this.showCode = R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq this@KORDLOLs.guild_id }.size
-            R2DBC.db.runQuery { QueryDsl.insert(tbl_KORDLOLs).single(this@KORDLOLs) }
+            R2DBC.runQuery(QueryDsl.insert(tbl_KORDLOLs).single(this@KORDLOLs))
         }
-        this.id = result.id
-        this.updatedAt = result.updatedAt
-        this.createdAt = result.createdAt
-        this.showCode = result.showCode
-        printLog("[KORDLOLs::save] $this")
-        return this
+        printLog("[KORDLOLs::save] $result")
+        return result
     }
 
     override suspend fun update() : KORDLOLs {
-        val before = R2DBC.getKORDLOLs { tbl_KORDLOLs.id eq this@KORDLOLs.id }.firstOrNull()
-        printLog("[KORDLOLs::update] $this { ${calculateUpdate(before, this)} }")
-        return R2DBC.db.withTransaction {
-            R2DBC.db.runQuery { QueryDsl.update(tbl_KORDLOLs).single(this@KORDLOLs) }
-        }
+        val before = this
+        val after = R2DBC.runQuery(QueryDsl.update(tbl_KORDLOLs).single(this@KORDLOLs))
+        printLog("[KORDLOLs::update] $this { ${calculateUpdate(before, after)} }")
+        return after
     }
 
     override suspend fun delete() {
         printLog("[KORDLOLs::delete] $this")
-        R2DBC.db.withTransaction {
-            R2DBC.db.runQuery { QueryDsl.delete(tbl_KORDLOLs).single(this@KORDLOLs) }
+        R2DBC.runQuery(QueryDsl.delete(tbl_KORDLOLs).single(this@KORDLOLs))
+    }
+
+    suspend fun deleteWithKORD() {
+        printLog("[KORDLOLs::deleteWithKORD] $this")
+        R2DBC.getKORDs { tbl_KORDs.id eq KORD_id }.forEach {
+            it.delete()
         }
+        delete()
     }
 
     /*********************************/
