@@ -11,8 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import me.jakejmattson.discordkt.extensions.descriptor
-import ru.descend.bot.lolapi.LeagueMainObject
+import me.jakejmattson.discordkt.util.descriptor
 import ru.descend.bot.postgre.SQLData_R2DBC
 import java.io.File
 import java.text.SimpleDateFormat

@@ -98,7 +98,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     suspend fun getLOL(id: Int) = getLOL().find { it.id == id }
     /*-----*/
     suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
-    suspend fun geKORD(id: Int) = getKORD().find { it.id == id }
+    suspend fun getKORD(id: Int) = getKORD().find { it.id == id }
     /*-----*/
 
     private var arraySavedParticipants = ArrayList<statMainTemp_r2>()

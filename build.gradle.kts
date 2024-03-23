@@ -1,3 +1,5 @@
+import java.util.Properties
+
 group = "ru.descend"
 version = "1.5.4"
 description = "Unofficial Bot for League of Legends"
@@ -27,20 +29,16 @@ dependencies {
     }
     implementation("org.komapper:komapper-tx-core:1.12.1")
     implementation("org.komapper:komapper-template:$komapperVersion")
-    implementation("org.komapper:komapper-starter-jdbc:$komapperVersion")
     implementation("org.komapper:komapper-starter-r2dbc:$komapperVersion")
     implementation("org.komapper:komapper-dialect-postgresql-r2dbc")
-    implementation("org.komapper:komapper-dialect-postgresql-jdbc")
     ksp("org.komapper:komapper-processor")
 
     implementation("com.aallam.openai:openai-client:3.7.0")
 
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.retrofit2:retrofit:2.10.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.10.0")
 
-    implementation("me.jakejmattson", "DiscordKt", "0.23.4")
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("com.github.jr-selphius:LeagueOfLegendsAPI:1.0.0")
+    implementation("me.jakejmattson", "DiscordKt", "0.24.0")
 
     implementation("junit:junit:4.13.2")
     implementation("org.junit.jupiter:junit-jupiter:5.10.2")
@@ -56,15 +54,24 @@ tasks {
     compileKotlin {
         kotlinOptions.jvmTarget = "17"
        // dependsOn("writeProperties")
+
+        Properties().apply {
+            setProperty("name", project.name)
+            setProperty("description", project.description)
+            setProperty("version", version.toString())
+            setProperty("url", "https://github.com/DiscordKt/DiscordKt")
+
+            store(file("src/main/resources/bot.properties").outputStream(), null)
+        }
     }
 
-    register<WriteProperties>("writeProperties") {
-        property("name", project.name)
-        property("description", project.description.toString())
-        property("version", version.toString())
-        property("url", "https://github.com/Sperance/LOLPentaStealBot")
-//        setOutputFile("src/main/resources/bot.properties")
-    }
+//    register<WriteProperties>("writeProperties") {
+//        property("name", project.name)
+//        property("description", project.description.toString())
+//        property("version", version.toString())
+//        property("url", "https://github.com/Sperance/LOLPentaStealBot")
+////        setOutputFile("src/main/resources/bot.properties")
+//    }
 }
 
 tasks.withType<Tar> {

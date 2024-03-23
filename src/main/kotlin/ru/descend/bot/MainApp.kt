@@ -9,14 +9,16 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.gateway.ALL
 import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
+import dev.kord.rest.builder.message.embed
 import dev.kord.rest.builder.message.modify.UserMessageModifyBuilder
 import dev.kord.rest.builder.message.modify.embed
 import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
-import me.jakejmattson.discordkt.extensions.TimeStamp
+import me.jakejmattson.discordkt.util.TimeStamp
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
@@ -42,7 +44,7 @@ fun main() {
             dualRegistry = true
             commandReaction = Emojis.adult
             theme = Color(0x00B92F)
-            intents = Intents.all
+            intents = Intents.ALL
             defaultPermissions = Permissions(Permission.UseApplicationCommands)
         }
         onException {

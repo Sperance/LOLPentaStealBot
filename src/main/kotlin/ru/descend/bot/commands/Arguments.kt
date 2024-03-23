@@ -5,8 +5,7 @@ import dev.kord.common.entity.Permissions
 import dev.kord.core.entity.channel.TextChannel
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
-import me.jakejmattson.discordkt.extensions.descriptor
-import me.jakejmattson.discordkt.extensions.fullName
+import me.jakejmattson.discordkt.util.fullName
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
@@ -15,7 +14,6 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.tbl_KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.tbl_KORDs
 import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
-import ru.descend.bot.postgre.r2dbc.model.tbl_guilds
 import ru.descend.bot.printLog
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toStringUID

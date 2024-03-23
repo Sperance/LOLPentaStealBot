@@ -8,7 +8,7 @@ import dev.kord.core.event.guild.MemberUpdateEvent
 import dev.kord.core.event.role.RoleCreateEvent
 import dev.kord.core.event.role.RoleDeleteEvent
 import me.jakejmattson.discordkt.dsl.listeners
-import me.jakejmattson.discordkt.extensions.descriptor
+import me.jakejmattson.discordkt.util.descriptor
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.printLog

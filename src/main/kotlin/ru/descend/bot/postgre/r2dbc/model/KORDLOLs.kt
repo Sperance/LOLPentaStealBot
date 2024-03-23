@@ -46,7 +46,7 @@ data class KORDLOLs(
 
     override suspend fun save() : KORDLOLs {
         val result = R2DBC.runTransaction {
-            this.showCode = R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq this@KORDLOLs.guild_id }.size
+            this.showCode = R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq this@KORDLOLs.guild_id }.size + 1
             R2DBC.runQuery(QueryDsl.insert(tbl_KORDLOLs).single(this@KORDLOLs))
         }
         printLog("[KORDLOLs::save] $result")
@@ -87,7 +87,7 @@ data class KORDLOLs(
 
     suspend fun asUser(guild: Guild, data: SQLData_R2DBC) : User {
         if (KORD_id == -1) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
-        return User(UserData(Snowflake(data.geKORD(KORD_id)!!.KORD_id.toLong()), data.geKORD(KORD_id)!!.KORD_name, data.geKORD(KORD_id)!!.KORD_discriminator), guild.kord)
+        return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), guild.kord)
     }
 
     override fun equals(other: Any?): Boolean {

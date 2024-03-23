@@ -4,12 +4,6 @@
 | Symbol      | Meaning                        |
 |-------------|--------------------------------|
 | [Argument]  | Argument is not required.      |
-| /Category   | This is a subcommand group.    |
-
-## /Prompt
-| Commands | Arguments | Description |
-|----------|-----------|-------------|
-| Modal    |           |             |
 
 ## Arguments
 | Commands           | Arguments                  | Description                                                   |
