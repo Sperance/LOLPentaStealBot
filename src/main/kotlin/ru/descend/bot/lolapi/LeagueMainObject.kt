@@ -5,11 +5,8 @@ import ru.descend.bot.catchToken
 import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.dataclasses.SavedPartSteal
-import ru.descend.bot.lolapi.leaguedata.championMasteryDto.ChampionMasteryDto
-import ru.descend.bot.lolapi.leaguedata.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.postgre.SQLData_R2DBC
-import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.getStrongDate
 import ru.descend.bot.statusLOLRequests
@@ -36,10 +33,10 @@ object LeagueMainObject {
         return null
     }
 
-    fun catchHeroNames(): ArrayList<String> {
+    suspend fun catchHeroNames(): ArrayList<String> {
 
-        val versions = dragonService.getVersions().execute().body()!!
-        val champions = dragonService.getChampions(versions.first(), "ru_RU").execute().body()!!
+        val versions = dragonService.getVersions().body()!!
+        val champions = dragonService.getChampions(versions.first(), "ru_RU").body()!!
 
         val namesAllHero = ArrayList<String>()
         heroObjects.clear()
@@ -66,7 +63,7 @@ object LeagueMainObject {
         delay(checkRiotQuota())
         printLog("[catchMatchID::$globalLOLRequests] started with summonerName: $summonerName start: $start count: $count")
         try {
-            val exec = leagueService.getMatchIDByPUUID(puuid, start, count).execute()
+            val exec = leagueService.getMatchIDByPUUID(puuid, start, count)
             reloadRiotQuota()
             if (exec.isSuccessful) {
                 exec.body()?.forEach {
@@ -91,7 +88,7 @@ object LeagueMainObject {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
-        val exec = leagueService.getMatchInfo(matchId).execute()
+        val exec = leagueService.getMatchInfo(matchId)
         reloadRiotQuota()
         if (!exec.isSuccessful) {
             statusLOLRequests = 1
@@ -110,7 +107,7 @@ object LeagueMainObject {
         printLog("[catchPentaSteal::$globalLOLRequests] started with matchId: $matchId")
 
         val result = ArrayList<Triple<String, String, String>>()
-        val exec = leagueService.getMatchTimeline(matchId).execute()
+        val exec = leagueService.getMatchTimeline(matchId)
 
         if (!exec.isSuccessful) {
             statusLOLRequests = 1

@@ -1,6 +1,5 @@
 package ru.descend.bot.lolapi
 
-import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -17,18 +16,18 @@ interface LeagueService {
     suspend fun getBySummonerName(@Path("summonerName") name: String) : Response<SummonerDTO>
 
     @GET("https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids")
-    fun getMatchIDByPUUID(@Path("puuid") puuid: String, @Query("start") start: Int, @Query("count") count: Int) : Call<List<String>>
+    suspend fun getMatchIDByPUUID(@Path("puuid") puuid: String, @Query("start") start: Int, @Query("count") count: Int) : Response<List<String>>
 
     @GET("https://europe.api.riotgames.com/lol/match/v5/matches/{matchId}")
-    fun getMatchInfo(@Path("matchId") matchId: String) : Call<MatchDTO>
+    suspend fun getMatchInfo(@Path("matchId") matchId: String) : Response<MatchDTO>
 
     @GET("https://europe.api.riotgames.com/lol/match/v5/matches/{matchId}/timeline")
-    fun getMatchTimeline(@Path("matchId") matchId: String) : Call<MatchTimelineDTO>
+    suspend fun getMatchTimeline(@Path("matchId") matchId: String) : Response<MatchTimelineDTO>
 
     @GET("/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top")
-    fun getChampionMastery(@Path("puuid") puuid: String) : Call<ChampionMasteryDto>
+    suspend fun getChampionMastery(@Path("puuid") puuid: String) : Response<ChampionMasteryDto>
 
     @GET("/lol/spectator/v4/active-games/by-summoner/{encryptedSummonerId}")
-    fun getActiveGame(@Path("encryptedSummonerId") encryptedSummonerId: String) : Call<CurrentGameInfo>
+    suspend fun getActiveGame(@Path("encryptedSummonerId") encryptedSummonerId: String) : Response<CurrentGameInfo>
 
 }

@@ -225,67 +225,51 @@ class PostgreTest {
 //    }
 
     @Test
-    fun testsss() {
-        val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
-        val dragonService = leagueApi.dragonService
-
-        val versions = dragonService.getVersions().execute().body()!!
-        val champions = dragonService.getChampions(versions.first(), "ru_RU").execute().body()!!
-
-        val namesAllHero = ArrayList<String>()
-        champions.data::class.java.declaredFields.forEach {
-            it.isAccessible = true
-            val curData = it.get(champions.data)
-            val nameField = curData::class.java.getDeclaredField("name")
-            nameField.isAccessible = true
-            namesAllHero.add(nameField.get(curData).toString())
-        }
-    }
-
-    @Test
     fun testtimeline() {
         val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
         val service = leagueApi.leagueService
 
-        val exec = service.getMatchTimeline("RU_481300486").execute()
-        exec.body()?.let {
-            val mapPUUID = HashMap<Long, String>()
-            it.info.participants.forEach { part ->
-                mapPUUID[part.participantId] = part.puuid
-            }
+        runBlocking {
+            val exec = service.getMatchTimeline("RU_481300486")
+            exec.body()?.let {
+                val mapPUUID = HashMap<Long, String>()
+                it.info.participants.forEach { part ->
+                    mapPUUID[part.participantId] = part.puuid
+                }
 
-            var lastDate = System.currentTimeMillis()
-            var removedPart: SavedPartSteal? = null
-            var isNextCheck = false
-            val arrayQuadras = ArrayList<SavedPartSteal>()
+                var lastDate = System.currentTimeMillis()
+                var removedPart: SavedPartSteal? = null
+                var isNextCheck = false
+                val arrayQuadras = ArrayList<SavedPartSteal>()
 
-            it.info.frames.forEach { frame ->
-                frame.events.forEach lets@ { event ->
-                    if (event.killerId != null && event.type.contains("CHAMPION")) {
-                        val betw = Duration.between(lastDate.toDate().toInstant(), event.timestamp.toDate().toInstant())
-                        val resDate = getStrongDate(event.timestamp)
-                        lastDate = event.timestamp
+                it.info.frames.forEach { frame ->
+                    frame.events.forEach lets@ { event ->
+                        if (event.killerId != null && event.type.contains("CHAMPION")) {
+                            val betw = Duration.between(lastDate.toDate().toInstant(), event.timestamp.toDate().toInstant())
+                            val resDate = getStrongDate(event.timestamp)
+                            lastDate = event.timestamp
 
-                        printLog("EVENT: team:${if (event.killerId <= 5) "BLUE" else "RED"} killerId:${event.killerId} multiKillLength:${event.multiKillLength ?: 0} killType: ${event.killType?:""} type:${event.type} ${resDate.timeSec} STAMP: ${event.timestamp} BETsec: ${betw.toSeconds()}")
+                            printLog("EVENT: team:${if (event.killerId <= 5) "BLUE" else "RED"} killerId:${event.killerId} multiKillLength:${event.multiKillLength ?: 0} killType: ${event.killType?:""} type:${event.type} ${resDate.timeSec} STAMP: ${event.timestamp} BETsec: ${betw.toSeconds()}")
 
-                        if (isNextCheck && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL")) {
-                            arrayQuadras.forEach saved@ { sPart ->
-                                if (sPart.team == (if (event.killerId <= 5) "BLUE" else "RED") &&
-                                    sPart.participantId != event.killerId) {
-                                    printLog("PENTESTEAL. Чел PUUID ${mapPUUID[event.killerId]} состилил Пенту у ${sPart.puuid}")
-                                    removedPart = sPart
-                                    return@saved
+                            if (isNextCheck && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL")) {
+                                arrayQuadras.forEach saved@ { sPart ->
+                                    if (sPart.team == (if (event.killerId <= 5) "BLUE" else "RED") &&
+                                        sPart.participantId != event.killerId) {
+                                        printLog("PENTESTEAL. Чел PUUID ${mapPUUID[event.killerId]} состилил Пенту у ${sPart.puuid}")
+                                        removedPart = sPart
+                                        return@saved
+                                    }
                                 }
+                                if (removedPart != null) {
+                                    arrayQuadras.remove(removedPart)
+                                    removedPart = null
+                                }
+                                isNextCheck = false
                             }
-                            if (removedPart != null) {
-                                arrayQuadras.remove(removedPart)
-                                removedPart = null
+                            if (event.multiKillLength == 4L) {
+                                arrayQuadras.add(SavedPartSteal(event.killerId, mapPUUID[event.killerId]?:"", if (event.killerId <= 5) "BLUE" else "RED", event.timestamp))
+                                isNextCheck = true
                             }
-                            isNextCheck = false
-                        }
-                        if (event.multiKillLength == 4L) {
-                            arrayQuadras.add(SavedPartSteal(event.killerId, mapPUUID[event.killerId]?:"", if (event.killerId <= 5) "BLUE" else "RED", event.timestamp))
-                            isNextCheck = true
                         }
                     }
                 }

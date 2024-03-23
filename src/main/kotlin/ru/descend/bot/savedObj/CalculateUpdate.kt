@@ -8,7 +8,7 @@ inline fun <reified T> calculateUpdate(before: T?, after: T?) : String {
         it.isAccessible = true
         val fieldbefore = it.get(before)
         val fieldafter = it.get(after)
-        if (fieldbefore != fieldafter && it.name != "updatedAt") {
+        if (fieldbefore != fieldafter && it.name != "updatedAt" && it.name != "createdAt") {
             result += "${it.name} '${fieldbefore}' -> '${fieldafter}'; "
         }
     }
