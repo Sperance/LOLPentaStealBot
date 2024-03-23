@@ -1,7 +1,7 @@
 import java.util.Properties
 
 group = "ru.descend"
-version = "1.5.4"
+version = "1.6.0"
 description = "Unofficial Bot for League of Legends"
 
 plugins {
@@ -57,7 +57,7 @@ tasks {
             setProperty("name", project.name)
             setProperty("description", project.description)
             setProperty("version", version.toString())
-            setProperty("url", "https://github.com/DiscordKt/DiscordKt")
+            setProperty("url", "https://github.com/Sperance/LOLPentaStealBot")
 
             store(file("src/main/resources/bot.properties").outputStream(), null)
         }
