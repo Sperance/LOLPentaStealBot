@@ -60,11 +60,11 @@ object LeagueMainObject {
         return namesAllHero
     }
 
-    suspend fun catchMatchID(sqldataR2dbc: SQLData_R2DBC, puuid: String, start: Int, count: Int) : ArrayList<String> {
+    suspend fun catchMatchID(sqldataR2dbc: SQLData_R2DBC, puuid: String, summonerName: String, start: Int, count: Int) : ArrayList<String> {
         val result = ArrayList<String>()
         globalLOLRequests++
         delay(checkRiotQuota())
-        printLog("[catchMatchID::$globalLOLRequests] started with puuid: $puuid start: $start count: $count")
+        printLog("[catchMatchID::$globalLOLRequests] started with summonerName: $summonerName start: $start count: $count")
         try {
             val exec = leagueService.getMatchIDByPUUID(puuid, start, count).execute()
             reloadRiotQuota()

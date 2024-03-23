@@ -41,16 +41,20 @@ data class LOLs(
     var updatedAt: LocalDateTime = LocalDateTime.MIN
 ) : InterfaceR2DBC<LOLs> {
 
-    constructor(region: String, summonerName: String) : this() {
+    suspend fun connectLOL(region: String, summonerName: String) : LOLs? {
         val leagueApi = LeagueApi(catchToken()[1], region)
-        leagueApi.leagueService.getBySummonerName(summonerName).execute().body()?.let {
-            this.LOL_puuid = it.puuid
-            this.LOL_summonerId = it.id
-            this.LOL_accountId = it.accountId
-            this.LOL_summonerName = it.name
-            this.LOL_region = region
-            this.LOL_summonerLevel = it.summonerLevel
+        val exec = leagueApi.leagueService.getBySummonerName(summonerName)
+        if (!exec.isSuccessful) return null
+        val newLOL = LOLs()
+        exec.body()?.let {
+            newLOL.LOL_puuid = it.puuid
+            newLOL.LOL_summonerId = it.id
+            newLOL.LOL_accountId = it.accountId
+            newLOL.LOL_summonerName = it.name
+            newLOL.LOL_region = region
+            newLOL.LOL_summonerLevel = it.summonerLevel
         }
+        return newLOL
     }
 
     override suspend fun save() : LOLs {
@@ -60,7 +64,7 @@ data class LOLs(
     }
 
     override suspend fun update() : LOLs {
-        val before = this
+        val before = R2DBC.getLOLs { tbl_LOLs.id eq id }.firstOrNull()
         val after = R2DBC.runQuery(QueryDsl.update(tbl_LOLs).single(this@LOLs))
         printLog("[LOLs::update] $this { ${calculateUpdate(before, after)} }")
         return after

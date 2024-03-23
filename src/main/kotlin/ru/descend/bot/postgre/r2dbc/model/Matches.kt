@@ -47,7 +47,7 @@ data class Matches(
     }
 
     override suspend fun update() : Matches {
-        val before = this
+        val before = R2DBC.getMatches { tbl_matches.id eq id }.firstOrNull()
         val after = R2DBC.runQuery(QueryDsl.update(tbl_matches).single(this@Matches))
         printLog("[Matches::update] $this { ${calculateUpdate(before, after)} }")
         return after
@@ -58,9 +58,9 @@ data class Matches(
         R2DBC.runQuery(QueryDsl.delete(tbl_matches).single(this@Matches))
     }
 
-    suspend fun deleteWithParticipants() {
+    suspend fun deleteWithParticipants(guilds: Guilds) {
         printLog("[Matches::deleteWithParticipants] $this")
-        R2DBC.getParticipants { tbl_participants.match_id eq id }.forEach {
+        R2DBC.getParticipants { tbl_participants.match_id eq id ; tbl_participants.guild_id eq guilds.id }.forEach {
             it.delete()
         }
         delete()

@@ -6,10 +6,12 @@ import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
+import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.CalculateMMR_2
 import ru.descend.bot.savedObj.isCurrentDay
@@ -59,14 +61,14 @@ data class Calc_AddMatch (
         }
 
         match.info.participants.forEach {part ->
-            var curLOL = sqlData.getLOLforPUUID(part.puuid)
+            var curLOL = R2DBC.getLOLs { tbl_LOLs.LOL_puuid eq part.puuid }.firstOrNull()
 
             if (kordLol != null && curLOL != null && !isBots && !isSurrender){
                 kordLol.find { it.LOL_id == curLOL?.id }?.let {
                     asyncLaunch {
                         if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
                             val textPentas = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                            sqlData.guild.sendMessage(sqlData.guildSQL.messageIdStatus, "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
+                            sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
                         }
                     }
                 }
@@ -110,7 +112,7 @@ data class Calc_AddMatch (
             data.init()
             users += sqlData.getLOL(it.LOLperson_id)?.LOL_summonerName + " hero: ${it.championName} $data\n"
         }
-        sqlData.guild.sendMessage(sqlData.guildSQL.messageIdDebug,
+        sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
             "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                     "${pMatch.matchDateStart.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
                     "Mode: ${pMatch.matchMode} Surrender: $isSurrender Bots: $isBots\n" +

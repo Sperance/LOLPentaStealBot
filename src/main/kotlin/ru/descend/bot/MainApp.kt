@@ -58,7 +58,6 @@ fun main() {
                 if (it.id.value.toString() == "1160986529460654111")
                     return@collect
 
-//                Postgre.testInnerPostgre()
                 timerRequestReset((2).minutes)
                 timerMainInformation(it, (5).minutes)
             }
@@ -118,12 +117,12 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         val checkMatches = ArrayList<String>()
         sqlData.dataSavedLOL.get().forEach {
             if (it.LOL_puuid == "") return@forEach
-            LeagueMainObject.catchMatchID(sqlData, it.LOL_puuid, 5, 5).forEach ff@{ matchId ->
+            LeagueMainObject.catchMatchID(sqlData, it.LOL_puuid, it.LOL_riotIdName?:it.LOL_summonerName, 5, 5).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
-        var listChecked = sqlData.getNewMatches(checkMatches)
-        listChecked.sortByDescending { it }
+        val listChecked = sqlData.getNewMatches(checkMatches)
+        listChecked.sortBy { it }
         listChecked.forEach { newMatch ->
             LeagueMainObject.catchMatch(sqlData, newMatch)?.let { match ->
                 sqlData.addMatch(match)
@@ -131,32 +130,32 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }
     }.join()
 
-    sqlData.resetSavedParticipants()
-    sqlData.resetArrayAramMMRData()
-    sqlData.resetWinStreak()
-
-    val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
-
-    //Таблица Главная - ID никнейм серияпобед
-    editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
-        editMessageMainDataContent(it, sqlData)
-    }) {
-        createMessageMainData(channelText, sqlData)
-    }
-
-    //Таблица ММР - все про ММР арама
-    editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, {
-        editMessageAramMMRDataContent(it, sqlData)
-    }) {
-        createMessageAramMMRData(channelText, sqlData)
-    }
-
-    //Таблица по играм\винрейту\сериям убийств
-    editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
-        editMessageGlobalStatisticContent(it, sqlData)
-    }) {
-        createMessageGlobalStatistic(channelText, sqlData)
-    }
+//    sqlData.resetSavedParticipants()
+//    sqlData.resetArrayAramMMRData()
+//    sqlData.resetWinStreak()
+//
+//    val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
+//
+//    //Таблица Главная - ID никнейм серияпобед
+//    editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
+//        editMessageMainDataContent(it, sqlData)
+//    }) {
+//        createMessageMainData(channelText, sqlData)
+//    }
+//
+//    //Таблица ММР - все про ММР арама
+//    editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, {
+//        editMessageAramMMRDataContent(it, sqlData)
+//    }) {
+//        createMessageAramMMRData(channelText, sqlData)
+//    }
+//
+//    //Таблица по играм\винрейту\сериям убийств
+//    editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
+//        editMessageGlobalStatisticContent(it, sqlData)
+//    }) {
+//        createMessageGlobalStatistic(channelText, sqlData)
+//    }
 }
 
 suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, editBody: suspend (UserMessageModifyBuilder) -> Unit, createBody: suspend () -> Unit) {

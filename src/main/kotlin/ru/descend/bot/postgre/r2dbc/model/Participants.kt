@@ -74,12 +74,7 @@ data class Participants(
     var totalTimeCCDealt: Int = 0, //total_time_c_c_dealt
     var tookLargeDamageSurvived: Int = 0, //took_large_damage_survived
     var longestTimeSpentLiving: Int = 0, //longest_time_spent_living
-    var totalTimeSpentDead: Int = 0, //total_time_spent_dead
-
-    @KomapperCreatedAt
-    var createdAt: LocalDateTime = LocalDateTime.MIN,
-    @KomapperUpdatedAt
-    var updatedAt: LocalDateTime = LocalDateTime.MIN
+    var totalTimeSpentDead: Int = 0 //total_time_spent_dead
 ) : InterfaceR2DBC<Participants> {
 
     constructor(participant: Participant, match: Matches, LOLperson: LOLs) : this() {
@@ -113,7 +108,7 @@ data class Participants(
         this.enemyChampionImmobilizations = participant.challenges?.enemyChampionImmobilizations?:0
         this.survivedThreeImmobilizesInFight = participant.challenges?.survivedThreeImmobilizesInFight?:0
         this.tookLargeDamageSurvived = participant.challenges?.tookLargeDamageSurvived?:0
-        this.effectiveHealAndShielding = participant.challenges?.effectiveHealAndShielding?:0.0
+        this.effectiveHealAndShielding = participant.challenges?.effectiveHealAndShielding?.to2Digits()?:0.0
         this.damageTakenOnTeamPercentage = participant.challenges?.damageTakenOnTeamPercentage?.to2Digits()?:0.0
         this.damagePerMinute = participant.challenges?.damagePerMinute?.to2Digits()?:0.0
         this.kda = participant.challenges?.kda?.to2Digits()?:0.0
@@ -144,7 +139,7 @@ data class Participants(
     }
 
     override suspend fun update() : Participants {
-        val before = this
+        val before = R2DBC.getParticipants { tbl_participants.id eq id }.firstOrNull()
         val after = R2DBC.runQuery(QueryDsl.update(tbl_participants).single(this@Participants))
         printLog("[Participants::update] $this { ${calculateUpdate(before, after)} }")
         return after
@@ -210,8 +205,6 @@ data class Participants(
         if (match_id != other.match_id) return false
         if (LOLperson_id != other.LOLperson_id) return false
         if (guild_id != other.guild_id) return false
-        if (createdAt != other.createdAt) return false
-        if (updatedAt != other.updatedAt) return false
 
         return true
     }
@@ -266,8 +259,6 @@ data class Participants(
         result = 31 * result + match_id
         result = 31 * result + LOLperson_id
         result = 31 * result + guild_id
-        result = 31 * result + createdAt.hashCode()
-        result = 31 * result + updatedAt.hashCode()
         return result
     }
 

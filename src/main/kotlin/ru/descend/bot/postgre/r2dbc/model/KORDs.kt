@@ -51,7 +51,7 @@ data class KORDs(
     }
 
     override suspend fun update() : KORDs {
-        val before = this
+        val before = R2DBC.getKORDs { tbl_KORDs.id eq id }.firstOrNull()
         val after = R2DBC.runQuery(QueryDsl.update(tbl_KORDs).single(this@KORDs))
         printLog("[KORDs::update] $this { ${calculateUpdate(before, after)} }")
         return after
@@ -62,9 +62,9 @@ data class KORDs(
         R2DBC.runQuery(QueryDsl.delete(tbl_KORDs).single(this@KORDs))
     }
 
-    suspend fun deleteWithKORDLOL() {
+    suspend fun deleteWithKORDLOL(guilds: Guilds) {
         printLog("[KORDs::deleteWithKORDLOL] $this")
-        R2DBC.getKORDLOLs { tbl_KORDLOLs.KORD_id eq id }.forEach {
+        R2DBC.getKORDLOLs { tbl_KORDLOLs.KORD_id eq id ; tbl_KORDLOLs.guild_id eq guilds.id }.forEach {
             it.delete()
         }
         delete()

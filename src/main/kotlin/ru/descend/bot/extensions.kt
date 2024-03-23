@@ -44,6 +44,24 @@ suspend fun Guild?.sendMessage(messageId: String, message: String, afterLaunchBo
     }
 }
 
+suspend fun SQLData_R2DBC?.sendMessage(messageId: String, message: String, afterLaunchBody: (() -> Unit)? = null) {
+    if (this == null) return
+    if (messageId.isEmpty()) return
+    if (message.isEmpty()) return
+    launch {
+        try {
+            val channelText = guild.getChannelOf<TextChannel>(Snowflake(messageId))
+            channelText.createMessage {
+                content = message
+            }
+        }catch (e: Exception) {
+            printLog(guild, "Not sended message $message for channel $messageId. Error: ${e.message}")
+        }
+    }.invokeOnCompletion {
+        afterLaunchBody?.invoke()
+    }
+}
+
 fun launch(block: suspend CoroutineScope.() -> Unit) = CoroutineScope(Dispatchers.IO).launch {
     block.invoke(this)
 }
@@ -108,8 +126,7 @@ fun catchToken(): List<String> {
         file.createNewFile()
         //TODO Write token
     }
-    val array = decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
-    return array
+    return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
 }
 
 fun String.toBase64() : String {
@@ -136,18 +153,18 @@ fun String?.toMaxSymbols(symbols: Int, addIfCatched: String = "") : String {
 
 fun User.toStringUID() = id.value.toString()
 
-suspend fun reloadMatch(sqlData: SQLData_R2DBC, puuid: String, startIndex: Int) {
-    val checkMatches = ArrayList<String>()
-    LeagueMainObject.catchMatchID(sqlData, puuid, startIndex,100).forEach ff@ { matchId ->
-        checkMatches.add(matchId)
-    }
-    sqlData.getNewMatches(checkMatches).forEach {newMatch ->
-        LeagueMainObject.catchMatch(sqlData, newMatch)?.let { match ->
-            sqlData.addMatch(match)
-        }
-    }
-    checkMatches.clear()
-}
+//suspend fun reloadMatch(sqlData: SQLData_R2DBC, puuid: String, startIndex: Int) {
+//    val checkMatches = ArrayList<String>()
+//    LeagueMainObject.catchMatchID(sqlData, puuid, startIndex,100).forEach ff@ { matchId ->
+//        checkMatches.add(matchId)
+//    }
+//    sqlData.getNewMatches(checkMatches).forEach {newMatch ->
+//        LeagueMainObject.catchMatch(sqlData, newMatch)?.let { match ->
+//            sqlData.addMatch(match)
+//        }
+//    }
+//    checkMatches.clear()
+//}
 
 suspend fun User.checkRoleForName(guild: Guild, name: String): Boolean {
     var result = false

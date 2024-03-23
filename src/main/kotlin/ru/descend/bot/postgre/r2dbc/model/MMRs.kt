@@ -42,7 +42,7 @@ data class MMRs(
     }
 
     override suspend fun update() : MMRs {
-        val before = this
+        val before = R2DBC.getMMRs { tbl_MMRs.id eq id }.firstOrNull()
         val after = R2DBC.runQuery(QueryDsl.update(tbl_MMRs).single(this@MMRs))
         printLog("[MMRs::update] $this { ${calculateUpdate(before, after)} }")
         return after

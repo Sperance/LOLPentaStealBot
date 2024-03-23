@@ -5,11 +5,7 @@ import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
-import ru.descend.bot.asyncLaunch
-import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
-import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
-import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mail.GMailSender
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_PentaSteal
@@ -27,12 +23,6 @@ import ru.descend.bot.postgre.r2dbc.model.tbl_KORDs
 import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
 import ru.descend.bot.postgre.r2dbc.model.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.tbl_participants
-import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.CalculateMMR_2
-import ru.descend.bot.savedObj.isCurrentDay
-import ru.descend.bot.sendMessage
-import ru.descend.bot.toDate
-import ru.descend.bot.toFormatDateTime
 import java.util.WeakHashMap
 
 data class kordTemp_r2(var kordLOL: KORDLOLs, var lastParts: ArrayList<Participants>, var isBold: Boolean)
@@ -186,15 +176,12 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
-        dataMatches.get().forEach { list.remove(it.matchId) }
+        dataMatches.get(true).forEach { list.remove(it.matchId) }
         return list
     }
 
     suspend fun getSavedParticipantsForMatch(matchId: Int) = dataSavedParticipants.get().filter { it.match_id == matchId }
     suspend fun getParticipantsForMatch(matchId: Int) = dataParticipants.get().filter { it.match_id == matchId }
-
-    suspend fun getLOLforPUUID(puuid: String) = getLOL().find { it.LOL_puuid == puuid }
-
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
 
     fun sendEmail(theme: String, message: String) {

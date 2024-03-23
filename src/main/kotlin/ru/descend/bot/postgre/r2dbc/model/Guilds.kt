@@ -61,7 +61,7 @@ data class Guilds(
     }
 
     override suspend fun update() : Guilds {
-        val before = this
+        val before = R2DBC.getGuilds { tbl_guilds.id eq id }.firstOrNull()
         val after = R2DBC.runQuery(QueryDsl.update(tbl_guilds).single(this@Guilds))
         printLog("[Guilds::update] $this { ${calculateUpdate(before, after)} }")
         return after
@@ -119,6 +119,6 @@ data class Guilds(
     }
 
     override fun toString(): String {
-        return "Guilds(id=$id, idGuild='$idGuild', name='$name')"
+        return "Guilds(id=$id, idGuild='$idGuild', name='$name', botChannedId='$botChannelId')"
     }
 }

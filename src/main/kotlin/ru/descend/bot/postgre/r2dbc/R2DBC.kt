@@ -97,12 +97,13 @@ object R2DBC {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_matches) else QueryDsl.from(tbl_matches).where(declaration) } }
     }
 
-    suspend fun getKORDLOLs_forKORD(kord: String) : KORDLOLs? {
+    suspend fun getKORDLOLs_forKORD(guilds: Guilds, kord: String) : KORDLOLs? {
         return db.withTransaction {
             db.runQuery {
                 QueryDsl.from(tbl_KORDLOLs)
                     .leftJoin(tbl_KORDs) { tbl_KORDs.id eq tbl_KORDLOLs.KORD_id }
                     .where { tbl_KORDs.KORD_id eq kord }
+                    .where { tbl_KORDLOLs.guild_id eq guilds.id }
                     .limit(1)
             }.firstOrNull()
         }
