@@ -33,8 +33,6 @@ dependencies {
     implementation("org.komapper:komapper-dialect-postgresql-r2dbc")
     ksp("org.komapper:komapper-processor")
 
-    implementation("com.aallam.openai:openai-client:3.7.0")
-
     implementation("com.squareup.retrofit2:retrofit:2.10.0")
     implementation("com.squareup.retrofit2:converter-gson:2.10.0")
 

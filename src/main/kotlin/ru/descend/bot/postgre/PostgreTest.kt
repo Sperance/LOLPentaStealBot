@@ -2,12 +2,6 @@ package ru.descend.bot.postgre
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import org.komapper.core.dsl.QueryDsl
-import org.komapper.core.dsl.query.Query
-import org.komapper.core.dsl.query.boolean
-import org.komapper.core.dsl.query.double
-import org.komapper.core.dsl.query.int
-import org.komapper.core.dsl.query.string
 import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.lolapi.dataclasses.SavedPartSteal
