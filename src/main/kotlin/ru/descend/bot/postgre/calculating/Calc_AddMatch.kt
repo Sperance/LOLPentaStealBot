@@ -47,6 +47,7 @@ data class Calc_AddMatch (
             bots = isBots,
             surrender = isSurrender
         ).save()
+        sqlData.dataMatches.add(pMatch)
 
         if (pMatch.id % 1000 == 0){
             asyncLaunch {
@@ -81,6 +82,7 @@ data class Calc_AddMatch (
                     LOL_summonerName = part.summonerName,
                     LOL_riotIdName = part.riotIdGameName,
                     LOL_riotIdTagline = part.riotIdTagline).save()
+                sqlData.dataLOL.add(curLOL)
             }
 
             //Вдруг что изменится в профиле игрока
@@ -93,7 +95,8 @@ data class Calc_AddMatch (
                 curLOL = curLOL.update()
             }
 
-            Participants(part, pMatch, curLOL).save()
+            val pParticipant = Participants(part, pMatch, curLOL).save()
+            sqlData.dataParticipants.add(pParticipant)
         }
 
         if (kordLol != null) {
@@ -105,9 +108,7 @@ data class Calc_AddMatch (
 
     private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
         var users = ""
-        val myParts = sqlData.getSavedParticipantsForMatch(pMatch.id)
-
-        myParts.forEach {
+        sqlData.getSavedParticipantsForMatch(pMatch.id).forEach {
             val data = CalculateMMR_2(sqlData, it, pMatch, kordLol, sqlData.getMMRforChampion(it.championName))
             data.init()
             users += sqlData.getLOL(it.LOLperson_id)?.LOL_summonerName + " hero: ${it.championName} $data\n"

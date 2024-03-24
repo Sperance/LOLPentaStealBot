@@ -19,7 +19,6 @@ import ru.descend.bot.savedObj.getStrongDate
 import ru.descend.bot.toDate
 import java.time.Duration
 
-
 class PostgreTest {
 
     @Test

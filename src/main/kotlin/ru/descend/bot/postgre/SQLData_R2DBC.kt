@@ -180,8 +180,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return list
     }
 
-    suspend fun getSavedParticipantsForMatch(matchId: Int) = dataSavedParticipants.get().filter { it.match_id == matchId }
-    suspend fun getParticipantsForMatch(matchId: Int) = dataParticipants.get().filter { it.match_id == matchId }
+    suspend fun getSavedParticipantsForMatch(matchId: Int) = dataSavedParticipants.get(true).filter { it.match_id == matchId }
+    suspend fun getParticipantsForMatch(matchId: Int) = dataParticipants.get(true).filter { it.match_id == matchId }
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
 
     fun sendEmail(theme: String, message: String) {
