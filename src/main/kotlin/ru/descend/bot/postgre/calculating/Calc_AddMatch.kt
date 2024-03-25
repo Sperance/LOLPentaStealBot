@@ -76,13 +76,14 @@ data class Calc_AddMatch (
             }
 
             //Создаем нового игрока в БД
+            var isNewLOL = false
             if (curLOL == null) {
                 curLOL = LOLs(LOL_puuid = part.puuid,
                     LOL_summonerId = part.summonerId,
                     LOL_summonerName = part.summonerName,
                     LOL_riotIdName = part.riotIdGameName,
-                    LOL_riotIdTagline = part.riotIdTagline).save()
-                sqlData.dataLOL.add(curLOL)
+                    LOL_riotIdTagline = part.riotIdTagline)
+                isNewLOL = true
             }
 
             //Вдруг что изменится в профиле игрока
@@ -92,11 +93,13 @@ data class Calc_AddMatch (
                 curLOL.LOL_summonerId = part.summonerId
                 curLOL.LOL_riotIdName = part.riotIdGameName
                 curLOL.LOL_summonerLevel = part.summonerLevel
-                curLOL = curLOL.update()
+                curLOL = if (isNewLOL) curLOL.save()
+                else curLOL.update()
             }
 
-            val pParticipant = Participants(part, pMatch, curLOL).save()
-            sqlData.dataParticipants.add(pParticipant)
+            if (isNewLOL) sqlData.dataLOL.add(curLOL)
+
+            Participants(part, pMatch, curLOL).save()
         }
 
         if (kordLol != null) {

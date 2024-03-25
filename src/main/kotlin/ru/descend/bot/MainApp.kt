@@ -14,7 +14,6 @@ import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.builder.message.embed
 import dev.kord.rest.builder.message.modify.UserMessageModifyBuilder
-import dev.kord.rest.builder.message.modify.embed
 import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
@@ -57,9 +56,7 @@ fun main() {
         onStart {
             firstInitialize()
             kord.guilds.collect {
-                if (it.id.value.toString() == "1160986529460654111")
-                    return@collect
-
+                removeMessage(it, R2DBC.getGuild(it))
                 timerRequestReset((2).minutes)
                 timerMainInformation(it, (5).minutes)
             }
@@ -76,16 +73,12 @@ fun timerRequestReset(duration: Duration) = launch {
 
 fun timerMainInformation(guild: Guild, duration: Duration) = launch {
     while (true) {
-        val localData = ThreadLocal<SQLData_R2DBC>()
-        localData.set(SQLData_R2DBC(guild, R2DBC.getGuild(guild)))
-        if (localData.get().guildSQL.botChannelId.isNotEmpty()) {
-            localData.get().initialize()
-            showLeagueHistory(localData.get())
-            localData.get()?.clearMainDataList()
-            localData.get()?.performClear()
+        val localData = SQLData_R2DBC(guild, R2DBC.getGuild(guild))
+        if (localData.guildSQL.botChannelId.isNotEmpty()) {
+            localData.initialize()
+            showLeagueHistory(localData)
+            localData.performClear()
         }
-        localData.remove()
-        performGC()
         printMemoryUsage("end clear")
         delay(duration)
     }
@@ -97,7 +90,7 @@ private suspend fun firstInitialize() {
 }
 
 suspend fun removeMessage(guild: Guild, guildSQL: Guilds) {
-    if (guildSQL.botChannelId.isNotEmpty()) {
+    if (guildSQL.botChannelId.isNotEmpty()){
         guild.getChannelOf<TextChannel>(Snowflake(guildSQL.botChannelId)).messages.collect {
             if (it.id.value.toString() in listOf(guildSQL.messageId, guildSQL.messageIdPentaData, guildSQL.messageIdGlobalStatisticData, guildSQL.messageIdMasteryData, guildSQL.messageIdMain, guildSQL.messageIdArammmr)) {
                 Unit
@@ -114,12 +107,14 @@ var statusLOLRequests = 0
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
 
     sqlData.dataKORDLOL.reset()
+    sqlData.dataKORD.reset()
+    sqlData.dataLOL.reset()
 
     launch {
         val checkMatches = ArrayList<String>()
         sqlData.dataSavedLOL.get().forEach {
             if (it.LOL_puuid == "") return@forEach
-            LeagueMainObject.catchMatchID(sqlData, it.LOL_puuid, it.LOL_riotIdName?:it.LOL_summonerName, 0, 5).forEach ff@{ matchId ->
+            LeagueMainObject.catchMatchID(sqlData, it.LOL_puuid, it.getCorrectName(), 0, 10).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
@@ -132,32 +127,30 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }
     }.join()
 
-//    sqlData.resetSavedParticipants()
-//    sqlData.resetArrayAramMMRData()
-//    sqlData.resetWinStreak()
-//
-//    val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
-//
-//    //Таблица Главная - ID никнейм серияпобед
-//    editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
-//        editMessageMainDataContent(it, sqlData)
-//    }) {
-//        createMessageMainData(channelText, sqlData)
-//    }
-//
-//    //Таблица ММР - все про ММР арама
-//    editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, {
-//        editMessageAramMMRDataContent(it, sqlData)
-//    }) {
-//        createMessageAramMMRData(channelText, sqlData)
-//    }
-//
-//    //Таблица по играм\винрейту\сериям убийств
-//    editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
-//        editMessageGlobalStatisticContent(it, sqlData)
-//    }) {
-//        createMessageGlobalStatistic(channelText, sqlData)
-//    }
+    val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
+
+    launch {
+        //Таблица Главная - ID никнейм серияпобед
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
+            editMessageMainDataContent(it, sqlData)
+        }) {
+            createMessageMainData(channelText, sqlData)
+        }
+
+        //Таблица ММР - все про ММР арама
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, {
+            editMessageAramMMRDataContent(it, sqlData)
+        }) {
+            createMessageAramMMRData(channelText, sqlData)
+        }
+
+        //Таблица по играм\винрейту\сериям убийств
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
+            editMessageGlobalStatisticContent(it, sqlData)
+        }) {
+            createMessageGlobalStatistic(channelText, sqlData)
+        }
+    }.join()
 }
 
 suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, editBody: suspend (UserMessageModifyBuilder) -> Unit, createBody: suspend () -> Unit) {
@@ -188,12 +181,6 @@ suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLD
     sqlData.guildSQL = sqlData.guildSQL.update()
 }
 
-//suspend fun createMessageSimple(channelText: TextChannel, sqlData: SQLData) {
-//    val message = channelText.createMessage("Initial Message Simple")
-//    channelText.getMessage(message.id).edit { editMessageSimpleContent(sqlData,this) }
-//    sqlData.guildSQL.update (TableGuild::messageId) { messageId = message.id.value.toString() }
-//}
-
 suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData_R2DBC) {
     val message = channelText.createMessage("Initial Message AramMMR")
     channelText.getMessage(message.id).edit { editMessageAramMMRDataContent(this, sqlData) }
@@ -202,34 +189,24 @@ suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData_
     sqlData.guildSQL = sqlData.guildSQL.update()
 }
 
-//fun editMessageSimpleContent(sqlData: SQLData, builder: UserMessageModifyBuilder) {
-//    builder.content = "**Статистика по Серверу:** ${TimeStamp.now()}\n" +
-//            "**Пользователей в базе:** ${sqlData.getKORDLOL().size}\n" +
-//            "**Версия игры:** ${LeagueMainObject.LOL_VERSION}\n" +
-//            "**Количество чемпионов:** ${LeagueMainObject.LOL_HEROES}"
-//
-//    printLog(sqlData.guild, "[editMessageSimpleContent] completed")
-//}
-
 suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
 
     val charStr = " / "
+    val savedParts = sqlData.getSavedParticipants()
 
-    sqlData.clearMainDataList()
-
-    sqlData.mainDataList1.get()?.addAll(sqlData.getSavedParticipants().map { formatInt(it.kord_lol_id, 2) + "| " + formatInt(it.games, 3) + charStr + formatInt(it.win, 3) + charStr + formatInt(((it.win.toDouble() / it.games.toDouble()) * 100).toInt(), 2) + "%" })
-    sqlData.mainDataList2.get()?.addAll(sqlData.getSavedParticipants().map {  it.kill.toFormatK() + charStr + formatInt(it.kill3, 3) + charStr + formatInt(it.kill4, 3) + charStr + formatInt(it.kill5, 2) })
+    val mainDataList1 = (savedParts.map { formatInt(it.kord_lol_id, 2) + "| " + formatInt(it.games, 3) + charStr + formatInt(it.win, 3) + charStr + formatInt(((it.win.toDouble() / it.games.toDouble()) * 100).toInt(), 2) + "%" })
+    val mainDataList2 = (savedParts.map {  it.kill.toFormatK() + charStr + formatInt(it.kill3, 3) + charStr + formatInt(it.kill4, 3) + charStr + formatInt(it.kill5, 2) })
 
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
         field {
             name = "Game/Win/WinRate"
-            value = sqlData.mainDataList1.get()?.joinToString(separator = "\n").toString()
+            value = mainDataList1.joinToString(separator = "\n")
             inline = true
         }
         field {
             name = "Kill/Triple/Quadra/Penta"
-            value = sqlData.mainDataList2.get().joinToString(separator = "\n")
+            value = mainDataList2.joinToString(separator = "\n")
             inline = true
         }
     }
@@ -241,30 +218,28 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
 
     sqlData.listMainData.addAll(sqlData.getKORDLOL())
 
-    sqlData.listMainData.sortBy { it.id }
+    sqlData.listMainData.sortBy { it.showCode }
     val charStr = " / "
 
-    sqlData.clearMainDataList()
-
-    sqlData.mainDataList1.get().addAll(sqlData.listMainData.map { formatInt(it.id, 2) + charStr + it.asUser(sqlData.guild, sqlData).lowDescriptor() })
-    sqlData.mainDataList2.get().addAll(sqlData.listMainData.map { it.getNickNameWithTag(sqlData) })
-    sqlData.mainDataList3.get().addAll(sqlData.listMainData.map { sqlData.getWinStreak()[it.LOL_id] })
+    val mainDataList1 = (sqlData.listMainData.map { formatInt(it.showCode, 2) + charStr + it.asUser(sqlData.guild, sqlData).lowDescriptor() })
+    val mainDataList2 = (sqlData.listMainData.map { sqlData.getLOL(it.LOL_id)?.getCorrectName() })
+    val mainDataList3 = (sqlData.listMainData.map { sqlData.getWinStreak()[it.LOL_id] })
 
     builder.content = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
         field {
             name = "ID/User"
-            value = sqlData.mainDataList1.get().joinToString(separator = "\n")
+            value = mainDataList1.joinToString(separator = "\n")
             inline = true
         }
         field {
             name = "Nickname"
-            value = sqlData.mainDataList2.get().joinToString(separator = "\n")
+            value = mainDataList2.joinToString(separator = "\n")
             inline = true
         }
         field {
             name = "WinStreak"
-            value = sqlData.mainDataList3.get().joinToString(separator = "\n")
+            value = mainDataList3.joinToString(separator = "\n")
             inline = true
         }
     }
@@ -275,17 +250,17 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
 suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
 
     val charStr = " / "
+    val aramData = sqlData.getArrayAramMMRData()
 
-    sqlData.clearMainDataList()
-    sqlData.mainDataList1.get().addAll(sqlData.getArrayAramMMRData().map {
+    val mainDataList1 = (aramData.map {
         if (it.match_id == it.last_match_id) "**" + formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank + "**"
         else formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank
     })
-    sqlData.mainDataList2.get().addAll(sqlData.getArrayAramMMRData().map {
+    val mainDataList2 = (aramData.map {
         if (it.match_id == it.last_match_id) "**" + it.mmr_aram + charStr + it.mmr_aram_saved + charStr + it.games + "**"
         else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + it.games
     })
-    sqlData.mainDataList3.get().addAll(sqlData.getArrayAramMMRData().map {
+    val mainDataList3 = (aramData.map {
         if (it.match_id == it.last_match_id) "**" + LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + "**"
         else LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr
     })
@@ -294,17 +269,17 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
     builder.embed {
         field {
             name = "ARAM Rank"
-            value = sqlData.mainDataList1.get().joinToString(separator = "\n")
+            value = mainDataList1.joinToString(separator = "\n")
             inline = true
         }
         field {
             name = "MMR/Bonus/Games"
-            value = sqlData.mainDataList2.get().joinToString(separator = "\n")
+            value = mainDataList2.joinToString(separator = "\n")
             inline = true
         }
         field {
             name = "LastGame/MMR"
-            value = sqlData.mainDataList3.get().joinToString(separator = "\n")
+            value = mainDataList3.joinToString(separator = "\n")
             inline = true
         }
     }

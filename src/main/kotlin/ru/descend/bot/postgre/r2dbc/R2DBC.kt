@@ -38,9 +38,15 @@ object R2DBC {
         .option(ConnectionFactoryOptions.DATABASE, "postgres")
         .build()
 
-    private val db = R2dbcDatabase(connectionFactory)
+    val db = R2dbcDatabase(connectionFactory)
 
     suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
+    suspend fun <T> runQuery(block: QueryScope.() -> Query<T>) =
+        db.withTransaction {
+            val query = block(QueryScope)
+            runQuery(query)
+        }
+
     suspend fun <T> runTransaction(block: suspend (CoroutineTransactionOperator) -> T) = db.withTransaction { block.invoke(it) }
 
     suspend fun initialize() {
@@ -76,25 +82,97 @@ object R2DBC {
     suspend fun getKORDLOLs(declaration: WhereDeclaration?) : List<KORDLOLs> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_KORDLOLs) else QueryDsl.from(tbl_KORDLOLs).where(declaration) } }
     }
+    suspend fun addBatchKORDLOLs(list: List<KORDLOLs>, batchSize: Int = 100) {
+        db.withTransaction {
+            val miniList = ArrayList<KORDLOLs>()
+            list.forEach { value ->
+                miniList.add(value)
+                if (miniList.size == batchSize) {
+                    db.runQuery { QueryDsl.insert(tbl_KORDLOLs).multiple(miniList) }
+                    miniList.clear()
+                }
+            }
+        }
+    }
 
     suspend fun getMMRs(declaration: WhereDeclaration?) : List<MMRs> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_MMRs) else QueryDsl.from(tbl_MMRs).where(declaration) } }
+    }
+    suspend fun addBatchMMRs(list: List<MMRs>, batchSize: Int = 100) {
+        db.withTransaction {
+            val miniList = ArrayList<MMRs>()
+            list.forEach { value ->
+                miniList.add(value)
+                if (miniList.size == batchSize) {
+                    db.runQuery { QueryDsl.insert(tbl_MMRs).multiple(miniList) }
+                    miniList.clear()
+                }
+            }
+        }
     }
 
     suspend fun getParticipants(declaration: WhereDeclaration?) : List<Participants> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_participants) else QueryDsl.from(tbl_participants).where(declaration) } }
     }
+    suspend fun addBatchParticipants(list: List<Participants>, batchSize: Int = 100) {
+        db.withTransaction {
+            val miniList = ArrayList<Participants>()
+            list.forEach { value ->
+                miniList.add(value)
+                if (miniList.size == batchSize) {
+                    db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
+                    miniList.clear()
+                }
+            }
+        }
+    }
 
     suspend fun getLOLs(declaration: WhereDeclaration?) : List<LOLs> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_LOLs) else QueryDsl.from(tbl_LOLs).where(declaration) } }
+    }
+    suspend fun addBatchLOLs(list: List<LOLs>, batchSize: Int = 100) {
+        db.withTransaction {
+            val miniList = ArrayList<LOLs>()
+            list.forEach { value ->
+                miniList.add(value)
+                if (miniList.size == batchSize) {
+                    db.runQuery { QueryDsl.insert(tbl_LOLs).multiple(miniList) }
+                    miniList.clear()
+                }
+            }
+        }
     }
 
     suspend fun getKORDs(declaration: WhereDeclaration?) : List<KORDs> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_KORDs) else QueryDsl.from(tbl_KORDs).where(declaration) } }
     }
+    suspend fun addBatchKORDs(list: List<KORDs>, batchSize: Int = 100) {
+        db.withTransaction {
+            val miniList = ArrayList<KORDs>()
+            list.forEach { value ->
+                miniList.add(value)
+                if (miniList.size == batchSize) {
+                    db.runQuery { QueryDsl.insert(tbl_KORDs).multiple(miniList) }
+                    miniList.clear()
+                }
+            }
+        }
+    }
 
     suspend fun getMatches(declaration: WhereDeclaration?) : List<Matches> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_matches) else QueryDsl.from(tbl_matches).where(declaration) } }
+    }
+    suspend fun addBatchMatches(list: List<Matches>, batchSize: Int = 100) {
+        db.withTransaction {
+            val miniList = ArrayList<Matches>()
+            list.forEach { value ->
+                miniList.add(value)
+                if (miniList.size == batchSize) {
+                    db.runQuery { QueryDsl.insert(tbl_matches).multiple(miniList) }
+                    miniList.clear()
+                }
+            }
+        }
     }
 
     suspend fun getKORDLOLs_forKORD(guilds: Guilds, kord: String) : KORDLOLs? {

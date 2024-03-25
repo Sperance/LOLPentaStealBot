@@ -75,6 +75,11 @@ data class LOLs(
         R2DBC.runQuery(QueryDsl.delete(tbl_LOLs).single(this@LOLs))
     }
 
+    fun getCorrectName() : String {
+        if (!LOL_riotIdName.isNullOrEmpty()) return LOL_riotIdName!!
+        return LOL_summonerName
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

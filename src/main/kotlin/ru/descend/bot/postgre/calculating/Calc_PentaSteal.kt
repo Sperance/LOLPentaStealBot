@@ -25,17 +25,17 @@ data class Calc_PentaSteal (
                 val secondPart = parts.find { sqlData.getLOL(it.LOLperson_id)?.LOL_puuid == pair.second }
 
                 if (firstPart == null) {
-                    sqlData.sendEmail("Error", "Participant with PUUID ${pair.first} not found in SQL. Match:${match.metadata.matchId}")
+                    sqlData.sendEmail("Error", "Participant with PUUID ${pair.first} not found in SQL. Match: ${match.metadata.matchId}")
                     return
                 }
 
                 if (secondPart == null) {
-                    sqlData.sendEmail("Error", "Participant with PUUID ${pair.second} not found in SQL. Match:${match.metadata.matchId}")
+                    sqlData.sendEmail("Error", "Participant with PUUID ${pair.second} not found in SQL. Match: ${match.metadata.matchId}")
                     return
                 }
 
                 if (firstPart == secondPart) {
-                    sqlData.sendEmail("Error", "Participants with PUUID ${pair.first} are Equals. Match:${match.metadata.matchId}")
+                    sqlData.sendEmail("Error", "Participants with PUUID ${pair.first} are Equals. Match: ${match.metadata.matchId}")
                     return
                 }
 

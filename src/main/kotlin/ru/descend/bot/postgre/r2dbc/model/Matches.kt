@@ -25,6 +25,7 @@ data class Matches(
 
     var guild_id: Int = -1,
 
+    var oldId: Int = 0,
     var matchId: String = "",
     var matchDateStart: Long = 0,
     var matchDateEnd: Long = 0,
