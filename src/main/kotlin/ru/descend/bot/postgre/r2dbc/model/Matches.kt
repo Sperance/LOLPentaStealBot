@@ -25,7 +25,6 @@ data class Matches(
 
     var guild_id: Int = -1,
 
-    var oldId: Int = 0,
     var matchId: String = "",
     var matchDateStart: Long = 0,
     var matchDateEnd: Long = 0,
@@ -59,12 +58,10 @@ data class Matches(
         R2DBC.runQuery(QueryDsl.delete(tbl_matches).single(this@Matches))
     }
 
-    suspend fun deleteWithParticipants(guilds: Guilds) {
-        printLog("[Matches::deleteWithParticipants] $this")
-        R2DBC.getParticipants { tbl_participants.match_id eq id ; tbl_participants.guild_id eq guilds.id }.forEach {
-            it.delete()
-        }
-        delete()
+    suspend fun getParticipants() = R2DBC.getParticipants { tbl_participants.guild_id eq guild_id ; tbl_participants.match_id eq id }
+
+    override fun toString(): String {
+        return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode', guild_id=$guild_id)"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -74,6 +71,7 @@ data class Matches(
         other as Matches
 
         if (id != other.id) return false
+        if (guild_id != other.guild_id) return false
         if (matchId != other.matchId) return false
         if (matchDateStart != other.matchDateStart) return false
         if (matchDateEnd != other.matchDateEnd) return false
@@ -82,7 +80,6 @@ data class Matches(
         if (matchGameVersion != other.matchGameVersion) return false
         if (bots != other.bots) return false
         if (surrender != other.surrender) return false
-        if (guild_id != other.guild_id) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
 
@@ -91,6 +88,7 @@ data class Matches(
 
     override fun hashCode(): Int {
         var result = id
+        result = 31 * result + guild_id
         result = 31 * result + matchId.hashCode()
         result = 31 * result + matchDateStart.hashCode()
         result = 31 * result + matchDateEnd.hashCode()
@@ -99,13 +97,8 @@ data class Matches(
         result = 31 * result + matchGameVersion.hashCode()
         result = 31 * result + bots.hashCode()
         result = 31 * result + surrender.hashCode()
-        result = 31 * result + guild_id
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
-    }
-
-    override fun toString(): String {
-        return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode', guild_id=$guild_id)"
     }
 }

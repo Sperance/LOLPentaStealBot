@@ -27,16 +27,12 @@ data class Guilds(
     var idGuild: String = "",
     var name: String = "",
     var description: String = "",
-    var ownerId: String = "",
 
     var botChannelId: String = "",
-    var messageId: String = "",
     var messageIdStatus: String = "",
     var messageIdMain: String = "",
     var messageIdDebug: String = "",
-    var messageIdPentaData: String = "",
     var messageIdGlobalStatisticData: String = "",
-    var messageIdMasteryData: String = "",
     var messageIdArammmr: String = "",
 
     @KomapperCreatedAt
@@ -50,7 +46,6 @@ data class Guilds(
         curGuild.idGuild = value.id.value.toString()
         curGuild.name = value.name
         curGuild.description = value.description ?: ""
-        curGuild.ownerId = value.ownerId.value.toString()
         return curGuild.save()
     }
 
@@ -82,15 +77,11 @@ data class Guilds(
         if (idGuild != other.idGuild) return false
         if (name != other.name) return false
         if (description != other.description) return false
-        if (ownerId != other.ownerId) return false
         if (botChannelId != other.botChannelId) return false
-        if (messageId != other.messageId) return false
         if (messageIdStatus != other.messageIdStatus) return false
         if (messageIdMain != other.messageIdMain) return false
         if (messageIdDebug != other.messageIdDebug) return false
-        if (messageIdPentaData != other.messageIdPentaData) return false
         if (messageIdGlobalStatisticData != other.messageIdGlobalStatisticData) return false
-        if (messageIdMasteryData != other.messageIdMasteryData) return false
         if (messageIdArammmr != other.messageIdArammmr) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
@@ -103,15 +94,11 @@ data class Guilds(
         result = 31 * result + idGuild.hashCode()
         result = 31 * result + name.hashCode()
         result = 31 * result + description.hashCode()
-        result = 31 * result + ownerId.hashCode()
         result = 31 * result + botChannelId.hashCode()
-        result = 31 * result + messageId.hashCode()
         result = 31 * result + messageIdStatus.hashCode()
         result = 31 * result + messageIdMain.hashCode()
         result = 31 * result + messageIdDebug.hashCode()
-        result = 31 * result + messageIdPentaData.hashCode()
         result = 31 * result + messageIdGlobalStatisticData.hashCode()
-        result = 31 * result + messageIdMasteryData.hashCode()
         result = 31 * result + messageIdArammmr.hashCode()
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()

@@ -137,7 +137,7 @@ fun String.fromBase64(): String {
     return String(decodedBytes)
 }
 
-fun formatInt(value: Int, items: Int) : String {
+fun formatInt(value: Int?, items: Int) : String {
     var str = value.toString()
     while (str.length < items)
         str = "0$str"

@@ -4,6 +4,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.minutes
 
 class LeagueApi(private val apiKey: String, region: String) {
 
@@ -39,6 +41,8 @@ class LeagueApi(private val apiKey: String, region: String) {
     private fun createOkHttpClient(): OkHttpClient {
         val okHttpClient = OkHttpClient()
         val newOkHttpBuilder = okHttpClient.newBuilder()
+        newOkHttpBuilder.readTimeout(10, TimeUnit.MINUTES)
+        newOkHttpBuilder.connectTimeout(10, TimeUnit.MINUTES)
         newOkHttpBuilder.addInterceptor {
             val requestBuilder: Request.Builder = it.request().newBuilder()
             requestBuilder.header("Content-Type", "application/json")

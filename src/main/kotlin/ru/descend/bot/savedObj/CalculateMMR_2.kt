@@ -187,7 +187,7 @@ class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant
     /**
      * Подсчет ММР которое даётся игроку (при победе)
      */
-    private suspend fun calcAddingMMR(kordlol: KORDLOLs) : Double {
+    private fun calcAddingMMR(kordlol: KORDLOLs) : Double {
         //Текущее значение ММР + новое значение ММР
         var addedValue = mmrValue.to2Digits()
 
@@ -267,8 +267,10 @@ class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant
         //текущее значение бонусных ММР
         val newSavedMMR = kordlol.mmrAramSaved.to2Digits()
 
+        val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
+
         //лимит получаемых бонусных ММР за матч
-        val limitMMR = 10.0
+        val limitMMR = rank.rankValue * 3.0
 
         mmrEmailText += "\n[calcAddSavedMMR] текущее значение бонус ММР: $newSavedMMR\n"
 
@@ -277,14 +279,20 @@ class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant
 
         //за каждую пенту 5 очков
         if (participant.kills5 > 0) {
-            mmrEmailText += "[calcAddSavedMMR] сделано Пент: ${participant.kills5} добавляем ${participant.kills5 * 5.0} ММР\n"
+            mmrEmailText += "[calcAddSavedMMR] сделано Пент: ${participant.kills5}\n"
             addSavedMMR += participant.kills5 * 5.0
         }
 
-        //за каждую квадру 2 очка
+        //за каждую квадру 3 очка
         if (participant.kills4 > 0) {
-            mmrEmailText += "[calcAddSavedMMR] сделано Квадр: ${participant.kills4} добавляем ${participant.kills4 * 2.0} ММР\n"
-            addSavedMMR += participant.kills4 * 2.0
+            mmrEmailText += "[calcAddSavedMMR] сделано Квадр: ${participant.kills4}\n"
+            addSavedMMR += participant.kills4 * 3.0
+        }
+
+        //за каждую триплу 1 очко
+        if (participant.kills3 > 0) {
+            mmrEmailText += "[calcAddSavedMMR] сделано Трипл: ${participant.kills3}\n"
+            addSavedMMR += participant.kills3
         }
 
         if (addSavedMMR > limitMMR) {

@@ -5,6 +5,7 @@ import ru.descend.bot.catchToken
 import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.dataclasses.SavedPartSteal
+import ru.descend.bot.lolapi.leaguedata.MatchTimelineDTO
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.printLog
@@ -100,76 +101,20 @@ object LeagueMainObject {
         return exec.body()
     }
 
-    suspend fun catchPentaSteal(matchId: String) : ArrayList<Triple<String, String, String>> {
-
+    suspend fun catchPentaSteal(sqldataR2dbc: SQLData_R2DBC, matchId: String) : MatchTimelineDTO? {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchPentaSteal::$globalLOLRequests] started with matchId: $matchId")
-
-        val result = ArrayList<Triple<String, String, String>>()
         val exec = leagueService.getMatchTimeline(matchId)
-
+        reloadRiotQuota()
         if (!exec.isSuccessful) {
             statusLOLRequests = 1
             val messageError = "catchPentaSteal failure: ${exec.code()} ${exec.message()} with matchId: $matchId"
             printLog(messageError)
-            return result
+            sqldataR2dbc.sendEmail("Error", messageError)
+            return null
         }
-
-        if (exec.body() == null) {
-            statusLOLRequests = 1
-            val messageError = "catchPentaSteal body failure: ${exec.code()} ${exec.message()} with matchId: $matchId"
-            printLog(messageError)
-            return result
-        }
-
-        exec.body()?.let {
-            val mapPUUID = HashMap<Long, String>()
-            it.info.participants.forEach { part ->
-                mapPUUID[part.participantId] = part.puuid
-            }
-
-            var lastDate = System.currentTimeMillis()
-            var removedPart: SavedPartSteal? = null
-            var isNextCheck = false
-            val arrayQuadras = ArrayList<SavedPartSteal>()
-            var mainText = ""
-
-            it.info.frames.forEach { frame ->
-                frame.events.forEach lets@ { event ->
-                    if (event.killerId != null && event.type.contains("CHAMPION")) {
-                        val betw = Duration.between(lastDate.toDate().toInstant(), event.timestamp.toDate().toInstant())
-                        val resDate = getStrongDate(event.timestamp)
-                        lastDate = event.timestamp
-
-                        val textLog = "EVENT: team:${if (event.killerId <= 5) "BLUE" else "RED"} killerId:${event.killerId} multiKillLength:${event.multiKillLength ?: 0} killType: ${event.killType?:""} type:${event.type} ${resDate.timeSec} STAMP: ${event.timestamp} BETsec: ${betw.toSeconds()}\n"
-                        mainText += textLog
-
-                        if (isNextCheck && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL")) {
-                            arrayQuadras.forEach saved@ { sPart ->
-                                if (sPart.team == (if (event.killerId <= 5) "BLUE" else "RED") && sPart.participantId != event.killerId) {
-                                    printLog("PENTESTEAL. Чел PUUID ${mapPUUID[event.killerId]} состилил Пенту у ${sPart.puuid}")
-                                    result.add(Triple(mapPUUID[event.killerId]!!, sPart.puuid, mainText))
-                                    removedPart = sPart
-                                    return@saved
-                                }
-                            }
-                            if (removedPart != null) {
-                                arrayQuadras.remove(removedPart)
-                                removedPart = null
-                            }
-                            isNextCheck = false
-                        }
-                        if (event.multiKillLength == 4L) {
-                            arrayQuadras.add(SavedPartSteal(event.killerId, mapPUUID[event.killerId] ?: "", if (event.killerId <= 5) "BLUE" else "RED", event.timestamp))
-                            isNextCheck = true
-                        }
-                    }
-                }
-            }
-        }
-
-        return result
+        return exec.body()
     }
 
     /**

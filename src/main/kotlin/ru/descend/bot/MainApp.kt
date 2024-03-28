@@ -9,6 +9,7 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.core.supplier.EntitySupplyStrategy
 import dev.kord.gateway.ALL
 import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
@@ -18,6 +19,7 @@ import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
+import me.jakejmattson.discordkt.util.fullName
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
@@ -52,6 +54,10 @@ fun main() {
         presence {
             this.status = PresenceStatus.Online
             playing("ARAM")
+        }
+        kord {
+            enableShutdownHook = true
+            stackTraceRecovery = true
         }
         onStart {
             firstInitialize()
@@ -92,7 +98,7 @@ private suspend fun firstInitialize() {
 suspend fun removeMessage(guild: Guild, guildSQL: Guilds) {
     if (guildSQL.botChannelId.isNotEmpty()){
         guild.getChannelOf<TextChannel>(Snowflake(guildSQL.botChannelId)).messages.collect {
-            if (it.id.value.toString() in listOf(guildSQL.messageId, guildSQL.messageIdPentaData, guildSQL.messageIdGlobalStatisticData, guildSQL.messageIdMasteryData, guildSQL.messageIdMain, guildSQL.messageIdArammmr)) {
+            if (it.id.value.toString() in listOf(guildSQL.messageIdGlobalStatisticData, guildSQL.messageIdMain, guildSQL.messageIdArammmr)) {
                 Unit
             } else {
                 it.delete()
@@ -194,7 +200,9 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
     val charStr = " / "
     val savedParts = sqlData.getSavedParticipants()
 
-    val mainDataList1 = (savedParts.map { formatInt(it.kord_lol_id, 2) + "| " + formatInt(it.games, 3) + charStr + formatInt(it.win, 3) + charStr + formatInt(((it.win.toDouble() / it.games.toDouble()) * 100).toInt(), 2) + "%" })
+    savedParts.sortBy { it.kordLOL?.showCode }
+
+    val mainDataList1 = (savedParts.map { formatInt(it.kordLOL?.showCode, 2) + "| " + formatInt(it.games, 3) + charStr + formatInt(it.win, 3) + charStr + formatInt(((it.win.toDouble() / it.games.toDouble()) * 100).toInt(), 2) + "%" })
     val mainDataList2 = (savedParts.map {  it.kill.toFormatK() + charStr + formatInt(it.kill3, 3) + charStr + formatInt(it.kill4, 3) + charStr + formatInt(it.kill5, 2) })
 
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
@@ -217,13 +225,14 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
 
     sqlData.listMainData.addAll(sqlData.getKORDLOL())
-
     sqlData.listMainData.sortBy { it.showCode }
+
     val charStr = " / "
+    val wStreak = sqlData.getWinStreak()
 
     val mainDataList1 = (sqlData.listMainData.map { formatInt(it.showCode, 2) + charStr + it.asUser(sqlData.guild, sqlData).lowDescriptor() })
     val mainDataList2 = (sqlData.listMainData.map { sqlData.getLOL(it.LOL_id)?.getCorrectName() })
-    val mainDataList3 = (sqlData.listMainData.map { sqlData.getWinStreak()[it.LOL_id] })
+    val mainDataList3 = (sqlData.listMainData.map { wStreak[it.LOL_id] })
 
     builder.content = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
     builder.embed {
@@ -252,9 +261,11 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
     val charStr = " / "
     val aramData = sqlData.getArrayAramMMRData()
 
+    aramData.sortBy { it.kordLOL?.showCode }
+
     val mainDataList1 = (aramData.map {
-        if (it.match_id == it.last_match_id) "**" + formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank + "**"
-        else formatInt(it.kord_lol_id, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank
+        if (it.match_id == it.last_match_id) "**" + formatInt(it.kordLOL?.showCode, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank + "**"
+        else formatInt(it.kordLOL?.showCode, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank
     })
     val mainDataList2 = (aramData.map {
         if (it.match_id == it.last_match_id) "**" + it.mmr_aram + charStr + it.mmr_aram_saved + charStr + it.games + "**"

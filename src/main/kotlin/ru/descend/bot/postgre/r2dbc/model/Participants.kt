@@ -150,6 +150,8 @@ data class Participants(
         R2DBC.runQuery(QueryDsl.delete(tbl_participants).single(this@Participants))
     }
 
+    suspend fun LOLpersonObj() = R2DBC.getLOLs { tbl_LOLs.id eq LOLperson_id }.firstOrNull()
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

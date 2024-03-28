@@ -33,7 +33,6 @@ data class KORDLOLs(
     var LOL_id: Int = -1,
     var guild_id: Int = -1,
 
-    var oldID: Int = 0,
     var showCode: Int = 0,
     var mmrAram: Double = 0.0,
     var mmrAramSaved: Double = 0.0,
@@ -75,6 +74,9 @@ data class KORDLOLs(
 
     /*********************************/
 
+    suspend fun KORDidObj() = R2DBC.getKORDs { tbl_KORDs.id eq KORD_id }.firstOrNull()
+    suspend fun LOLidObj() = R2DBC.getLOLs { tbl_LOLs.id eq LOL_id }.firstOrNull()
+
     suspend fun getNickName(data: SQLData_R2DBC) : String {
         if (LOL_id == -1) return ""
         return if (data.getLOL(LOL_id)?.LOL_riotIdName.isNullOrEmpty()) data.getLOL(LOL_id)?.LOL_summonerName?:""
@@ -90,6 +92,10 @@ data class KORDLOLs(
         return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), guild.kord)
     }
 
+    override fun toString(): String {
+        return "KORDLOLs(id=$id, showCode=$showCode, mmrAram=$mmrAram, mmrAramSaved=$mmrAramSaved, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -97,11 +103,12 @@ data class KORDLOLs(
         other as KORDLOLs
 
         if (id != other.id) return false
-        if (mmrAram != other.mmrAram) return false
-        if (mmrAramSaved != other.mmrAramSaved) return false
         if (KORD_id != other.KORD_id) return false
         if (LOL_id != other.LOL_id) return false
         if (guild_id != other.guild_id) return false
+        if (showCode != other.showCode) return false
+        if (mmrAram != other.mmrAram) return false
+        if (mmrAramSaved != other.mmrAramSaved) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
 
@@ -110,17 +117,14 @@ data class KORDLOLs(
 
     override fun hashCode(): Int {
         var result = id
-        result = 31 * result + mmrAram.hashCode()
-        result = 31 * result + mmrAramSaved.hashCode()
         result = 31 * result + KORD_id
         result = 31 * result + LOL_id
         result = 31 * result + guild_id
+        result = 31 * result + showCode
+        result = 31 * result + mmrAram.hashCode()
+        result = 31 * result + mmrAramSaved.hashCode()
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
-    }
-
-    override fun toString(): String {
-        return "KORDLOLs(id=$id, showCode=$showCode, mmrAram=$mmrAram, mmrAramSaved=$mmrAramSaved, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
     }
 }

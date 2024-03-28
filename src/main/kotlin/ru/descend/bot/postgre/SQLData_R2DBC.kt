@@ -25,13 +25,11 @@ import ru.descend.bot.postgre.r2dbc.model.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.tbl_participants
 import java.util.WeakHashMap
 
-data class kordTemp_r2(var kordLOL: KORDLOLs, var lastParts: ArrayList<Participants>, var isBold: Boolean)
-data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var sortId: Int)
-data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int?, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var bold: Boolean, var sortId: Int)
+data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
+data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int?, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
-    var listKordTemp = ArrayList<kordTemp_r2>()
     var listMainData = ArrayList<KORDLOLs>()
 
     val dataGuild = WorkData<Guilds>()
@@ -79,15 +77,12 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         dataSavedParticipants.clear()
     }
 
-    /*-----*/
     suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
-    suspend fun getKORDLOL(id: Int) = getKORDLOL().find { it.id == id }
-    /*-----*/
+    suspend fun getKORDLOL(id: Int?) = getKORDLOL().find { it.id == id }
     suspend fun getLOL(reset: Boolean = false) = dataLOL.get(reset)
-    suspend fun getLOL(id: Int) = getLOL().find { it.id == id }
-    /*-----*/
+    suspend fun getLOL(id: Int?) = getLOL().find { it.id == id }
     suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
-    suspend fun getKORD(id: Int) = getKORD().find { it.id == id }
+    suspend fun getKORD(id: Int?) = getKORD().find { it.id == id }
 
     suspend fun getSavedParticipants() : ArrayList<statMainTemp_r2> {
         val arraySavedParticipants = ArrayList<statMainTemp_r2>()
@@ -101,13 +96,12 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 val kill3 = it.int("kill3")?:0
                 val kill4 = it.int("kill4")?:0
                 val kill5 = it.int("kill5")?:0
-                arraySavedParticipants.add(statMainTemp_r2(id, games, win, kill, kill2, kill3, kill4, kill5, -1))
+                arraySavedParticipants.add(statMainTemp_r2(id, games, win, kill, kill2, kill3, kill4, kill5, null))
             }
         }
         arraySavedParticipants.forEach {
-            it.sortId = getKORDLOL(it.kord_lol_id)?.showCode?:-1
+            it.kordLOL = getKORDLOL(it.kord_lol_id)
         }
-        arraySavedParticipants.sortBy { it.sortId }
         return arraySavedParticipants
     }
 
@@ -123,13 +117,12 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 val mmr = row.double("mmr")
                 val match_id = row.string("match_id")
                 val last_match_id = row.string("last_match_id")
-                arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, games, champion_id, mmr, match_id, last_match_id, false, -1))
+                arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, games, champion_id, mmr, match_id, last_match_id, false, null))
             }
         }
         arrayAramMMRData.forEach {
-            it.sortId = getKORDLOL(it.kord_lol_id)?.showCode?:-1
+            it.kordLOL = getKORDLOL(it.kord_lol_id)
         }
-        arrayAramMMRData.sortBy { it.sortId }
         return arrayAramMMRData
     }
 
@@ -161,7 +154,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun getSavedParticipantsForMatch(matchId: Int) = dataSavedParticipants.get(true).filter { it.match_id == matchId }
-    suspend fun getParticipantsForMatch(matchId: Int) = R2DBC.getParticipants { tbl_participants.guild_id eq guildSQL.id ; tbl_participants.match_id eq matchId }
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
 
     fun sendEmail(theme: String, message: String) {
@@ -190,7 +182,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
         if (guild != other.guild) return false
         if (guildSQL != other.guildSQL) return false
-        if (listKordTemp != other.listKordTemp) return false
         if (listMainData != other.listMainData) return false
         if (dataGuild != other.dataGuild) return false
         if (dataKORDLOL != other.dataKORDLOL) return false
@@ -207,7 +198,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     override fun hashCode(): Int {
         var result = guild.hashCode()
         result = 31 * result + guildSQL.hashCode()
-        result = 31 * result + listKordTemp.hashCode()
         result = 31 * result + listMainData.hashCode()
         result = 31 * result + dataGuild.hashCode()
         result = 31 * result + dataKORDLOL.hashCode()

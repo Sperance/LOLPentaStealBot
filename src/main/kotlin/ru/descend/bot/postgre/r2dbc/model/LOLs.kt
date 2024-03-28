@@ -25,7 +25,6 @@ data class LOLs(
     @KomapperAutoIncrement
     val id: Int = 0,
 
-    var oldID: Int = 0,
     var LOL_puuid: String = "",
     var LOL_summonerId: String = "",
     var LOL_accountId: String = "",
@@ -80,6 +79,10 @@ data class LOLs(
         return LOL_summonerName
     }
 
+    override fun toString(): String {
+        return "LOLs(id=$id, puuid='$LOL_puuid', summonerName='$LOL_summonerName', riotIdName=$LOL_riotIdName)"
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -114,9 +117,5 @@ data class LOLs(
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
-    }
-
-    override fun toString(): String {
-        return "LOLs(id=$id, puuid='$LOL_puuid', summonerName='$LOL_summonerName', riotIdName=$LOL_riotIdName)"
     }
 }
