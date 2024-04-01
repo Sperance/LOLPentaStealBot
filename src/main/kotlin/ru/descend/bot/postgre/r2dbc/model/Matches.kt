@@ -40,14 +40,24 @@ data class Matches(
     var updatedAt: LocalDateTime = LocalDateTime.MIN
 ) : InterfaceR2DBC<Matches> {
 
+    companion object {
+        suspend fun isHave(matchId: String) = R2DBC.runQuery { QueryDsl.from(tbl_matches).where { tbl_matches.matchId eq matchId }.limit(1).select(tbl_matches.id) }.isNotEmpty()
+    }
+
     override suspend fun save() : Matches {
-        val result = R2DBC.runQuery(QueryDsl.insert(tbl_matches).single(this@Matches))
-        printLog("[Matches::save] $result")
-        return result
+        return if (isHave(matchId)) {
+            printLog("[Matches::save] $this. Уже существует в базе. Вызывать ошибку?")
+            this
+        } else {
+            val result = R2DBC.runQuery(QueryDsl.insert(tbl_matches).single(this@Matches))
+            printLog("[Matches::save] $result")
+            result
+        }
     }
 
     override suspend fun update() : Matches {
         val before = R2DBC.getMatches { tbl_matches.id eq id }.firstOrNull()
+        if (before == this) return this
         val after = R2DBC.runQuery(QueryDsl.update(tbl_matches).single(this@Matches))
         printLog("[Matches::update] $this { ${calculateUpdate(before, after)} }")
         return after

@@ -16,7 +16,6 @@ import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.MMRs
-import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.tbl_KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.tbl_KORDs
@@ -36,7 +35,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     val dataKORDLOL = WorkData<KORDLOLs>()
     val dataKORD = WorkData<KORDs>()
     val dataLOL = WorkData<LOLs>()
-    val dataMatches = WorkData<Matches>()
     val dataMMR = WorkData<MMRs>()
 
     val dataSavedLOL = WorkData<LOLs>()
@@ -47,7 +45,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq guildSQL.id } }
         if (dataKORD.bodyReset == null) dataKORD.bodyReset = { R2DBC.getKORDs { tbl_KORDs.guild_id eq guildSQL.id } }
         if (dataLOL.bodyReset == null) dataLOL.bodyReset = { R2DBC.getLOLs(null) }
-        if (dataMatches.bodyReset == null) dataMatches.bodyReset = { R2DBC.getMatches { tbl_matches.guild_id eq guildSQL.id } }
         if (dataMMR.bodyReset == null) dataMMR.bodyReset = { R2DBC.getMMRs(null) }
 
         if (dataSavedLOL.bodyReset == null) {
@@ -70,7 +67,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         dataKORDLOL.clear()
         dataKORD.clear()
         dataLOL.clear()
-        dataMatches.clear()
         dataMMR.clear()
 
         dataSavedLOL.clear()
@@ -149,7 +145,9 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
-        dataMatches.get(true).forEach { list.remove(it.matchId) }
+        list.removeAll(R2DBC.runQuery {
+            QueryDsl.from(tbl_matches).where { tbl_matches.guild_id eq guildSQL.id }.select(tbl_matches.matchId)
+        }.toSet())
         return list
     }
 
@@ -187,7 +185,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         if (dataKORDLOL != other.dataKORDLOL) return false
         if (dataKORD != other.dataKORD) return false
         if (dataLOL != other.dataLOL) return false
-        if (dataMatches != other.dataMatches) return false
         if (dataMMR != other.dataMMR) return false
         if (dataSavedLOL != other.dataSavedLOL) return false
         if (dataSavedParticipants != other.dataSavedParticipants) return false
@@ -203,7 +200,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         result = 31 * result + dataKORDLOL.hashCode()
         result = 31 * result + dataKORD.hashCode()
         result = 31 * result + dataLOL.hashCode()
-        result = 31 * result + dataMatches.hashCode()
         result = 31 * result + dataMMR.hashCode()
         result = 31 * result + dataSavedLOL.hashCode()
         result = 31 * result + dataSavedParticipants.hashCode()

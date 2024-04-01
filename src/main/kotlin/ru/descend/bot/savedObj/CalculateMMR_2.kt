@@ -100,7 +100,7 @@ class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant
                 calculateField(Participants::enemyChampionImmobilizations, MMRs::immobiliz, minValue = 5.0)
                 calculateField(Participants::damageTakenOnTeamPercentage, MMRs::dmgTakenPerc)
             }
-            calculateField(Participants::skillshotsDodged, MMRs::skillDodge, minValue = 20.0, maxMMR = 1.0)
+//            calculateField(Participants::skillshotsDodged, MMRs::skillDodge, minValue = 20.0, maxMMR = 1.0)
 
             calculateField(Participants::teamDamagePercentage, MMRs::dmgDealPerc)
             calculateField(Participants::kda, MMRs::kda)

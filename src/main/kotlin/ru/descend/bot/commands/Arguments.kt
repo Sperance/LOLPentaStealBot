@@ -17,8 +17,52 @@ import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
 import ru.descend.bot.printLog
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toStringUID
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 fun arguments() = commands("Arguments") {
+
+    slash("setBirthdayDate", "Ввести дату рождения пользователя (в формате ddmmyyyy, например 03091990)", Permissions(Permission.UseApplicationCommands)){
+        execute(UserArg("user", "Пользователь Discord"), AnyArg("date")){
+            val (user, date) = args
+            var dateText = date
+            printLog("[Start command] '$name' from ${author.fullName} with params: 'User'=${user.lowDescriptor()}, 'date=${dateText}'")
+
+            if (date.length < 3) {
+                respond("Дата $date не может быть менее 4х символов")
+                return@execute
+            }
+            if (date.length == 4) {
+                dateText += "1900"
+            }
+            if (dateText.length != 8) {
+                respond("Ошибка преобразования значения в дату: $date. Необходим формат примера 03091990 (3 сентября 1990 года)")
+                return@execute
+            }
+            date.forEach {
+                if (!it.isDigit()) {
+                    respond("В введенном значении даты $date содержится недопустимый символ: $it")
+                    return@execute
+                }
+            }
+
+            //val localDate = LocalDate.parse(dateText, DateTimeFormatter.ofPattern("ddMMyyyy"))
+
+            val guild = R2DBC.getGuild(guild)
+
+            //Берем KORD либо существующий, либо создаём новый. Не важно
+            var KORD = R2DBC.getKORDs { tbl_KORDs.KORD_id eq user.toStringUID() ; tbl_KORDs.guild_id eq guild.id }.firstOrNull()
+            if (KORD == null) {
+                respond("Пользователь ${user.lowDescriptor()} не зарегистрирован в боте. Его изменение невозможно")
+                return@execute
+            } else {
+                KORD.date_birthday = dateText
+                KORD.update()
+            }
+
+            respond("Пользователю ${user.lowDescriptor()} привязана дата $date")
+        }
+    }
 
     slash("initMainChannel", "Основной канал для бота", Permissions(Permission.Administrator)){
         execute(ChannelArg<TextChannel>("channel")){

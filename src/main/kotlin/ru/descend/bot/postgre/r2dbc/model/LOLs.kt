@@ -56,14 +56,24 @@ data class LOLs(
         return newLOL
     }
 
+    companion object {
+        suspend fun isHave(puuid: String) = R2DBC.runQuery { QueryDsl.from(tbl_LOLs).where { tbl_LOLs.LOL_puuid eq puuid }.limit(1).select(tbl_LOLs.id) }.isNotEmpty()
+    }
+
     override suspend fun save() : LOLs {
-        val result = R2DBC.runQuery(QueryDsl.insert(tbl_LOLs).single(this@LOLs))
-        printLog("[LOLs::save] $result")
-        return result
+        return if (isHave(LOL_puuid)) {
+            printLog("[LOLs::save] $this. Уже существует в Базе. Вызывать ошибку?")
+            this
+        } else {
+            val result = R2DBC.runQuery(QueryDsl.insert(tbl_LOLs).single(this@LOLs))
+            printLog("[LOLs::save] $result")
+            result
+        }
     }
 
     override suspend fun update() : LOLs {
         val before = R2DBC.getLOLs { tbl_LOLs.id eq id }.firstOrNull()
+        if (before == this) return this
         val after = R2DBC.runQuery(QueryDsl.update(tbl_LOLs).single(this@LOLs))
         printLog("[LOLs::update] $this { ${calculateUpdate(before, after)} }")
         return after

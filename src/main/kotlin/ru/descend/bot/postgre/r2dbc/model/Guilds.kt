@@ -57,6 +57,7 @@ data class Guilds(
 
     override suspend fun update() : Guilds {
         val before = R2DBC.getGuilds { tbl_guilds.id eq id }.firstOrNull()
+        if (before == this) return this
         val after = R2DBC.runQuery(QueryDsl.update(tbl_guilds).single(this@Guilds))
         printLog("[Guilds::update] $this { ${calculateUpdate(before, after)} }")
         return after

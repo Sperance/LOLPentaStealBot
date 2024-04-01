@@ -29,12 +29,17 @@ data class KORDs(
     var KORD_id: String = "",
     var KORD_name: String = "",
     var KORD_discriminator: String = "",
+    var date_birthday: String = "",
 
     @KomapperCreatedAt
     var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
     var updatedAt: LocalDateTime = LocalDateTime.MIN
 ) : InterfaceR2DBC<KORDs> {
+
+    companion object {
+        suspend fun isHave(kord: String) = R2DBC.runQuery { QueryDsl.from(tbl_KORDs).where { tbl_KORDs.KORD_id eq kord }.limit(1).select(tbl_KORDs.id) }.isNotEmpty()
+    }
 
     constructor(guild: Guilds, user: User) : this() {
         this.guild_id = guild.id
@@ -44,13 +49,19 @@ data class KORDs(
     }
 
     override suspend fun save() : KORDs {
-        val result = R2DBC.runQuery(QueryDsl.insert(tbl_KORDs).single(this@KORDs))
-        printLog("[KORDs::save] $result")
-        return result
+        return if (isHave(KORD_id)) {
+            printLog("[KORDs::save] $this. Уже существует в базе. Вызывать ошибку?")
+            this
+        } else {
+            val result = R2DBC.runQuery(QueryDsl.insert(tbl_KORDs).single(this@KORDs))
+            printLog("[KORDs::save] $result")
+            result
+        }
     }
 
     override suspend fun update() : KORDs {
         val before = R2DBC.getKORDs { tbl_KORDs.id eq id }.firstOrNull()
+        if (before == this) return this
         val after = R2DBC.runQuery(QueryDsl.update(tbl_KORDs).single(this@KORDs))
         printLog("[KORDs::update] $this { ${calculateUpdate(before, after)} }")
         return after
@@ -86,6 +97,7 @@ data class KORDs(
         if (KORD_discriminator != other.KORD_discriminator) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
+        if (date_birthday != other.date_birthday) return false
 
         return true
     }
@@ -98,6 +110,7 @@ data class KORDs(
         result = 31 * result + KORD_discriminator.hashCode()
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
+        result = 31 * result + date_birthday.hashCode()
         return result
     }
 }

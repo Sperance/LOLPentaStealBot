@@ -47,7 +47,6 @@ data class Calc_AddMatch (
             bots = isBots,
             surrender = isSurrender
         ).save()
-        sqlData.dataMatches.add(pMatch)
 
         if (pMatch.id % 1000 == 0){
             asyncLaunch {
@@ -61,8 +60,10 @@ data class Calc_AddMatch (
             arrayHeroName.add(part)
         }
 
+        val arrayNewParts = ArrayList<Participants>()
+        val lolsArray = R2DBC.getLOLs { tbl_LOLs.LOL_puuid.inList(arrayHeroName.map { it.puuid }) }
         match.info.participants.forEach {part ->
-            var curLOL = R2DBC.getLOLs { tbl_LOLs.LOL_puuid eq part.puuid }.firstOrNull()
+            var curLOL = lolsArray.find { it.LOL_puuid == part.puuid }
 
             if (kordLol != null && curLOL != null && !isBots && !isSurrender){
                 kordLol.find { it.LOL_id == curLOL?.id }?.let {
@@ -99,8 +100,9 @@ data class Calc_AddMatch (
 
             if (isNewLOL) sqlData.dataLOL.add(curLOL)
 
-            Participants(part, pMatch, curLOL).save()
+            arrayNewParts.add(Participants(part, pMatch, curLOL))
         }
+        R2DBC.addBatchParticipants(arrayNewParts)
 
         if (kordLol != null) {
             calculateMMR(pMatch, isSurrender, isBots, kordLol)

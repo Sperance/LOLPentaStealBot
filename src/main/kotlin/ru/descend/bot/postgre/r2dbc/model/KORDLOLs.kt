@@ -43,17 +43,27 @@ data class KORDLOLs(
     var updatedAt: LocalDateTime = LocalDateTime.MIN
 ) : InterfaceR2DBC<KORDLOLs> {
 
+    companion object {
+        suspend fun isHave(kord: Int, lol: Int) = R2DBC.runQuery { QueryDsl.from(tbl_KORDLOLs).where { tbl_KORDLOLs.KORD_id eq kord ; tbl_KORDLOLs.LOL_id eq lol}.limit(1).select(tbl_KORDLOLs.id) }.isNotEmpty()
+    }
+
     override suspend fun save() : KORDLOLs {
-        val result = R2DBC.runTransaction {
-            this.showCode = R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq this@KORDLOLs.guild_id }.size + 1
-            R2DBC.runQuery(QueryDsl.insert(tbl_KORDLOLs).single(this@KORDLOLs))
+        return if (isHave(KORD_id, LOL_id)){
+            printLog("[KORDLOLs::save] $this. Уже существует в базе. Вызывать ошибку?")
+            this
+        } else {
+            val result = R2DBC.runTransaction {
+                this.showCode = R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq this@KORDLOLs.guild_id }.size + 1
+                R2DBC.runQuery(QueryDsl.insert(tbl_KORDLOLs).single(this@KORDLOLs))
+            }
+            printLog("[KORDLOLs::save] $result")
+            result
         }
-        printLog("[KORDLOLs::save] $result")
-        return result
     }
 
     override suspend fun update() : KORDLOLs {
         val before = R2DBC.getKORDLOLs { tbl_KORDLOLs.id eq id }.firstOrNull()
+        if (before == this) return this
         val after = R2DBC.runQuery(QueryDsl.update(tbl_KORDLOLs).single(this@KORDLOLs))
         printLog("[KORDLOLs::update] $this { ${calculateUpdate(before, after)} }")
         return after

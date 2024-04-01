@@ -132,14 +132,25 @@ data class Participants(
         this.win = participant.win
     }
 
+    companion object {
+        suspend fun isHave(match_id: Int, lol_id: Int, guild_id: Int) = R2DBC.runQuery { QueryDsl.from(
+            tbl_participants).where { tbl_participants.match_id eq match_id ; tbl_participants.LOLperson_id eq lol_id ; tbl_participants.guild_id eq guild_id }.limit(1).select(tbl_participants.id) }.isNotEmpty()
+    }
+
     override suspend fun save() : Participants {
-        val result = R2DBC.runQuery(QueryDsl.insert(tbl_participants).single(this@Participants))
-        printLog("[Participants::save] $result")
-        return result
+        return if (isHave(match_id, LOLperson_id, guild_id)){
+            printLog("[Participants::save] $this. Уже есть в базе. Вызывать ошибку?")
+            this
+        } else {
+            val result = R2DBC.runQuery(QueryDsl.insert(tbl_participants).single(this@Participants))
+            printLog("[Participants::save] $result")
+            result
+        }
     }
 
     override suspend fun update() : Participants {
         val before = R2DBC.getParticipants { tbl_participants.id eq id }.firstOrNull()
+        if (before == this) return this
         val after = R2DBC.runQuery(QueryDsl.update(tbl_participants).single(this@Participants))
         printLog("[Participants::update] $this { ${calculateUpdate(before, after)} }")
         return after

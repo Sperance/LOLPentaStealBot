@@ -88,9 +88,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
+                    miniList.forEach { printLog("[Batch_KORDLOLs::save] $it") }
                     db.runQuery { QueryDsl.insert(tbl_KORDLOLs).multiple(miniList) }
                     miniList.clear()
                 }
+            }
+            if (miniList.isNotEmpty()) {
+                miniList.forEach { printLog("[Batch_KORDLOLs::save] $it") }
+                db.runQuery { QueryDsl.insert(tbl_KORDLOLs).multiple(miniList) }
             }
         }
     }
@@ -104,9 +109,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
+                    miniList.forEach { printLog("[Batch_MMRs::save] $it") }
                     db.runQuery { QueryDsl.insert(tbl_MMRs).multiple(miniList) }
                     miniList.clear()
                 }
+            }
+            if (miniList.isNotEmpty()) {
+                miniList.forEach { printLog("[Batch_MMRs::save] $it") }
+                db.runQuery { QueryDsl.insert(tbl_MMRs).multiple(miniList) }
             }
         }
     }
@@ -120,9 +130,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
+                    miniList.forEach { printLog("[Batch_Participants::save] $it") }
                     db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
                     miniList.clear()
                 }
+            }
+            if (miniList.isNotEmpty()) {
+                miniList.forEach { printLog("[Batch_Participants::save] $it") }
+                db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
             }
         }
     }
@@ -136,9 +151,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
+                    miniList.forEach { printLog("[Batch_LOLs::save] $it") }
                     db.runQuery { QueryDsl.insert(tbl_LOLs).multiple(miniList) }
                     miniList.clear()
                 }
+            }
+            if (miniList.isNotEmpty()) {
+                miniList.forEach { printLog("[Batch_LOLs::save] $it") }
+                db.runQuery { QueryDsl.insert(tbl_LOLs).multiple(miniList) }
             }
         }
     }
@@ -152,9 +172,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
+                    miniList.forEach { printLog("[Batch_KORDs::save] $it") }
                     db.runQuery { QueryDsl.insert(tbl_KORDs).multiple(miniList) }
                     miniList.clear()
                 }
+            }
+            if (miniList.isNotEmpty()) {
+                miniList.forEach { printLog("[Batch_KORDs::save] $it") }
+                db.runQuery { QueryDsl.insert(tbl_KORDs).multiple(miniList) }
             }
         }
     }
@@ -168,9 +193,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
+                    miniList.forEach { printLog("[Batch_Matches::save] $it") }
                     db.runQuery { QueryDsl.insert(tbl_matches).multiple(miniList) }
                     miniList.clear()
                 }
+            }
+            if (miniList.isNotEmpty()) {
+                miniList.forEach { printLog("[Batch_Matches::save] $it") }
+                db.runQuery { QueryDsl.insert(tbl_matches).multiple(miniList) }
             }
         }
     }
