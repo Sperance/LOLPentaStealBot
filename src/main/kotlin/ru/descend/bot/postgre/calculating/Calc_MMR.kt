@@ -1,64 +1,18 @@
-package ru.descend.bot.savedObj
+package ru.descend.bot.postgre.calculating
 
+import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
-import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
 import ru.descend.bot.to2Digits
 import kotlin.reflect.KMutableProperty1
 
-private const val modRank = 70.0
-private const val modTitle = 100.0
-
-enum class EnumMMRRank(val nameRank: String, val minMMR: Double, val rankValue: Int) {
-    UNRANKED("Нет ранга", 0.0, 0),
-    PAPER_III("Бумага III", UNRANKED.minMMR + modRank, 1),
-    PAPER_II("Бумага II", PAPER_III.minMMR + modRank, 1),
-    PAPER_I("Бумага I", PAPER_II.minMMR + modRank, 1),
-    WOOD_III("Дерево III", PAPER_I.minMMR + modTitle, 2),
-    WOOD_II("Дерево II", WOOD_III.minMMR + modRank, 2),
-    WOOD_I("Дерево I", WOOD_II.minMMR + modRank, 2),
-    IRON_III("Железо III", WOOD_I.minMMR + modTitle, 3),
-    IRON_II("Железо II", IRON_III.minMMR + modRank, 3),
-    IRON_I("Железо I", IRON_II.minMMR + modRank, 3),
-    BRONZE_III("Бронза III", IRON_I.minMMR + modTitle, 4),
-    BRONZE_II("Бронза II", BRONZE_III.minMMR + modRank, 4),
-    BRONZE_I("Бронза I", BRONZE_II.minMMR + modRank, 4),
-    SILVER_III("Серебро III", BRONZE_I.minMMR + modTitle, 5),
-    SILVER_II("Серебро II", SILVER_III.minMMR + modRank, 5),
-    SILVER_I("Серебро I", SILVER_II.minMMR + modRank, 5),
-    GOLD_III("Золото III", SILVER_I.minMMR + modTitle, 6),
-    GOLD_II("Золото II", GOLD_III.minMMR + modRank, 6),
-    GOLD_I("Золото I", GOLD_II.minMMR + modRank, 6),
-    PLATINUM_III("Платина III", GOLD_I.minMMR + modTitle, 7),
-    PLATINUM_II("Платина II", PLATINUM_III.minMMR + modRank, 7),
-    PLATINUM_I("Платина I", PLATINUM_II.minMMR + modRank, 7),
-    DIAMOND_III("Алмаз III", PLATINUM_I.minMMR + modTitle, 8),
-    DIAMOND_II("Алмаз II", DIAMOND_III.minMMR + modRank, 8),
-    DIAMOND_I("Алмаз I", DIAMOND_II.minMMR + modRank, 8),
-    MASTER_III("Мастер III", DIAMOND_I.minMMR + modTitle, 9),
-    MASTER_II("Мастер II", MASTER_III.minMMR + modRank, 9),
-    MASTER_I("Мастер I", MASTER_II.minMMR + modRank, 9),
-    CHALLENGER("Челленджер", MASTER_I.minMMR + modTitle, 10)
-    ;
-
-    companion object {
-        fun getMMRRank(mmr: Double) : EnumMMRRank {
-            entries.forEach {
-                if (it.minMMR >= mmr) return it
-            }
-            return UNRANKED
-        }
-    }
-}
-
-class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant: Participants, var match: Matches, var kordlol: List<KORDLOLs>, private var mmrTable: MMRs?) {
+class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Participants, var match: Matches, var kordlol: List<KORDLOLs>, private var mmrTable: MMRs?) {
 
     private var mmrValue = 0.0
     private var mmrEmailText = ""
@@ -154,7 +108,6 @@ class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant
         kordlol.update()
 
         participant.mmr = partMMR.to2Digits()
-        participant.mmrFlat = mmrValue.to2Digits()
         participant.update()
     }
 
@@ -396,7 +349,7 @@ class CalculateMMR_2(private var sqlData: SQLData_R2DBC, private var participant
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as CalculateMMR_2
+        other as Calc_MMR
 
         if (sqlData != other.sqlData) return false
         if (participant != other.participant) return false

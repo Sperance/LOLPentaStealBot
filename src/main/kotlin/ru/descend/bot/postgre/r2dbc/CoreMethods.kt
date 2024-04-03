@@ -1,9 +1,11 @@
 package ru.descend.bot.postgre.r2dbc
 
+import org.komapper.core.EntityMetamodels
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.metamodel.EntityMetamodel
 import org.komapper.core.dsl.metamodel.PropertyMetamodel
 import org.komapper.core.dsl.metamodel.getAutoIncrementProperty
+import org.komapper.core.dsl.query.EntityStore
 import ru.descend.bot.printLog
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.full.createInstance

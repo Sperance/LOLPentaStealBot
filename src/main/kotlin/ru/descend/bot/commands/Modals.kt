@@ -9,23 +9,24 @@ import me.jakejmattson.discordkt.prompts.promptModal
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.toStringUID
 
-//fun promptCommands() = subcommand("Prompt", Permissions(Permission.Administrator)) {
-//    sub("Modal") {
-//        execute {
-//            val (responseInteraction, inputs) = promptModal(interaction!!, "Enter Information") {
-//                input("ФИО", TextInputStyle.Short, required = true, allowedLength = 3..50)
-//                input("Почтовый адрес", TextInputStyle.Paragraph)
-//                input("Номер телефона", TextInputStyle.Paragraph, required = false)
-//            }
-//
+fun promptCommands() = subcommand("Prompt", Permissions(Permission.UseApplicationCommands)) {
+    sub("Account", "Ввести информацию для Бота по текущему аккаунту пользователя Discord") {
+        execute {
+            val (responseInteraction, inputs) = promptModal(interaction!!, "Информация текущего аккаунта") {
+                input("ФИО", TextInputStyle.Short, required = true, allowedLength = 3..50)
+                input("Почтовый адрес", TextInputStyle.Paragraph)
+                input("Номер телефона", TextInputStyle.Paragraph, required = false)
+                input("Дата рождения", TextInputStyle.Paragraph, required = false)
+            }
+
 //            val guild = R2DBC.getGuild(guild)
 //            author.toStringUID()
-//
-//            val (fio, email, phone) = inputs
-//
-//            responseInteraction.respond {
-//                content = "Hello $fio! $email is a great age $phone"
-//            }
-//        }
-//    }
-//}
+
+            val (fio, email, phone, birthday) = inputs
+
+            responseInteraction.respond {
+                content = "Тестирование пройдено успешно: $fio $email $phone $birthday"
+            }
+        }
+    }
+}

@@ -45,7 +45,6 @@ data class Participants(
     var damagePerMinute: Double = 0.0,
     var kda: Double = 0.0,
     var mmr: Double = 0.0,
-    var mmrFlat: Double = 0.0,
     var minionsKills: Int = 0,
     var inhibitorKills: Int = 0,
     var team: Int = -1,
@@ -161,7 +160,6 @@ data class Participants(
         if (damagePerMinute != other.damagePerMinute) return false
         if (kda != other.kda) return false
         if (mmr != other.mmr) return false
-        if (mmrFlat != other.mmrFlat) return false
         if (minionsKills != other.minionsKills) return false
         if (inhibitorKills != other.inhibitorKills) return false
         if (team != other.team) return false
@@ -215,7 +213,6 @@ data class Participants(
         result = 31 * result + damagePerMinute.hashCode()
         result = 31 * result + kda.hashCode()
         result = 31 * result + mmr.hashCode()
-        result = 31 * result + mmrFlat.hashCode()
         result = 31 * result + minionsKills
         result = 31 * result + inhibitorKills
         result = 31 * result + team

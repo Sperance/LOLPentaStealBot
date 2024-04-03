@@ -13,9 +13,7 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.create
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
-import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.update
-import ru.descend.bot.savedObj.CalculateMMR_2
 import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
@@ -116,7 +114,7 @@ data class Calc_AddMatch (
     private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
         var users = ""
         sqlData.getSavedParticipantsForMatch(pMatch.id).forEach {
-            val data = CalculateMMR_2(sqlData, it, pMatch, kordLol, sqlData.getMMRforChampion(it.championName))
+            val data = Calc_MMR(sqlData, it, pMatch, kordLol, sqlData.getMMRforChampion(it.championName))
             data.init()
             users += sqlData.getLOL(it.LOLperson_id)?.LOL_summonerName + " hero: ${it.championName} $data\n"
         }

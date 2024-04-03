@@ -49,7 +49,7 @@ fun arguments() = commands("Arguments") {
                     return@execute
                 }
             }
-            dateText += "_" + GregorianCalendar.getInstance().get(Calendar.YEAR)
+            dateText += "_" + (GregorianCalendar.getInstance().get(Calendar.YEAR) - 1)
 
             //val localDate = LocalDate.parse(dateText, DateTimeFormatter.ofPattern("ddMMyyyy"))
 
@@ -209,7 +209,7 @@ fun arguments() = commands("Arguments") {
     slash("addSavedMMR", "Добавить бонусные MMR пользователю", Permissions(Permission.Administrator)){
         execute(UserArg("user", "Пользователь Discord"), IntegerArg("savedMMR", "Количество бонусных MMR")){
             val (user, savedMMR) = args
-            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=$user' 'savedMMR=$savedMMR'"
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=${user.lowDescriptor()}' 'savedMMR=$savedMMR'"
             printLog(textCommand)
 
             val guilds = R2DBC.getGuild(guild)
@@ -230,7 +230,7 @@ fun arguments() = commands("Arguments") {
     slash("removeSavedMMR", "Вычесть бонусные MMR пользователю", Permissions(Permission.Administrator)){
         execute(UserArg("user", "Пользователь Discord"), IntegerArg("savedMMR", "Количество вычитаемых MMR")){
             val (user, savedMMR) = args
-            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=$user' 'savedMMR=$savedMMR'"
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=${user.lowDescriptor()}' 'savedMMR=$savedMMR'"
             printLog(textCommand)
 
             val guilds = R2DBC.getGuild(guild)
@@ -244,27 +244,6 @@ fun arguments() = commands("Arguments") {
                 dataUser.update()
                 "Сохранение успешно произведено"
             }
-            respond(textMessage)
-        }
-    }
-
-    slash("userDeleteFromId", "Удалить учётную запись из базы данных бота по ID пользователя", Permissions(Permission.Administrator)){
-        execute(IntegerArg("UserId", "Пользователь Discord ID в базе")){
-            val (UserId) = args
-            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=$UserId'"
-            printLog(textCommand)
-
-            val guilds = R2DBC.getGuild(guild)
-            guild.sendMessage(guilds.messageIdDebug, textCommand)
-
-            val kordlol = R2DBC.getKORDLOLs { tbl_kordlols.id eq UserId ; tbl_kordlols.guild_id eq guilds.id }.firstOrNull()
-            val textMessage = if (kordlol != null) {
-                kordlol.deleteWithKORD(guilds)
-                "Удаление прошло успешно"
-            } else {
-                "Пользователя с ID $UserId не существует"
-            }
-
             respond(textMessage)
         }
     }

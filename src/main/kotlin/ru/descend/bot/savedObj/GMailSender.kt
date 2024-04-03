@@ -1,4 +1,4 @@
-package ru.descend.bot.mail
+package ru.descend.bot.savedObj
 
 import java.io.ByteArrayInputStream
 import java.io.IOException
@@ -7,7 +7,6 @@ import java.io.OutputStream
 import java.security.AccessController
 import java.security.PrivilegedAction
 import java.security.Provider
-import java.security.Security
 import java.util.Properties
 import javax.activation.DataHandler
 import javax.activation.DataSource

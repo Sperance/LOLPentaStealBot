@@ -1,4 +1,4 @@
-package ru.descend.bot.listeners
+package ru.descend.bot.commands
 
 import dev.kord.core.event.guild.BanAddEvent
 import dev.kord.core.event.guild.BanRemoveEvent

@@ -19,6 +19,7 @@ data class Calc_PentaSteal (
     val mch: Matches
 ) {
     suspend fun calculte() {
+        if (mch.bots) return
         var isNeedCalculate = false
         sqlData.getSavedParticipantsForMatch(mch.id).forEach {
             if (it.kills4 > 0) {

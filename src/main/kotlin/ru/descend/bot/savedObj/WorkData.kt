@@ -1,4 +1,4 @@
-package ru.descend.bot.postgre.r2dbc
+package ru.descend.bot.savedObj
 
 class WorkData<T> {
 

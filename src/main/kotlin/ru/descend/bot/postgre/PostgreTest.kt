@@ -2,19 +2,15 @@ package ru.descend.bot.postgre
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import org.komapper.core.dsl.QueryDsl
-import org.komapper.core.dsl.metamodel.EntityMetamodel
-import org.komapper.core.dsl.metamodel.PropertyMetamodel
-import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.r2dbc.create
-import ru.descend.bot.postgre.r2dbc.delete
-import ru.descend.bot.postgre.r2dbc.getField
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.EnumMMRRank
-import kotlin.reflect.KMutableProperty1
-import kotlin.reflect.full.createInstance
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Calendar
+import java.util.GregorianCalendar
 
 class PostgreTest {
 
@@ -36,10 +32,32 @@ class PostgreTest {
     }
 
     @Test
+    fun test_birthday_parse() {
+        val dateValue = "12111900_2024"
+
+        val valueDay = dateValue.substring(0..1).toInt()
+        val valueMonth = dateValue.substring(2..3).toInt()
+        val valueYear = dateValue.substring(4..7).toInt()
+        val lastYear = dateValue.substring(9..12).toInt()
+
+        val calendarInstance = GregorianCalendar.getInstance()
+        val currentDay = calendarInstance.get(Calendar.DAY_OF_MONTH)
+        val currentMonth = calendarInstance.get(Calendar.MONTH) + 1
+        val currentYear = calendarInstance.get(Calendar.YEAR)
+
+        if (valueDay == currentDay && valueMonth == currentMonth && lastYear != currentYear){
+
+        }
+    }
+
+    @Test
     fun test_mmr() {
         runBlocking {
-            val mmr = MMRs(champion = "champ").create(MMRs::champion)
+            val mmr = MMRs(champion = "champ")
+
+            mmr.create(MMRs::champion)
             printLog(mmr)
+            val str = "asd"
             mmr.champion = "champ new"
             mmr.update()
             printLog(mmr)

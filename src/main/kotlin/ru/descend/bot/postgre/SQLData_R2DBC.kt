@@ -6,11 +6,12 @@ import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
 import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
-import ru.descend.bot.mail.GMailSender
+import ru.descend.bot.savedObj.GMailSender
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
+import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.postgre.calculating.Calc_PentaSteal
 import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.WorkData
+import ru.descend.bot.savedObj.WorkData
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
@@ -120,6 +121,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             it.kordLOL = getKORDLOL(it.kord_lol_id)
         }
         return arrayAramMMRData
+    }
+
+    suspend fun onCalculateTimer() {
+        Calc_Birthday(this, dataKORD.get()).calculate()
     }
 
     suspend fun addMatch(match: MatchDTO) {

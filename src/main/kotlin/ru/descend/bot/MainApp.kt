@@ -18,13 +18,12 @@ import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
+import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Guilds
-import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.update
-import ru.descend.bot.savedObj.EnumMMRRank
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -84,8 +83,8 @@ fun timerMainInformation(guild: Guild, duration: Duration) = launch {
             localData.initialize()
             showLeagueHistory(localData)
             localData.performClear()
+            printMemoryUsage("end clear")
         }
-        printMemoryUsage("end clear")
         delay(duration)
     }
 }
@@ -115,6 +114,8 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.dataKORDLOL.reset()
     sqlData.dataKORD.reset()
     sqlData.dataLOL.reset()
+
+    sqlData.onCalculateTimer()
 
     launch {
         val checkMatches = ArrayList<String>()
