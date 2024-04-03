@@ -1,22 +1,14 @@
 package ru.descend.bot.postgre.r2dbc.model
 
 import org.komapper.annotation.KomapperAutoIncrement
-import org.komapper.annotation.KomapperCreatedAt
 import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
-import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
 import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
-import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.calculateUpdate
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.to2Digits
-import java.time.LocalDateTime
-
-val tbl_participants = Meta.participants
 
 @KomapperEntity
 @KomapperTable("tbl_participants")
@@ -75,7 +67,7 @@ data class Participants(
     var tookLargeDamageSurvived: Int = 0, //took_large_damage_survived
     var longestTimeSpentLiving: Int = 0, //longest_time_spent_living
     var totalTimeSpentDead: Int = 0 //total_time_spent_dead
-) : InterfaceR2DBC<Participants> {
+) {
 
     constructor(participant: Participant, match: Matches, LOLperson: LOLs) : this() {
         val kill5 = participant.pentaKills
@@ -133,35 +125,10 @@ data class Participants(
     }
 
     companion object {
-        suspend fun isHave(match_id: Int, lol_id: Int, guild_id: Int) = R2DBC.runQuery { QueryDsl.from(
-            tbl_participants).where { tbl_participants.match_id eq match_id ; tbl_participants.LOLperson_id eq lol_id ; tbl_participants.guild_id eq guild_id }.limit(1).select(tbl_participants.id) }.isNotEmpty()
+        val tbl_participants = Meta.participants
     }
 
-    override suspend fun save() : Participants {
-        return if (isHave(match_id, LOLperson_id, guild_id)){
-            printLog("[Participants::save] $this. Уже есть в базе. Вызывать ошибку?")
-            this
-        } else {
-            val result = R2DBC.runQuery(QueryDsl.insert(tbl_participants).single(this@Participants))
-            printLog("[Participants::save] $result")
-            result
-        }
-    }
-
-    override suspend fun update() : Participants {
-        val before = R2DBC.getParticipants { tbl_participants.id eq id }.firstOrNull()
-        if (before == this) return this
-        val after = R2DBC.runQuery(QueryDsl.update(tbl_participants).single(this@Participants))
-        printLog("[Participants::update] $this { ${calculateUpdate(before, after)} }")
-        return after
-    }
-
-    override suspend fun delete() {
-        printLog("[Participants::delete] $this")
-        R2DBC.runQuery(QueryDsl.delete(tbl_participants).single(this@Participants))
-    }
-
-    suspend fun LOLpersonObj() = R2DBC.getLOLs { tbl_LOLs.id eq LOLperson_id }.firstOrNull()
+    suspend fun LOLpersonObj() = R2DBC.getLOLs { tbl_lols.id eq LOLperson_id }.firstOrNull()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

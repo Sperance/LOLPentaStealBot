@@ -8,17 +8,14 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
+import ru.descend.bot.postgre.r2dbc.delete
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.calculateUpdate
 import java.time.LocalDateTime
 
-val tbl_KORDs = Meta.korDs
-
 @KomapperEntity
-@KomapperTable("tbl_KORDs")
+@KomapperTable("tbl_kords")
 data class KORDs(
     @KomapperId
     @KomapperAutoIncrement
@@ -35,10 +32,10 @@ data class KORDs(
     var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
     var updatedAt: LocalDateTime = LocalDateTime.MIN
-) : InterfaceR2DBC<KORDs> {
+) {
 
     companion object {
-        suspend fun isHave(kord: String) = R2DBC.runQuery { QueryDsl.from(tbl_KORDs).where { tbl_KORDs.KORD_id eq kord }.limit(1).select(tbl_KORDs.id) }.isNotEmpty()
+        val tbl_kords = Meta.korDs
     }
 
     constructor(guild: Guilds, user: User) : this() {
@@ -48,36 +45,12 @@ data class KORDs(
         this.KORD_discriminator = user.discriminator
     }
 
-    override suspend fun save() : KORDs {
-        return if (isHave(KORD_id)) {
-            printLog("[KORDs::save] $this. Уже существует в базе. Вызывать ошибку?")
-            this
-        } else {
-            val result = R2DBC.runQuery(QueryDsl.insert(tbl_KORDs).single(this@KORDs))
-            printLog("[KORDs::save] $result")
-            result
-        }
-    }
-
-    override suspend fun update() : KORDs {
-        val before = R2DBC.getKORDs { tbl_KORDs.id eq id }.firstOrNull()
-        if (before == this) return this
-        val after = R2DBC.runQuery(QueryDsl.update(tbl_KORDs).single(this@KORDs))
-        printLog("[KORDs::update] $this { ${calculateUpdate(before, after)} }")
-        return after
-    }
-
-    override suspend fun delete() {
-        printLog("[KORDs::delete] $this")
-        R2DBC.runQuery(QueryDsl.delete(tbl_KORDs).single(this@KORDs))
-    }
-
     suspend fun deleteWithKORDLOL(guilds: Guilds) {
         printLog("[KORDs::deleteWithKORDLOL] $this")
-        R2DBC.getKORDLOLs { tbl_KORDLOLs.KORD_id eq id ; tbl_KORDLOLs.guild_id eq guilds.id }.forEach {
+        R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq id ; tbl_kordlols.guild_id eq guilds.id }.forEach {
             it.delete()
         }
-        delete()
+        this.delete()
     }
 
     override fun toString(): String {

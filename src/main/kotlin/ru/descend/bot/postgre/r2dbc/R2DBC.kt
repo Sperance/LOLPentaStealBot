@@ -9,19 +9,19 @@ import org.komapper.core.dsl.query.QueryScope
 import org.komapper.r2dbc.R2dbcDatabase
 import org.komapper.tx.core.CoroutineTransactionOperator
 import ru.descend.bot.postgre.r2dbc.model.Guilds
+import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
+import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
+import ru.descend.bot.postgre.r2dbc.model.MMRs.Companion.tbl_mmrs
 import ru.descend.bot.postgre.r2dbc.model.Matches
+import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.model.tbl_KORDLOLs
-import ru.descend.bot.postgre.r2dbc.model.tbl_KORDs
-import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
-import ru.descend.bot.postgre.r2dbc.model.tbl_MMRs
-import ru.descend.bot.postgre.r2dbc.model.tbl_guilds
-import ru.descend.bot.postgre.r2dbc.model.tbl_matches
-import ru.descend.bot.postgre.r2dbc.model.tbl_participants
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.printLog
 
 /**
@@ -55,19 +55,19 @@ object R2DBC {
                 QueryDsl.create(tbl_guilds)
             }
             db.runQuery {
-                QueryDsl.create(tbl_KORDLOLs)
+                QueryDsl.create(tbl_kordlols)
             }
             db.runQuery {
-                QueryDsl.create(tbl_KORDs)
+                QueryDsl.create(tbl_kords)
             }
             db.runQuery {
-                QueryDsl.create(tbl_LOLs)
+                QueryDsl.create(tbl_lols)
             }
             db.runQuery {
                 QueryDsl.create(tbl_matches)
             }
             db.runQuery {
-                QueryDsl.create(tbl_MMRs)
+                QueryDsl.create(tbl_mmrs)
             }
             db.runQuery {
                 QueryDsl.create(tbl_participants)
@@ -80,7 +80,7 @@ object R2DBC {
     }
 
     suspend fun getKORDLOLs(declaration: WhereDeclaration?) : List<KORDLOLs> {
-        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_KORDLOLs) else QueryDsl.from(tbl_KORDLOLs).where(declaration) } }
+        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_kordlols) else QueryDsl.from(tbl_kordlols).where(declaration) } }
     }
     suspend fun addBatchKORDLOLs(list: List<KORDLOLs>, batchSize: Int = 100) {
         db.withTransaction {
@@ -88,20 +88,20 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
-                    miniList.forEach { printLog("[Batch_KORDLOLs::save] $it") }
-                    db.runQuery { QueryDsl.insert(tbl_KORDLOLs).multiple(miniList) }
+                    val res = db.runQuery { QueryDsl.insert(tbl_kordlols).multiple(miniList) }
+                    res.forEach { printLog("[Batch_KORDLOLs::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
-                miniList.forEach { printLog("[Batch_KORDLOLs::save] $it") }
-                db.runQuery { QueryDsl.insert(tbl_KORDLOLs).multiple(miniList) }
+                val res = db.runQuery { QueryDsl.insert(tbl_kordlols).multiple(miniList) }
+                res.forEach { printLog("[Batch_KORDLOLs::save] $it") }
             }
         }
     }
 
     suspend fun getMMRs(declaration: WhereDeclaration?) : List<MMRs> {
-        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_MMRs) else QueryDsl.from(tbl_MMRs).where(declaration) } }
+        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_mmrs) else QueryDsl.from(tbl_mmrs).where(declaration) } }
     }
     suspend fun addBatchMMRs(list: List<MMRs>, batchSize: Int = 100) {
         db.withTransaction {
@@ -109,14 +109,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
-                    miniList.forEach { printLog("[Batch_MMRs::save] $it") }
-                    db.runQuery { QueryDsl.insert(tbl_MMRs).multiple(miniList) }
+                    val res = db.runQuery { QueryDsl.insert(tbl_mmrs).multiple(miniList) }
+                    res.forEach { printLog("[Batch_MMRs::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
-                miniList.forEach { printLog("[Batch_MMRs::save] $it") }
-                db.runQuery { QueryDsl.insert(tbl_MMRs).multiple(miniList) }
+                val res = db.runQuery { QueryDsl.insert(tbl_mmrs).multiple(miniList) }
+                res.forEach { printLog("[Batch_MMRs::save] $it") }
             }
         }
     }
@@ -130,20 +130,20 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
-                    miniList.forEach { printLog("[Batch_Participants::save] $it") }
-                    db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
+                    val res = db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
+                    res.forEach { printLog("[Batch_Participants::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
-                miniList.forEach { printLog("[Batch_Participants::save] $it") }
-                db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
+                val res = db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
+                res.forEach { printLog("[Batch_Participants::save] $it") }
             }
         }
     }
 
     suspend fun getLOLs(declaration: WhereDeclaration?) : List<LOLs> {
-        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_LOLs) else QueryDsl.from(tbl_LOLs).where(declaration) } }
+        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_lols) else QueryDsl.from(tbl_lols).where(declaration) } }
     }
     suspend fun addBatchLOLs(list: List<LOLs>, batchSize: Int = 100) {
         db.withTransaction {
@@ -151,20 +151,20 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
-                    miniList.forEach { printLog("[Batch_LOLs::save] $it") }
-                    db.runQuery { QueryDsl.insert(tbl_LOLs).multiple(miniList) }
+                    val res = db.runQuery { QueryDsl.insert(tbl_lols).multiple(miniList) }
+                    res.forEach { printLog("[Batch_LOLs::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
-                miniList.forEach { printLog("[Batch_LOLs::save] $it") }
-                db.runQuery { QueryDsl.insert(tbl_LOLs).multiple(miniList) }
+                val res = db.runQuery { QueryDsl.insert(tbl_lols).multiple(miniList) }
+                res.forEach { printLog("[Batch_LOLs::save] $it") }
             }
         }
     }
 
     suspend fun getKORDs(declaration: WhereDeclaration?) : List<KORDs> {
-        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_KORDs) else QueryDsl.from(tbl_KORDs).where(declaration) } }
+        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_kords) else QueryDsl.from(tbl_kords).where(declaration) } }
     }
     suspend fun addBatchKORDs(list: List<KORDs>, batchSize: Int = 100) {
         db.withTransaction {
@@ -172,14 +172,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
-                    miniList.forEach { printLog("[Batch_KORDs::save] $it") }
-                    db.runQuery { QueryDsl.insert(tbl_KORDs).multiple(miniList) }
+                    val res = db.runQuery { QueryDsl.insert(tbl_kords).multiple(miniList) }
+                    res.forEach { printLog("[Batch_KORDs::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
-                miniList.forEach { printLog("[Batch_KORDs::save] $it") }
-                db.runQuery { QueryDsl.insert(tbl_KORDs).multiple(miniList) }
+                val res = db.runQuery { QueryDsl.insert(tbl_kords).multiple(miniList) }
+                res.forEach { printLog("[Batch_KORDs::save] $it") }
             }
         }
     }
@@ -193,14 +193,14 @@ object R2DBC {
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
-                    miniList.forEach { printLog("[Batch_Matches::save] $it") }
-                    db.runQuery { QueryDsl.insert(tbl_matches).multiple(miniList) }
+                    val res = db.runQuery { QueryDsl.insert(tbl_matches).multiple(miniList) }
+                    res.forEach { printLog("[Batch_Matches::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
-                miniList.forEach { printLog("[Batch_Matches::save] $it") }
-                db.runQuery { QueryDsl.insert(tbl_matches).multiple(miniList) }
+                val res = db.runQuery { QueryDsl.insert(tbl_matches).multiple(miniList) }
+                res.forEach { printLog("[Batch_Matches::save] $it") }
             }
         }
     }
@@ -208,10 +208,10 @@ object R2DBC {
     suspend fun getKORDLOLs_forKORD(guilds: Guilds, kord: String) : KORDLOLs? {
         return db.withTransaction {
             db.runQuery {
-                QueryDsl.from(tbl_KORDLOLs)
-                    .leftJoin(tbl_KORDs) { tbl_KORDs.id eq tbl_KORDLOLs.KORD_id }
-                    .where { tbl_KORDs.KORD_id eq kord }
-                    .where { tbl_KORDLOLs.guild_id eq guilds.id }
+                QueryDsl.from(tbl_kordlols)
+                    .leftJoin(tbl_kords) { tbl_kords.id eq tbl_kordlols.KORD_id }
+                    .where { tbl_kords.KORD_id eq kord }
+                    .where { tbl_kordlols.guild_id eq guilds.id }
                     .limit(1)
             }.firstOrNull()
         }

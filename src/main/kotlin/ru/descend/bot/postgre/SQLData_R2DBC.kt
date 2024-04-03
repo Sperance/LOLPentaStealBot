@@ -13,15 +13,15 @@ import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.WorkData
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
+import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
+import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.model.tbl_KORDLOLs
-import ru.descend.bot.postgre.r2dbc.model.tbl_KORDs
-import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
-import ru.descend.bot.postgre.r2dbc.model.tbl_matches
-import ru.descend.bot.postgre.r2dbc.model.tbl_participants
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import java.util.WeakHashMap
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
@@ -42,15 +42,15 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     fun initialize() {
         if (dataGuild.bodyReset == null) dataGuild.bodyReset = { R2DBC.getGuilds(null) }
-        if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq guildSQL.id } }
-        if (dataKORD.bodyReset == null) dataKORD.bodyReset = { R2DBC.getKORDs { tbl_KORDs.guild_id eq guildSQL.id } }
+        if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guildSQL.id } }
+        if (dataKORD.bodyReset == null) dataKORD.bodyReset = { R2DBC.getKORDs { tbl_kords.guild_id eq guildSQL.id } }
         if (dataLOL.bodyReset == null) dataLOL.bodyReset = { R2DBC.getLOLs(null) }
         if (dataMMR.bodyReset == null) dataMMR.bodyReset = { R2DBC.getMMRs(null) }
 
         if (dataSavedLOL.bodyReset == null) {
             dataSavedLOL.bodyReset = {
                 val kordLol_lol_id = dataKORDLOL.get().map { it.LOL_id }
-                R2DBC.runQuery(QueryDsl.from(tbl_LOLs).where { tbl_LOLs.id.inList(kordLol_lol_id) })
+                R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
             }
         }
 

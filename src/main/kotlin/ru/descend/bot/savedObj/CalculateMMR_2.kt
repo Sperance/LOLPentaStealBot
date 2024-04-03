@@ -3,12 +3,14 @@ package ru.descend.bot.savedObj
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
+import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
 import ru.descend.bot.to2Digits
-import kotlin.math.abs
 import kotlin.reflect.KMutableProperty1
 
 private const val modRank = 70.0

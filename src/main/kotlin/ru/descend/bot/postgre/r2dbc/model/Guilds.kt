@@ -8,14 +8,8 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import org.komapper.core.dsl.QueryDsl
-import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
-import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.calculateUpdate
+import ru.descend.bot.postgre.r2dbc.create
 import java.time.LocalDateTime
-
-val tbl_guilds = Meta.guilds
 
 @KomapperEntity
 @KomapperTable("tbl_guilds")
@@ -31,6 +25,9 @@ data class Guilds(
     var botChannelId: String = "",
     var messageIdStatus: String = "",
     var messageIdMain: String = "",
+    /**
+     * Канал для служебных сообщений (скрыт для обычных пользователей)
+     */
     var messageIdDebug: String = "",
     var messageIdGlobalStatisticData: String = "",
     var messageIdArammmr: String = "",
@@ -39,33 +36,18 @@ data class Guilds(
     var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
     var updatedAt: LocalDateTime = LocalDateTime.MIN
-) : InterfaceR2DBC<Guilds> {
+) {
+
+    companion object {
+        val tbl_guilds = Meta.guilds
+    }
 
     suspend fun add(value: Guild) : Guilds {
         val curGuild = Guilds()
         curGuild.idGuild = value.id.value.toString()
         curGuild.name = value.name
         curGuild.description = value.description ?: ""
-        return curGuild.save()
-    }
-
-    override suspend fun save() : Guilds {
-        val result = R2DBC.runQuery(QueryDsl.insert(tbl_guilds).single(this@Guilds))
-        printLog("[Guilds::save] $result")
-        return result
-    }
-
-    override suspend fun update() : Guilds {
-        val before = R2DBC.getGuilds { tbl_guilds.id eq id }.firstOrNull()
-        if (before == this) return this
-        val after = R2DBC.runQuery(QueryDsl.update(tbl_guilds).single(this@Guilds))
-        printLog("[Guilds::update] $this { ${calculateUpdate(before, after)} }")
-        return after
-    }
-
-    override suspend fun delete() {
-        printLog("[Guilds::delete] $this")
-        R2DBC.runQuery(QueryDsl.delete(tbl_guilds).single(this@Guilds))
+        return curGuild.create(Guilds::idGuild)
     }
 
     override fun equals(other: Any?): Boolean {

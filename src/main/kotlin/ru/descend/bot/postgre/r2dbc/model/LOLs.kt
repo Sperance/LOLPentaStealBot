@@ -7,19 +7,12 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.LeagueApi
-import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
-import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.calculateUpdate
 import java.time.LocalDateTime
 
-val tbl_LOLs = Meta.loLs
-
 @KomapperEntity
-@KomapperTable("tbl_LOLs")
+@KomapperTable("tbl_lols")
 data class LOLs(
     @KomapperId
     @KomapperAutoIncrement
@@ -38,7 +31,11 @@ data class LOLs(
     var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
     var updatedAt: LocalDateTime = LocalDateTime.MIN
-) : InterfaceR2DBC<LOLs> {
+) {
+
+    companion object {
+        val tbl_lols = Meta.loLs
+    }
 
     suspend fun connectLOL(region: String, summonerName: String) : LOLs? {
         val leagueApi = LeagueApi(catchToken()[1], region)
@@ -54,34 +51,6 @@ data class LOLs(
             newLOL.LOL_summonerLevel = it.summonerLevel
         }
         return newLOL
-    }
-
-    companion object {
-        suspend fun isHave(puuid: String) = R2DBC.runQuery { QueryDsl.from(tbl_LOLs).where { tbl_LOLs.LOL_puuid eq puuid }.limit(1).select(tbl_LOLs.id) }.isNotEmpty()
-    }
-
-    override suspend fun save() : LOLs {
-        return if (isHave(LOL_puuid)) {
-            printLog("[LOLs::save] $this. Уже существует в Базе. Вызывать ошибку?")
-            this
-        } else {
-            val result = R2DBC.runQuery(QueryDsl.insert(tbl_LOLs).single(this@LOLs))
-            printLog("[LOLs::save] $result")
-            result
-        }
-    }
-
-    override suspend fun update() : LOLs {
-        val before = R2DBC.getLOLs { tbl_LOLs.id eq id }.firstOrNull()
-        if (before == this) return this
-        val after = R2DBC.runQuery(QueryDsl.update(tbl_LOLs).single(this@LOLs))
-        printLog("[LOLs::update] $this { ${calculateUpdate(before, after)} }")
-        return after
-    }
-
-    override suspend fun delete() {
-        printLog("[LOLs::delete] $this")
-        R2DBC.runQuery(QueryDsl.delete(tbl_LOLs).single(this@LOLs))
     }
 
     fun getCorrectName() : String {

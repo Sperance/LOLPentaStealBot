@@ -9,7 +9,6 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.channel.TextChannel
-import dev.kord.core.supplier.EntitySupplyStrategy
 import dev.kord.gateway.ALL
 import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
@@ -19,11 +18,12 @@ import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
-import me.jakejmattson.discordkt.util.fullName
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Guilds
+import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
+import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.savedObj.EnumMMRRank
 import java.awt.Color
 import kotlin.time.Duration
@@ -174,7 +174,7 @@ suspend fun createMessageMainData(channelText: TextChannel, sqlData: SQLData_R2D
     channelText.getMessage(message.id).edit { editMessageMainDataContent(this, sqlData) }
 
     sqlData.guildSQL.messageIdMain = message.id.value.toString()
-    sqlData.guildSQL = sqlData.guildSQL.update()
+    sqlData.guildSQL.update()
 }
 
 suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLData_R2DBC) {
@@ -184,7 +184,7 @@ suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLD
     }
 
     sqlData.guildSQL.messageIdGlobalStatisticData = message.id.value.toString()
-    sqlData.guildSQL = sqlData.guildSQL.update()
+    sqlData.guildSQL.update()
 }
 
 suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData_R2DBC) {
@@ -192,7 +192,7 @@ suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData_
     channelText.getMessage(message.id).edit { editMessageAramMMRDataContent(this, sqlData) }
 
     sqlData.guildSQL.messageIdArammmr = message.id.value.toString()
-    sqlData.guildSQL = sqlData.guildSQL.update()
+    sqlData.guildSQL.update()
 }
 
 suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {

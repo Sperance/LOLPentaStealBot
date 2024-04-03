@@ -11,8 +11,10 @@ import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
-import ru.descend.bot.printLog
+import ru.descend.bot.postgre.r2dbc.create
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
+import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
+import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.savedObj.CalculateMMR_2
 import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
@@ -46,7 +48,7 @@ data class Calc_AddMatch (
             guild_id = sqlData.guildSQL.id,
             bots = isBots,
             surrender = isSurrender
-        ).save()
+        ).create(Matches::matchId)
 
         if (pMatch.id % 1000 == 0){
             asyncLaunch {
@@ -61,7 +63,7 @@ data class Calc_AddMatch (
         }
 
         val arrayNewParts = ArrayList<Participants>()
-        val lolsArray = R2DBC.getLOLs { tbl_LOLs.LOL_puuid.inList(arrayHeroName.map { it.puuid }) }
+        val lolsArray = R2DBC.getLOLs { tbl_lols.LOL_puuid.inList(arrayHeroName.map { it.puuid }) }
         match.info.participants.forEach {part ->
             var curLOL = lolsArray.find { it.LOL_puuid == part.puuid }
 
@@ -94,7 +96,7 @@ data class Calc_AddMatch (
                 curLOL.LOL_summonerId = part.summonerId
                 curLOL.LOL_riotIdName = part.riotIdGameName
                 curLOL.LOL_summonerLevel = part.summonerLevel
-                curLOL = if (isNewLOL) curLOL.save()
+                curLOL = if (isNewLOL) curLOL.create(LOLs::LOL_puuid)
                 else curLOL.update()
             }
 

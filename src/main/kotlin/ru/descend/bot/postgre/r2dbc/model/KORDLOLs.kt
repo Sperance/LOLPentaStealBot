@@ -12,18 +12,16 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
+import ru.descend.bot.postgre.r2dbc.delete
+import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.calculateUpdate
 import java.time.LocalDateTime
 
-val tbl_KORDLOLs = Meta.kordloLs
-
 @KomapperEntity
-@KomapperTable("tbl_KORDLOLs")
+@KomapperTable("tbl_kordlols")
 data class KORDLOLs(
     @KomapperId
     @KomapperAutoIncrement
@@ -41,51 +39,24 @@ data class KORDLOLs(
     var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
     var updatedAt: LocalDateTime = LocalDateTime.MIN
-) : InterfaceR2DBC<KORDLOLs> {
+) {
 
     companion object {
-        suspend fun isHave(kord: Int, lol: Int) = R2DBC.runQuery { QueryDsl.from(tbl_KORDLOLs).where { tbl_KORDLOLs.KORD_id eq kord ; tbl_KORDLOLs.LOL_id eq lol}.limit(1).select(tbl_KORDLOLs.id) }.isNotEmpty()
-    }
-
-    override suspend fun save() : KORDLOLs {
-        return if (isHave(KORD_id, LOL_id)){
-            printLog("[KORDLOLs::save] $this. Уже существует в базе. Вызывать ошибку?")
-            this
-        } else {
-            val result = R2DBC.runTransaction {
-                this.showCode = R2DBC.getKORDLOLs { tbl_KORDLOLs.guild_id eq this@KORDLOLs.guild_id }.size + 1
-                R2DBC.runQuery(QueryDsl.insert(tbl_KORDLOLs).single(this@KORDLOLs))
-            }
-            printLog("[KORDLOLs::save] $result")
-            result
-        }
-    }
-
-    override suspend fun update() : KORDLOLs {
-        val before = R2DBC.getKORDLOLs { tbl_KORDLOLs.id eq id }.firstOrNull()
-        if (before == this) return this
-        val after = R2DBC.runQuery(QueryDsl.update(tbl_KORDLOLs).single(this@KORDLOLs))
-        printLog("[KORDLOLs::update] $this { ${calculateUpdate(before, after)} }")
-        return after
-    }
-
-    override suspend fun delete() {
-        printLog("[KORDLOLs::delete] $this")
-        R2DBC.runQuery(QueryDsl.delete(tbl_KORDLOLs).single(this@KORDLOLs))
+        val tbl_kordlols = Meta.kordloLs
     }
 
     suspend fun deleteWithKORD(guilds: Guilds) {
         printLog("[KORDLOLs::deleteWithKORD] $this")
-        R2DBC.getKORDs { tbl_KORDs.id eq KORD_id ; tbl_KORDs.guild_id eq guilds.id }.forEach {
+        R2DBC.getKORDs { tbl_kords.id eq KORD_id ; tbl_kords.guild_id eq guilds.id }.forEach {
             it.delete()
         }
-        delete()
+        this.delete()
     }
 
     /*********************************/
 
-    suspend fun KORDidObj() = R2DBC.getKORDs { tbl_KORDs.id eq KORD_id }.firstOrNull()
-    suspend fun LOLidObj() = R2DBC.getLOLs { tbl_LOLs.id eq LOL_id }.firstOrNull()
+    suspend fun KORDidObj() = R2DBC.getKORDs { tbl_kords.id eq KORD_id }.firstOrNull()
+    suspend fun LOLidObj() = R2DBC.getLOLs { tbl_lols.id eq LOL_id }.firstOrNull()
 
     suspend fun getNickName(data: SQLData_R2DBC) : String {
         if (LOL_id == -1) return ""

@@ -7,14 +7,9 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
-import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.calculateUpdate
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import java.time.LocalDateTime
-
-val tbl_matches = Meta.matches
 
 @KomapperEntity
 @KomapperTable("tbl_matches")
@@ -38,34 +33,10 @@ data class Matches(
     var createdAt: LocalDateTime = LocalDateTime.MIN,
     @KomapperUpdatedAt
     var updatedAt: LocalDateTime = LocalDateTime.MIN
-) : InterfaceR2DBC<Matches> {
+) {
 
     companion object {
-        suspend fun isHave(matchId: String) = R2DBC.runQuery { QueryDsl.from(tbl_matches).where { tbl_matches.matchId eq matchId }.limit(1).select(tbl_matches.id) }.isNotEmpty()
-    }
-
-    override suspend fun save() : Matches {
-        return if (isHave(matchId)) {
-            printLog("[Matches::save] $this. Уже существует в базе. Вызывать ошибку?")
-            this
-        } else {
-            val result = R2DBC.runQuery(QueryDsl.insert(tbl_matches).single(this@Matches))
-            printLog("[Matches::save] $result")
-            result
-        }
-    }
-
-    override suspend fun update() : Matches {
-        val before = R2DBC.getMatches { tbl_matches.id eq id }.firstOrNull()
-        if (before == this) return this
-        val after = R2DBC.runQuery(QueryDsl.update(tbl_matches).single(this@Matches))
-        printLog("[Matches::update] $this { ${calculateUpdate(before, after)} }")
-        return after
-    }
-
-    override suspend fun delete() {
-        printLog("[Matches::delete] $this")
-        R2DBC.runQuery(QueryDsl.delete(tbl_matches).single(this@Matches))
+        val tbl_matches = Meta.matches
     }
 
     suspend fun getParticipants() = R2DBC.getParticipants { tbl_participants.guild_id eq guild_id ; tbl_participants.match_id eq id }

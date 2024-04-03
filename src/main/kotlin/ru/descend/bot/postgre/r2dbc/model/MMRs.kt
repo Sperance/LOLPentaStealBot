@@ -5,16 +5,9 @@ import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.core.dsl.Meta
-import org.komapper.core.dsl.QueryDsl
-import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.interfaces.InterfaceR2DBC
-import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.calculateUpdate
-
-val tbl_MMRs = Meta.mmRs
 
 @KomapperEntity
-@KomapperTable("tbl_MMRs")
+@KomapperTable("tbl_mmrs")
 data class MMRs(
     @KomapperId
     @KomapperAutoIncrement
@@ -33,25 +26,10 @@ data class MMRs(
     var dmgTakenPerc: Double = 0.0,
     var dmgDealPerc: Double = 0.0,
     var kda: Double = 0.0
-) : InterfaceR2DBC<MMRs> {
+) {
 
-    override suspend fun save() : MMRs {
-        val result = R2DBC.runQuery(QueryDsl.insert(tbl_MMRs).single(this@MMRs))
-        printLog("[MMRs::save] $result")
-        return result
-    }
-
-    override suspend fun update() : MMRs {
-        val before = R2DBC.getMMRs { tbl_MMRs.id eq id }.firstOrNull()
-        if (before == this) return this
-        val after = R2DBC.runQuery(QueryDsl.update(tbl_MMRs).single(this@MMRs))
-        printLog("[MMRs::update] $this { ${calculateUpdate(before, after)} }")
-        return after
-    }
-
-    override suspend fun delete() {
-        printLog("[MMRs::delete] $this")
-        R2DBC.runQuery(QueryDsl.delete(tbl_MMRs).single(this@MMRs))
+    companion object {
+        val tbl_mmrs = Meta.mmRs
     }
 
     override fun equals(other: Any?): Boolean {

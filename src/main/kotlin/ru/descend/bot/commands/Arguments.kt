@@ -11,14 +11,17 @@ import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
-import ru.descend.bot.postgre.r2dbc.model.tbl_KORDLOLs
-import ru.descend.bot.postgre.r2dbc.model.tbl_KORDs
-import ru.descend.bot.postgre.r2dbc.model.tbl_LOLs
+import ru.descend.bot.postgre.r2dbc.create
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
+import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
+import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
+import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toStringUID
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import java.util.Calendar
+import java.util.GregorianCalendar
 
 fun arguments() = commands("Arguments") {
 
@@ -26,7 +29,8 @@ fun arguments() = commands("Arguments") {
         execute(UserArg("user", "Пользователь Discord"), AnyArg("date")){
             val (user, date) = args
             var dateText = date
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'User'=${user.lowDescriptor()}, 'date=${dateText}'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'User'=${user.lowDescriptor()}, 'date=${dateText}'"
+            printLog(textCommand)
 
             if (date.length < 3) {
                 respond("Дата $date не может быть менее 4х символов")
@@ -45,13 +49,15 @@ fun arguments() = commands("Arguments") {
                     return@execute
                 }
             }
+            dateText += "_" + GregorianCalendar.getInstance().get(Calendar.YEAR)
 
             //val localDate = LocalDate.parse(dateText, DateTimeFormatter.ofPattern("ddMMyyyy"))
 
-            val guild = R2DBC.getGuild(guild)
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
-            var KORD = R2DBC.getKORDs { tbl_KORDs.KORD_id eq user.toStringUID() ; tbl_KORDs.guild_id eq guild.id }.firstOrNull()
+            var KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID() ; tbl_kords.guild_id eq guilds.id }.firstOrNull()
             if (KORD == null) {
                 respond("Пользователь ${user.lowDescriptor()} не зарегистрирован в боте. Его изменение невозможно")
                 return@execute
@@ -67,8 +73,10 @@ fun arguments() = commands("Arguments") {
     slash("initMainChannel", "Основной канал для бота", Permissions(Permission.Administrator)){
         execute(ChannelArg<TextChannel>("channel")){
             val (channel) = args
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'"
+            printLog(textCommand)
             val r2Guild = R2DBC.getGuild(guild)
+            guild.sendMessage(r2Guild.messageIdDebug, textCommand)
             r2Guild.botChannelId = channel.id.value.toString()
             r2Guild.update()
             respond("Guild channel saved in '${channel.name}(${channel.id.value})'")
@@ -77,8 +85,10 @@ fun arguments() = commands("Arguments") {
 
     slash("clearMainChannel", "Очистка основного канал для бота", Permissions(Permission.Administrator)){
         execute {
-            printLog("[Start command] '$name' from ${author.fullName}")
+            val textCommand = "[Start command] '$name' from ${author.fullName}"
+            printLog(textCommand)
             val r2Guild = R2DBC.getGuild(guild)
+            guild.sendMessage(r2Guild.messageIdDebug, textCommand)
             r2Guild.botChannelId = ""
             r2Guild.update()
             respond("Guild MainChannel cleared")
@@ -88,8 +98,9 @@ fun arguments() = commands("Arguments") {
     slash("initStatusChannel", "Канал для сообщений бота", Permissions(Permission.Administrator)){
         execute(ChannelArg<TextChannel>("channel")){
             val (channel) = args
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'"
             val r2Guild = R2DBC.getGuild(guild)
+            guild.sendMessage(r2Guild.messageIdDebug, textCommand)
             r2Guild.messageIdStatus = channel.id.value.toString()
             r2Guild.update()
             respond("Guild status channel saved in '${channel.name}(${channel.id.value})'")
@@ -98,8 +109,10 @@ fun arguments() = commands("Arguments") {
 
     slash("clearStatusChannel", "Очистка канала для сообщений бота", Permissions(Permission.Administrator)){
         execute {
-            printLog("[Start command] '$name' from ${author.fullName}")
+            val textCommand = "[Start command] '$name' from ${author.fullName}"
+            printLog(textCommand)
             val r2Guild = R2DBC.getGuild(guild)
+            guild.sendMessage(r2Guild.messageIdDebug, textCommand)
             r2Guild.messageIdStatus = ""
             r2Guild.update()
             respond("Guild StatusChannel cleared")
@@ -109,8 +122,10 @@ fun arguments() = commands("Arguments") {
     slash("initDebugChannel", "Канал для системных сообщений", Permissions(Permission.Administrator)){
         execute(ChannelArg<TextChannel>("channel")){
             val (channel) = args
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'"
+            printLog(textCommand)
             val r2Guild = R2DBC.getGuild(guild)
+            guild.sendMessage(r2Guild.messageIdDebug, textCommand)
             r2Guild.messageIdDebug = channel.id.value.toString()
             r2Guild.update()
             respond("Guild status channel saved in '${channel.name}(${channel.id.value})'")
@@ -119,8 +134,10 @@ fun arguments() = commands("Arguments") {
 
     slash("clearDebugChannel", "Очистка канала для системных сообщений", Permissions(Permission.Administrator)){
         execute {
-            printLog("[Start command] '$name' from ${author.fullName}")
+            val textCommand = "[Start command] '$name' from ${author.fullName}"
+            printLog(textCommand)
             val r2Guild = R2DBC.getGuild(guild)
+            guild.sendMessage(r2Guild.messageIdDebug, textCommand)
             r2Guild.messageIdDebug = ""
             r2Guild.update()
             respond("Guild DebugChannel cleared")
@@ -131,13 +148,15 @@ fun arguments() = commands("Arguments") {
         execute(UserArg("User", "Пользователь Discord"), ChoiceArg("Region", "Регион аккаунта Лиги легенд", "ru", "br1", "eun1", "euw1", "jp1", "kr", "la1", "la2", "na1", "oc1", "tr1", "pbe1"), AnyArg("SummonerName", "Имя призывателя в Лиге легенд")){
             val (user, region, summonerName) = args
 
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'"
+            printLog(textCommand)
 
-            val guild = R2DBC.getGuild(guild)
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
-            var KORD = KORDs(guild, user)
-            KORD = R2DBC.getKORDs { tbl_KORDs.KORD_id eq user.toStringUID() ; tbl_KORDs.guild_id eq guild.id }.firstOrNull() ?: KORD.save()
+            var KORD = KORDs(guilds, user)
+            KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID() ; tbl_kords.guild_id eq guilds.id }.firstOrNull() ?: KORD.create(KORDs::KORD_id)
 
             //Создаем LOL сразу со связью с аккаунтом Лиги Легенд
             var LOL = LOLs().connectLOL(region, summonerName)
@@ -147,10 +166,10 @@ fun arguments() = commands("Arguments") {
             }
 
             //Если аккаунт есть в базе - ок, если нет - создаём в базе
-            LOL = R2DBC.getLOLs { tbl_LOLs.LOL_puuid eq LOL!!.LOL_puuid }.firstOrNull() ?: LOL.save()
+            LOL = R2DBC.getLOLs { tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }.firstOrNull() ?: LOL.create(LOLs::LOL_puuid)
 
             //Проверка что к пользователю уже привязан какой-либо аккаунт лиги
-            val alreadyKORDLOL = R2DBC.getKORDLOLs { tbl_KORDLOLs.KORD_id eq KORD.id ; tbl_KORDLOLs.guild_id eq guild.id }.firstOrNull()
+            val alreadyKORDLOL = R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id ; tbl_kordlols.guild_id eq guilds.id }.firstOrNull()
             if (alreadyKORDLOL != null) {
                 respond("Призыватель $summonerName уже связан с аккаунтом лиги легенд (KORDLOL: ${alreadyKORDLOL.id}). Для внесения изменений - сначала удалите из базы пользователя ${user.lowDescriptor()}")
                 return@execute
@@ -159,9 +178,9 @@ fun arguments() = commands("Arguments") {
             val KORDLOL = KORDLOLs(
                 KORD_id = KORD.id,
                 LOL_id = LOL.id,
-                guild_id = guild.id
+                guild_id = guilds.id
             )
-            KORDLOL.save()
+            KORDLOL.create(KORDLOLs::KORD_id)
 
             respond("Пользователь ${user.lowDescriptor()} успешно связан с учётной записью ${LOL.LOL_summonerName}")
         }
@@ -170,15 +189,17 @@ fun arguments() = commands("Arguments") {
     slash("userDelete", "Удалить учётную запись из базы данных бота", Permissions(Permission.Administrator)){
         execute(UserArg("User", "Пользователь Discord")){
             val (user) = args
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'user=${user.fullName}'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=${user.fullName}'"
+            printLog(textCommand)
 
-            val guild = R2DBC.getGuild(guild)
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataKORD = R2DBC.getKORDs { tbl_KORDs.KORD_id eq user.toStringUID() ; tbl_KORDs.guild_id eq guild.id }.firstOrNull()
+            val dataKORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID() ; tbl_kords.guild_id eq guilds.id }.firstOrNull()
             val textMessage = if (dataKORD == null) {
                 "Пользователя не существует в базе"
             } else {
-                dataKORD.deleteWithKORDLOL(guild)
+                dataKORD.deleteWithKORDLOL(guilds)
                 "Удаление произошло успешно"
             }
             respond(textMessage)
@@ -188,11 +209,13 @@ fun arguments() = commands("Arguments") {
     slash("addSavedMMR", "Добавить бонусные MMR пользователю", Permissions(Permission.Administrator)){
         execute(UserArg("user", "Пользователь Discord"), IntegerArg("savedMMR", "Количество бонусных MMR")){
             val (user, savedMMR) = args
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'user=$user' 'savedMMR=$savedMMR'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=$user' 'savedMMR=$savedMMR'"
+            printLog(textCommand)
 
-            val guild = R2DBC.getGuild(guild)
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataUser = R2DBC.getKORDLOLs_forKORD(guild, user.toStringUID())
+            val dataUser = R2DBC.getKORDLOLs_forKORD(guilds, user.toStringUID())
             val textMessage = if (dataUser == null){
                 "Пользователя не существует в базе"
             } else {
@@ -207,11 +230,13 @@ fun arguments() = commands("Arguments") {
     slash("removeSavedMMR", "Вычесть бонусные MMR пользователю", Permissions(Permission.Administrator)){
         execute(UserArg("user", "Пользователь Discord"), IntegerArg("savedMMR", "Количество вычитаемых MMR")){
             val (user, savedMMR) = args
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'user=$user' 'savedMMR=$savedMMR'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=$user' 'savedMMR=$savedMMR'"
+            printLog(textCommand)
 
-            val guild = R2DBC.getGuild(guild)
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataUser = R2DBC.getKORDLOLs_forKORD(guild, user.toStringUID())
+            val dataUser = R2DBC.getKORDLOLs_forKORD(guilds, user.toStringUID())
             val textMessage = if (dataUser == null){
                 "Пользователя не существует в базе"
             } else {
@@ -226,13 +251,15 @@ fun arguments() = commands("Arguments") {
     slash("userDeleteFromId", "Удалить учётную запись из базы данных бота по ID пользователя", Permissions(Permission.Administrator)){
         execute(IntegerArg("UserId", "Пользователь Discord ID в базе")){
             val (UserId) = args
-            printLog("[Start command] '$name' from ${author.fullName} with params: 'user=$UserId'")
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=$UserId'"
+            printLog(textCommand)
 
-            val guild = R2DBC.getGuild(guild)
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val kordlol = R2DBC.getKORDLOLs { tbl_KORDLOLs.id eq UserId ; tbl_KORDLOLs.guild_id eq guild.id }.firstOrNull()
+            val kordlol = R2DBC.getKORDLOLs { tbl_kordlols.id eq UserId ; tbl_kordlols.guild_id eq guilds.id }.firstOrNull()
             val textMessage = if (kordlol != null) {
-                kordlol.deleteWithKORD(guild)
+                kordlol.deleteWithKORD(guilds)
                 "Удаление прошло успешно"
             } else {
                 "Пользователя с ID $UserId не существует"
@@ -241,28 +268,4 @@ fun arguments() = commands("Arguments") {
             respond(textMessage)
         }
     }
-
-//    slash("pLoadMatches", "Прогрузить очередные 100 игр пользователя", Permissions(Permission.Administrator)){
-//        execute(UserArg("User", "Пользователь Discord"), IntegerArg("startIndex", "Начиная с какой игры (с последней) прогружать матчи")){
-//            val (user, startIndex) = args
-//            printLog("[Start command] '$name' from ${author.fullName} with params: 'user=${user.fullName}' 'startIndex=$startIndex'")
-//
-//            val sqlData = SQLData(guild, getGuild(guild))
-//            val dataUser = TableKORD_LOL.getForKORD(user)
-//            val textMessage = if (dataUser == null){
-//                "Пользователя не существует в базе"
-//            } else {
-//                asyncLaunch {
-//                    dataUser.second.forEach {
-//                        if (it.LOLperson == null) return@forEach
-//                        reloadMatch(sqlData, it.LOLperson!!.LOL_puuid, startIndex)
-//                    }
-//                    guild.sendMessage(getGuild(guild).messageIdDebug, "Прогрузка матчей (с $startIndex в количестве 100) для пользователя ${user.lowDescriptor()} завершена")
-//                }
-//                "Прогрузка успешно запущена"
-//            }
-//
-//            respond(textMessage)
-//        }
-//    }
 }
