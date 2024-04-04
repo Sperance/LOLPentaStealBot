@@ -23,6 +23,7 @@ import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
+import ru.descend.bot.printLog
 import java.util.WeakHashMap
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
@@ -30,22 +31,19 @@ data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var m
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
+    var isNeedUpdateDatas = true
     var listMainData = ArrayList<KORDLOLs>()
 
-    val dataGuild = WorkData<Guilds>()
     val dataKORDLOL = WorkData<KORDLOLs>()
     val dataKORD = WorkData<KORDs>()
-    val dataLOL = WorkData<LOLs>()
     val dataMMR = WorkData<MMRs>()
 
     val dataSavedLOL = WorkData<LOLs>()
     val dataSavedParticipants = WorkData<Participants>()
 
     fun initialize() {
-        if (dataGuild.bodyReset == null) dataGuild.bodyReset = { R2DBC.getGuilds(null) }
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guildSQL.id } }
         if (dataKORD.bodyReset == null) dataKORD.bodyReset = { R2DBC.getKORDs { tbl_kords.guild_id eq guildSQL.id } }
-        if (dataLOL.bodyReset == null) dataLOL.bodyReset = { R2DBC.getLOLs(null) }
         if (dataMMR.bodyReset == null) dataMMR.bodyReset = { R2DBC.getMMRs(null) }
 
         if (dataSavedLOL.bodyReset == null) {
@@ -63,21 +61,13 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }
     }
 
-    fun performClear() {
-        dataGuild.clear()
-        dataKORDLOL.clear()
-        dataKORD.clear()
-        dataLOL.clear()
-        dataMMR.clear()
-
-        dataSavedLOL.clear()
-        dataSavedParticipants.clear()
+    fun printWorkSize() {
+        printLog("KORDLOL:${dataKORDLOL.getSize()} KORD:${dataKORD.getSize()} MMR:${dataMMR.getSize()} SavedLOL:${dataSavedLOL.getSize()} SavedParticipants:${dataSavedParticipants.getSize()}")
     }
 
     suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
     suspend fun getKORDLOL(id: Int?) = getKORDLOL().find { it.id == id }
-    suspend fun getLOL(reset: Boolean = false) = dataLOL.get(reset)
-    suspend fun getLOL(id: Int?) = getLOL().find { it.id == id }
+    suspend fun getLOL(id: Int?) = R2DBC.getLOLs { tbl_lols.id eq id }.firstOrNull()
     suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
     suspend fun getKORD(id: Int?) = getKORD().find { it.id == id }
 
@@ -185,11 +175,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
         if (guild != other.guild) return false
         if (guildSQL != other.guildSQL) return false
+        if (isNeedUpdateDatas != other.isNeedUpdateDatas) return false
         if (listMainData != other.listMainData) return false
-        if (dataGuild != other.dataGuild) return false
         if (dataKORDLOL != other.dataKORDLOL) return false
         if (dataKORD != other.dataKORD) return false
-        if (dataLOL != other.dataLOL) return false
         if (dataMMR != other.dataMMR) return false
         if (dataSavedLOL != other.dataSavedLOL) return false
         if (dataSavedParticipants != other.dataSavedParticipants) return false
@@ -200,11 +189,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     override fun hashCode(): Int {
         var result = guild.hashCode()
         result = 31 * result + guildSQL.hashCode()
+        result = 31 * result + isNeedUpdateDatas.hashCode()
         result = 31 * result + listMainData.hashCode()
-        result = 31 * result + dataGuild.hashCode()
         result = 31 * result + dataKORDLOL.hashCode()
         result = 31 * result + dataKORD.hashCode()
-        result = 31 * result + dataLOL.hashCode()
         result = 31 * result + dataMMR.hashCode()
         result = 31 * result + dataSavedLOL.hashCode()
         result = 31 * result + dataSavedParticipants.hashCode()

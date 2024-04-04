@@ -40,7 +40,7 @@ fun arguments() = commands("Arguments") {
                 dateText += "1900"
             }
             if (dateText.length != 8) {
-                respond("Ошибка преобразования значения в дату: $date. Необходим формат примера 03091990 (3 сентября 1990 года)")
+                respond("Ошибка преобразования значения в дату: $date. Необходим формат примера 03091990 (3 сентября 1990 года) или без года (0309)")
                 return@execute
             }
             date.forEach {
@@ -49,6 +49,7 @@ fun arguments() = commands("Arguments") {
                     return@execute
                 }
             }
+
             dateText += "_" + (GregorianCalendar.getInstance().get(Calendar.YEAR) - 1)
 
             //val localDate = LocalDate.parse(dateText, DateTimeFormatter.ofPattern("ddMMyyyy"))

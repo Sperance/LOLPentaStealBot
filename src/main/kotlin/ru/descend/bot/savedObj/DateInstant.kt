@@ -37,7 +37,7 @@ fun Date.getStringTime(withSeconds: Boolean = false): String {
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(this)
 }
 
-fun getDate(day: Int, month: Int, year: Int) =
+fun getDate(day: Int, month: Int, year: Int): Date =
     Calendar.getInstance().apply {
         set(Calendar.DAY_OF_YEAR, day)
         set(Calendar.MONTH, month)

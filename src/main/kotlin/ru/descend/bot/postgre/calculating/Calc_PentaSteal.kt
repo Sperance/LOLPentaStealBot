@@ -20,13 +20,7 @@ data class Calc_PentaSteal (
 ) {
     suspend fun calculte() {
         if (mch.bots) return
-        var isNeedCalculate = false
-        sqlData.getSavedParticipantsForMatch(mch.id).forEach {
-            if (it.kills4 > 0) {
-                isNeedCalculate = true
-                return@forEach
-            }
-        }
+        var isNeedCalculate = sqlData.getSavedParticipantsForMatch(mch.id).filter { it.kills4 > 0 }.isEmpty()
         if (isNeedCalculate) {
             val parts = mch.getParticipants()
             calcDataPenta(LeagueMainObject.catchPentaSteal(sqlData, match.metadata.matchId)).forEach { pair ->

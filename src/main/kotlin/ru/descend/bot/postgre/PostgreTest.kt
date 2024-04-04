@@ -1,12 +1,16 @@
 package ru.descend.bot.postgre
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Test
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.r2dbc.create
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.getDate
+import ru.descend.bot.savedObj.getStrongDate
+import ru.descend.bot.savedObj.toDate
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -31,23 +35,35 @@ class PostgreTest {
         listIds.add("RU_476367408")
     }
 
+    fun isNeedSetLowerYear(dateValue: String) : Boolean {
+        val valueDay = dateValue.substring(0..1).toInt()
+        val valueMonth = dateValue.substring(2..3).toInt()
+        val curDate = LocalDate.of(2000, valueMonth, valueDay)
+        val curSysDate = LocalDate.of(2000, LocalDate.now().monthValue, LocalDate.now().dayOfMonth)
+        if (curDate < curSysDate) return false
+        if (curDate > curSysDate) return true
+        if (curDate == curSysDate) return true
+        return false
+    }
+
     @Test
     fun test_birthday_parse() {
-        val dateValue = "12111900_2024"
+        val dateValue = "05041900_2024"
 
         val valueDay = dateValue.substring(0..1).toInt()
         val valueMonth = dateValue.substring(2..3).toInt()
         val valueYear = dateValue.substring(4..7).toInt()
-        val lastYear = dateValue.substring(9..12).toInt()
+        printLog("d$valueDay m$valueMonth y$valueYear")
 
-        val calendarInstance = GregorianCalendar.getInstance()
-        val currentDay = calendarInstance.get(Calendar.DAY_OF_MONTH)
-        val currentMonth = calendarInstance.get(Calendar.MONTH) + 1
-        val currentYear = calendarInstance.get(Calendar.YEAR)
+        val curDate = LocalDate.of(2000, valueMonth, valueDay)
+        printLog(curDate.dayOfMonth)
+        printLog(curDate.monthValue)
+        printLog(curDate.year)
 
-        if (valueDay == currentDay && valueMonth == currentMonth && lastYear != currentYear){
-
-        }
+        val curSysDate = LocalDate.of(2000, LocalDate.now().monthValue, LocalDate.now().dayOfMonth)
+        if (curDate < curSysDate) printLog("low")
+        if (curDate > curSysDate) printLog("great")
+        if (curDate == curSysDate) printLog("eq")
     }
 
     @Test

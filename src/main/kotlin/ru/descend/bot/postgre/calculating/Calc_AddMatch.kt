@@ -47,13 +47,14 @@ data class Calc_AddMatch (
             bots = isBots,
             surrender = isSurrender
         ).create(Matches::matchId)
+        sqlData.isNeedUpdateDatas = true
 
-        if (pMatch.id % 1000 == 0){
-            asyncLaunch {
-                sqlData.sendEmail("Sys", "execute method AVGs()")
-                sqlData.executeProcedure("call \"GetAVGs\"()")
-            }
-        }
+//        if (pMatch.id % 1000 == 0){
+//            asyncLaunch {
+//                sqlData.sendEmail("Sys", "execute method AVGs()")
+//                sqlData.executeProcedure("call \"GetAVGs\"()")
+//            }
+//        }
 
         val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->
@@ -97,8 +98,6 @@ data class Calc_AddMatch (
                 curLOL = if (isNewLOL) curLOL.create(LOLs::LOL_puuid)
                 else curLOL.update()
             }
-
-            if (isNewLOL) sqlData.dataLOL.add(curLOL)
 
             arrayNewParts.add(Participants(part, pMatch, curLOL))
         }

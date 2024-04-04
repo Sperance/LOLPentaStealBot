@@ -10,6 +10,8 @@ class WorkData<T> {
         return listData
     }
 
+    fun getSize() = listData.size
+
     fun set(list: List<T>) {
         listData.clear()
         listData.addAll(list)
@@ -27,5 +29,23 @@ class WorkData<T> {
     suspend fun reset() {
         listData.clear()
         listData.addAll(bodyReset?.invoke()?: listOf())
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as WorkData<*>
+
+        if (listData != other.listData) return false
+        if (bodyReset != other.bodyReset) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = listData.hashCode()
+        result = 31 * result + (bodyReset?.hashCode() ?: 0)
+        return result
     }
 }
