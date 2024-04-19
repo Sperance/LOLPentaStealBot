@@ -15,7 +15,12 @@ import me.jakejmattson.discordkt.util.descriptor
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.savedObj.DSC_PS
 import ru.descend.bot.savedObj.decrypt
+import ru.descend.bot.savedObj.encrypt
+import ru.descend.bot.savedObj.getStrongDate
 import java.io.File
+import java.math.RoundingMode
+import java.nio.file.Files
+import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Base64
 import java.util.Date
@@ -76,6 +81,14 @@ fun printLog(guild: Guild, message: Any){
     println("[$curDTime] [${guild.id.value}] $message")
 }
 
+fun <T, E> Map<T, E>.toStringMap() : String {
+    var block = ""
+    forEach { (t, e) ->
+        block += "{$t:$e}"
+    }
+    return block
+}
+
 fun Int.toFormatK() : String {
     var index = 0
     var ost = 0
@@ -121,13 +134,34 @@ fun User.lowDescriptor(): String {
     return descriptor().split(" :: ")[1]
 }
 
+val File.size get() = if (!exists()) 0.0 else length().toDouble()
+val File.sizeInKb get() = size / 1024
+val File.sizeInMb get() = sizeInKb / 1024
+val File.sizeInGb get() = sizeInMb / 1024
+val File.sizeInTb get() = sizeInGb / 1024
+
 fun catchToken(): List<String> {
     val file = File("token.dsc")
     if (!file.exists()) {
         file.createNewFile()
-        //TODO Write token
+        //TODO Write token 1 - dicsord/2 - LOL/3 - Gemini
     }
     return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
+}
+
+fun writeLog(text: String?) {
+    val pathFile = File("logs")
+    if (!pathFile.exists()) Files.createDirectory(pathFile.toPath())
+    val curDateText = Date().getStrongDate().date
+    var logFile = File(pathFile.path, "log-$curDateText.txt")
+    if (!logFile.exists()) logFile.createNewFile()
+
+    if (logFile.sizeInMb > 2.0) {
+        logFile = File(pathFile.path, "log-$curDateText-${pathFile.listFiles()?.size}.txt")
+    }
+
+    val curDTime = System.currentTimeMillis().toFormatDateTime()
+    logFile.appendText("[$curDTime] $text\n")
 }
 
 fun String.toBase64() : String {
@@ -137,6 +171,17 @@ fun String.toBase64() : String {
 fun String.fromBase64(): String {
     val decodedBytes = Base64.getDecoder().decode(this)
     return String(decodedBytes)
+}
+
+fun Double?.toFormat(items: Int) : String {
+    if (this == null) return "-0.0"
+    var pattern = ""
+    for (i in 1..items) {
+        pattern += "#"
+    }
+    val df = DecimalFormat("#.$pattern")
+    df.roundingMode = RoundingMode.DOWN
+    return df.format(this)
 }
 
 fun formatInt(value: Int?, items: Int) : String {

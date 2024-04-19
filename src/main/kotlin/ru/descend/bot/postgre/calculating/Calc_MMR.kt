@@ -64,9 +64,6 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
             kordlol.find { it.LOL_id == participant.LOLperson_id }?.let {
                 calculateMMRaram(it)
             }
-            if (match.matchMode == "ARAM") {
-                sqlData.sendEmail("${match.matchId} (${match.id})", mmrEmailText)
-            }
         } else {
             printLog("MMR table is NULL")
         }
@@ -150,6 +147,9 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 
         val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
 
+        //В принципе победа - докидываем 2ММР сверху
+        addedValue += 2.0
+
         //обработка штрафа к получаемому ММР в зависимости от ранга
         val removeMMR = (rank.rankValue / 10.0 * 2).to2Digits()
         if (removeMMR > 0.0) {
@@ -225,7 +225,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
 
         //лимит получаемых бонусных ММР за матч
-        val limitMMR = rank.rankValue * 3.0
+        val limitMMR = rank.rankValue + 5.0
 
         mmrEmailText += "\n[calcAddSavedMMR] текущее значение бонус ММР: $newSavedMMR\n"
 
@@ -238,16 +238,10 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
             addSavedMMR += participant.kills5 * 5.0
         }
 
-        //за каждую квадру 3 очка
+        //за каждую квадру 2 очка
         if (participant.kills4 > 0) {
             mmrEmailText += "[calcAddSavedMMR] сделано Квадр: ${participant.kills4}\n"
-            addSavedMMR += participant.kills4 * 3.0
-        }
-
-        //за каждую триплу 1 очко
-        if (participant.kills3 > 0) {
-            mmrEmailText += "[calcAddSavedMMR] сделано Трипл: ${participant.kills3}\n"
-            addSavedMMR += participant.kills3
+            addSavedMMR += participant.kills4 * 2.0
         }
 
         if (addSavedMMR > limitMMR) {
@@ -342,7 +336,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
     }
 
     override fun toString(): String {
-        return "CalculateMMR(win=${participant.win} mmrValue=$mmrValue, countFields=$countFields)"
+        return "MMR(win=${participant.win} mmr=$mmrValue, fields=$countFields)"
     }
 
     override fun equals(other: Any?): Boolean {

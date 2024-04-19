@@ -1,11 +1,9 @@
 package ru.descend.bot.postgre.r2dbc
 
-import org.komapper.core.EntityMetamodels
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.metamodel.EntityMetamodel
 import org.komapper.core.dsl.metamodel.PropertyMetamodel
 import org.komapper.core.dsl.metamodel.getAutoIncrementProperty
-import org.komapper.core.dsl.query.EntityStore
 import ru.descend.bot.printLog
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.full.createInstance
@@ -21,7 +19,7 @@ fun <T> calculateUpdate(before: T?, after: T?) : String {
         it.isAccessible = true
         val fieldbefore = it.get(before)
         val fieldafter = it.get(after)
-        if ((fieldbefore != fieldafter && it.name != "updatedAt" && it.name != "createdAt") || it.name == "champion") {
+        if (fieldbefore != fieldafter && it.name != "updatedAt") {
             result += "${it.name} '${fieldbefore}' -> '${fieldafter}'; "
         }
     }
@@ -50,7 +48,7 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.update() : 
     }.firstOrNull()
 
     if (already == this) return already as TYPE
-    if (already == null) throw IllegalArgumentException("In table for name tbl_${this::class.java.simpleName.lowercase()}) dont find object with id ${this@update.getField("id")}")
+    if (already == null) throw IllegalArgumentException("In table for name tbl_${this::class.java.simpleName.lowercase()}) in Meta ${metaTable.javaClass.simpleName} don`t find object with id ${this@update.getField("id")}. Object: $this")
 
     val result = R2DBC.runQuery { QueryDsl.update(metaTable).single(this@update) }
     printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this {${calculateUpdate(already, result)}}")
@@ -86,6 +84,6 @@ suspend fun <META : EntityMetamodel<Any, Any, META>> Any.delete() {
 
     R2DBC.runQuery {
         val prop_id = metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int>
-        QueryDsl.delete(metaTable).where { prop_id eq this.getField("id") as Int }
+        QueryDsl.delete(metaTable).where { prop_id eq this@delete.getField("id") as Int }
     }
 }

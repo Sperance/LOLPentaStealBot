@@ -6,7 +6,9 @@ import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.update
+import ru.descend.bot.savedObj.Gemini
 import ru.descend.bot.sendMessage
+import ru.descend.bot.writeLog
 import java.util.Calendar
 import java.util.GregorianCalendar
 
@@ -14,9 +16,9 @@ data class Calc_Birthday(private var sqlData: SQLData_R2DBC, var dataList: List<
 
     suspend fun calculate() {
         dataList.filter { isBirthday(it.date_birthday) }.forEach {
-            val textMessage = "О Боги\n У высокоуважаемого (или не очень) чела с ником ${it.asUser(sqlData.guild).lowDescriptor()} сегодня день рождения. Поздравим же его 10 бонусными ММР!!!"
-            sqlData.sendEmail("День рождения", textMessage)
+            val textMessage = Gemini.generateForText("Напиши красивое поздравление с днём рождения пользователю с ником ${it.asUser(sqlData.guild).lowDescriptor()} в контексте игры League of Legends")
             sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, textMessage)
+            writeLog(textMessage)
             val currentTextBirthday = it.date_birthday
             val newTextBirthday = currentTextBirthday.dropLast(4) + GregorianCalendar.getInstance().get(Calendar.YEAR)
             it.date_birthday = newTextBirthday

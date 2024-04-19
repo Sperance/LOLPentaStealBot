@@ -9,6 +9,12 @@ import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.LeagueApi
+import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.lolapi.Result
+import ru.descend.bot.lolapi.safeApiCall
+import ru.descend.bot.printLog
+import ru.descend.bot.statusLOLRequests
+import ru.descend.bot.writeLog
 import java.time.LocalDateTime
 
 @KomapperEntity
@@ -21,7 +27,7 @@ data class LOLs(
     var LOL_puuid: String = "",
     var LOL_summonerId: String = "",
     var LOL_accountId: String = "",
-    var LOL_summonerName: String = "",
+    var LOL_summonerName: String? = "",
     var LOL_riotIdName: String? = "",
     var LOL_riotIdTagline: String? = "",
     var LOL_region: String? = "",
@@ -38,24 +44,35 @@ data class LOLs(
     }
 
     suspend fun connectLOL(region: String, summonerName: String) : LOLs? {
-        val leagueApi = LeagueApi(catchToken()[1], region)
-        val exec = leagueApi.leagueService.getBySummonerName(summonerName)
-        if (!exec.isSuccessful) return null
-        val newLOL = LOLs()
-        exec.body()?.let {
-            newLOL.LOL_puuid = it.puuid
-            newLOL.LOL_summonerId = it.id
-            newLOL.LOL_accountId = it.accountId
-            newLOL.LOL_summonerName = it.name
-            newLOL.LOL_region = region
-            newLOL.LOL_summonerLevel = it.summonerLevel
+
+        val dataLOL = when (val res = safeApiCall { LeagueMainObject.leagueService.getBySummonerName(summonerName) }){
+            is Result.Success -> { res.data }
+            is Result.Error -> {
+                statusLOLRequests = 1
+                val messageError = "connectLOL failure: ${res.message} with summonerName: $summonerName"
+                printLog(messageError)
+                writeLog(messageError)
+                null
+            }
         }
-        return newLOL
+
+        return if (dataLOL != null) {
+            val newLOL = LOLs()
+            newLOL.LOL_puuid = dataLOL.puuid
+            newLOL.LOL_summonerId = dataLOL.id
+            newLOL.LOL_accountId = dataLOL.accountId
+            newLOL.LOL_summonerName = dataLOL.name
+            newLOL.LOL_region = region
+            newLOL.LOL_summonerLevel = dataLOL.summonerLevel
+            newLOL
+        } else {
+            null
+        }
     }
 
     fun getCorrectName() : String {
         if (!LOL_riotIdName.isNullOrEmpty()) return LOL_riotIdName!!
-        return LOL_summonerName
+        return LOL_summonerName?:""
     }
 
     override fun toString(): String {

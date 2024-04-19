@@ -33,6 +33,7 @@ dependencies {
     implementation("org.komapper:komapper-dialect-postgresql-r2dbc")
     ksp("org.komapper:komapper-processor")
 
+    implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.squareup.retrofit2:retrofit:2.10.0")
     implementation("com.squareup.retrofit2:converter-gson:2.10.0")
 
@@ -43,16 +44,14 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     testImplementation(kotlin("test"))
-
-    implementation ("com.sun.mail:android-mail:1.6.7")
-    implementation ("com.sun.mail:android-activation:1.6.7")
     implementation(kotlin("reflect"))
+
+    implementation("dev.shreyaspatil.generativeai:generativeai-google:0.2.2-1.0.0")
 }
 
 tasks {
     compileKotlin {
         kotlinOptions.jvmTarget = "17"
-       // dependsOn("writeProperties")
 
         Properties().apply {
             setProperty("name", project.name)
@@ -63,14 +62,6 @@ tasks {
             store(file("src/main/resources/bot.properties").outputStream(), null)
         }
     }
-
-//    register<WriteProperties>("writeProperties") {
-//        property("name", project.name)
-//        property("description", project.description.toString())
-//        property("version", version.toString())
-//        property("url", "https://github.com/Sperance/LOLPentaStealBot")
-////        setOutputFile("src/main/resources/bot.properties")
-//    }
 }
 
 tasks.withType<Tar> {

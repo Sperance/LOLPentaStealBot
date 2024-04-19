@@ -2,28 +2,50 @@ package ru.descend.bot.commands
 
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
+import dev.kord.core.behavior.edit
+import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.channel.TextChannel
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.util.fullName
+import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.create
+import ru.descend.bot.postgre.r2dbc.delete
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.Gemini
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toStringUID
+import java.util.ArrayList
 import java.util.Calendar
 import java.util.GregorianCalendar
 
 fun arguments() = commands("Arguments") {
+
+    slash("genText", "Получить ответ от Gemini AI на запрос", Permissions(Permission.UseApplicationCommands)){
+        execute(AnyArg("request")) {
+            val (request) = args
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'request'=${request}"
+            printLog(textCommand)
+
+            asyncLaunch {
+                var result = "${author.lowDescriptor()}: $request\n\nОтвет:\n"
+                result += Gemini.generateForText(request)
+                channel.createMessage(result)
+            }
+
+            respond("Ожидание ответа...")
+        }
+    }
 
     slash("setBirthdayDate", "Ввести дату рождения пользователя (в формате ddmmyyyy, например 03091990)", Permissions(Permission.UseApplicationCommands)){
         execute(UserArg("user", "Пользователь Discord"), AnyArg("date")){
@@ -176,12 +198,20 @@ fun arguments() = commands("Arguments") {
                 return@execute
             }
 
-            val KORDLOL = KORDLOLs(
-                KORD_id = KORD.id,
-                LOL_id = LOL.id,
-                guild_id = guilds.id
-            )
-            KORDLOL.create(KORDLOLs::KORD_id)
+            asyncLaunch {
+                val KORDLOL = KORDLOLs(
+                    KORD_id = KORD.id,
+                    LOL_id = LOL.id,
+                    guild_id = guilds.id
+                )
+
+                val resultData = KORDLOL.create(KORDLOLs::KORD_id)
+                val arrayData = ArrayList<KORDLOLs>()
+                arrayData.addAll(R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guilds.id })
+                arrayData.sortBy { data -> data.showCode }
+                resultData.showCode = arrayData.last().showCode + 1
+                resultData.update()
+            }
 
             respond("Пользователь ${user.lowDescriptor()} успешно связан с учётной записью ${LOL.LOL_summonerName}")
         }
@@ -201,6 +231,37 @@ fun arguments() = commands("Arguments") {
                 "Пользователя не существует в базе"
             } else {
                 dataKORD.deleteWithKORDLOL(guilds)
+                "Удаление произошло успешно"
+            }
+            respond(textMessage)
+        }
+    }
+
+    slash("userDeleteFromID", "Удалить учётную запись из базы данных бота по ID", Permissions(Permission.Administrator)){
+        execute(IntegerArg("id", "id пользователя Discord")){
+            val (id) = args
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'id=$id'"
+            printLog(textCommand)
+
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
+
+            val dataKORD = R2DBC.getKORDLOLs { tbl_kordlols.showCode eq id ; tbl_kordlols.guild_id eq guilds.id }
+
+            if (dataKORD.isEmpty()) {
+                respond("Пользователя с id $id в базе не найдено. Операция отменена. Обратитесь к Администратору")
+                return@execute
+            }
+
+            if (dataKORD.size > 1) {
+                respond("Пользователей с id $id больше 1: ${dataKORD.size}. Операция отменена. Обратитесь к Администратору")
+                return@execute
+            }
+
+            val textMessage = run {
+                val kordId = dataKORD.first().KORD_id
+                dataKORD.first().delete()
+                R2DBC.getKORDs { tbl_kords.id eq kordId }.firstOrNull()?.delete()
                 "Удаление произошло успешно"
             }
             respond(textMessage)

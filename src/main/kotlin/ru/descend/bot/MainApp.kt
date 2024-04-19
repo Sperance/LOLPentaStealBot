@@ -126,14 +126,14 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         val checkMatches = ArrayList<String>()
         sqlData.dataSavedLOL.get(true).forEach {
             if (it.LOL_puuid == "") return@forEach
-            LeagueMainObject.catchMatchID(sqlData, it.LOL_puuid, it.getCorrectName(), 0, 10).forEach ff@{ matchId ->
+            LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 10).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
         val listChecked = sqlData.getNewMatches(checkMatches)
         listChecked.sortBy { it }
         listChecked.forEach { newMatch ->
-            LeagueMainObject.catchMatch(sqlData, newMatch)?.let { match ->
+            LeagueMainObject.catchMatch(newMatch)?.let { match ->
                 sqlData.addMatch(match)
             }
         }
@@ -232,17 +232,15 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
 
     builder.content = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
 
-    if (!sqlData.isNeedUpdateDatas) return
+    val data = sqlData.getKORDLOL()
+    data.sortBy { it.showCode }
 
-    sqlData.listMainData.addAll(sqlData.getKORDLOL())
-    sqlData.listMainData.sortBy { it.showCode }
-
-    val charStr = " / "
+    val charStr = "/"
     val wStreak = sqlData.getWinStreak()
 
-    val mainDataList1 = (sqlData.listMainData.map { formatInt(it.showCode, 2) + charStr + it.asUser(sqlData.guild, sqlData).lowDescriptor() })
-    val mainDataList2 = (sqlData.listMainData.map { sqlData.getLOL(it.LOL_id)?.getCorrectName() })
-    val mainDataList3 = (sqlData.listMainData.map { wStreak[it.LOL_id] })
+    val mainDataList1 = (data.map { formatInt(it.showCode, 2) + charStr + it.asUser(sqlData.guild, sqlData).lowDescriptor() })
+    val mainDataList2 = (data.map { sqlData.getLOL(it.LOL_id)?.getCorrectName() })
+    val mainDataList3 = (data.map { wStreak[it.LOL_id] })
     builder.embed {
         field {
             name = "ID/User"
@@ -280,8 +278,8 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
         else formatInt(it.kordLOL?.showCode, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank
     })
     val mainDataList2 = (aramData.map {
-        if (it.match_id == it.last_match_id) "**" + it.mmr_aram + charStr + it.mmr_aram_saved + charStr + it.games + "**"
-        else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + it.games
+        if (it.match_id == it.last_match_id) "**" + it.mmr_aram + charStr + it.mmr_aram_saved + charStr + (it.mmr_aram / it.games).toFormat(2) + "**"
+        else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + (it.mmr_aram / it.games).toFormat(2)
     })
     val mainDataList3 = (aramData.map {
         if (it.match_id == it.last_match_id) "**" + LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + "**"
@@ -296,7 +294,7 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
             inline = true
         }
         field {
-            name = "MMR/Bonus/Games"
+            name = "MMR/Bonus/AVG"
             value = mainDataList2.joinToString(separator = "\n")
             inline = true
         }

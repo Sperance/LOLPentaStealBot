@@ -2,8 +2,8 @@ package ru.descend.bot.postgre.calculating
 
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
-import ru.descend.bot.lolapi.leaguedata.match_dto.Participant
+import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
+import ru.descend.bot.lolapi.dto.match_dto.Participant
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
@@ -13,11 +13,14 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.create
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
+import ru.descend.bot.savedObj.Gemini
 import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDateTime
+import ru.descend.bot.writeLog
 
 data class Calc_AddMatch (
     val sqlData: SQLData_R2DBC,
@@ -70,8 +73,12 @@ data class Calc_AddMatch (
                 kordLol.find { it.LOL_id == curLOL?.id }?.let {
                     asyncLaunch {
                         if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
-                            val textPentas = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                            sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentas за ${LeagueMainObject.findHeroForKey(part.championId.toString())} убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}")
+                            val championName = LeagueMainObject.findHeroForKey(part.championId.toString())
+                            val textPentasCount = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
+                            val textPenta = Gemini.generateForText("Напиши поздравление для игрока ${curLOL!!.getCorrectName()} который сделал Пентакилл в игре League of Legends за чемпиона $championName")
+                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n\n$textPenta"
+                            sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, resultText)
+                            writeLog(resultText)
                         }
                     }
                 }
@@ -112,11 +119,16 @@ data class Calc_AddMatch (
 
     private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
         var users = ""
-        sqlData.getSavedParticipantsForMatch(pMatch.id).forEach {
-            val data = Calc_MMR(sqlData, it, pMatch, kordLol, sqlData.getMMRforChampion(it.championName))
+        R2DBC.getParticipants { tbl_participants.match_id eq pMatch.id ; tbl_participants.guild_id eq sqlData.guildSQL.id }.forEach {par ->
+            val data = Calc_MMR(sqlData, par, pMatch, kordLol, sqlData.getMMRforChampion(par.championName))
             data.init()
-            users += sqlData.getLOL(it.LOLperson_id)?.LOL_summonerName + " hero: ${it.championName} $data\n"
+            users += sqlData.getLOL(par.LOLperson_id)?.LOL_summonerName + " hero: ${par.championName} size: ${R2DBC.getParticipants { tbl_participants.LOLperson_id eq par.LOLperson_id }.size} $data\n"
         }
+//        sqlData.getSavedParticipantsForMatch(pMatch.id).forEach {
+//            val data = Calc_MMR(sqlData, it, pMatch, kordLol, sqlData.getMMRforChampion(it.championName))
+//            data.init()
+//            users += sqlData.getLOL(it.LOLperson_id)?.LOL_summonerName + " hero: ${it.championName} $data\n"
+//        }
         sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
             "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                     "${pMatch.matchDateStart.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +

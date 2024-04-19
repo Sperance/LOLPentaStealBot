@@ -23,13 +23,25 @@ data class Guilds(
     var description: String = "",
 
     var botChannelId: String = "",
+    /**
+     * Канал основных сообщений на сервере (видимых всем пользователям)
+     */
     var messageIdStatus: String = "",
+    /**
+     * ID Имя Серия побед таблица
+     */
     var messageIdMain: String = "",
     /**
      * Канал для служебных сообщений (скрыт для обычных пользователей)
      */
     var messageIdDebug: String = "",
+    /**
+     * Таблица по всем играм\винрейт\сериям убийств
+     */
     var messageIdGlobalStatisticData: String = "",
+    /**
+     * Таблица ММР арама и последней игры
+     */
     var messageIdArammmr: String = "",
 
     @KomapperCreatedAt

@@ -9,17 +9,23 @@ import dev.kord.core.event.role.RoleCreateEvent
 import dev.kord.core.event.role.RoleDeleteEvent
 import me.jakejmattson.discordkt.dsl.listeners
 import me.jakejmattson.discordkt.util.descriptor
+import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.Gemini
 import ru.descend.bot.sendMessage
 
 fun listeners() = listeners {
-
     on<MemberJoinEvent> {
         val memberUser = member.asUser().descriptor()
         printLog(getGuild(), "{Зашел на сервер} $memberUser")
         getGuild().sendMessage(R2DBC.getGuild(getGuild()).messageIdDebug, "{Зашел на сервер} ${member.asUser().descriptor()}")
+
+        asyncLaunch {
+            val genText = Gemini.generateForText("Напиши красивое приветственное сообщение пользователю ${member.asUser().lowDescriptor()} который зашел на сервер Discord посвященный игре League of Legends")
+            getGuild().sendMessage(R2DBC.getGuild(getGuild()).messageIdStatus, genText)
+        }
     }
     on<MemberLeaveEvent> {
         val textLeave = "{Вышел с сервера} ${user.descriptor()}"

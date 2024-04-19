@@ -1,20 +1,34 @@
 package ru.descend.bot.postgre
 
+import dev.shreyaspatil.ai.client.generativeai.GenerativeModel
+import dev.shreyaspatil.ai.client.generativeai.type.content
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Test
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.r2dbc.create
+import ru.descend.bot.postgre.r2dbc.delete
+import ru.descend.bot.postgre.r2dbc.getField
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.getDate
 import ru.descend.bot.savedObj.getStrongDate
 import ru.descend.bot.savedObj.toDate
+import ru.descend.bot.size
+import ru.descend.bot.sizeInKb
+import ru.descend.bot.sizeInMb
+import ru.descend.bot.toFormat
+import java.io.File
+import java.nio.file.Files
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import java.util.Date
 import java.util.GregorianCalendar
+import kotlin.io.path.Path
+import kotlin.io.path.pathString
 
 class PostgreTest {
 
@@ -27,12 +41,26 @@ class PostgreTest {
     }
 
     @Test
-    fun testMethod() {
-        printLog(1)
-        val listIds = ArrayList<String>()
-        listIds.add("RU_476092238")
-        listIds.add("RE_476370823")
-        listIds.add("RU_476367408")
+    fun test_format_double() {
+        val data = (646.5 / 226.0).toFormat(2)
+        printLog(data)
+    }
+
+    @Test
+    fun testGemini() {
+        runBlocking {
+            val generativeModel = GenerativeModel(
+                modelName = "gemini-pro",
+                apiKey = "AIzaSyC8btIsWBw0rf69PrQ4y51Vc1B9hqHEmH0"
+            )
+
+            val inputContent = content {
+                text("Напиши 3 интересных факта о жизни")
+            }
+
+            val response = generativeModel.generateContent(inputContent)
+            print(response.text)
+        }
     }
 
     fun isNeedSetLowerYear(dateValue: String) : Boolean {

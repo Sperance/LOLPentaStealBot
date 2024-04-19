@@ -2,16 +2,25 @@ package ru.descend.bot.postgre.calculating
 
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.lolapi.dataclasses.SavedPartSteal
-import ru.descend.bot.lolapi.leaguedata.MatchTimelineDTO
-import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
+import ru.descend.bot.lolapi.dto.MatchTimelineDTO
+import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
-import ru.descend.bot.printLog
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.savedObj.getStrongDate
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
+import ru.descend.bot.writeLog
 import java.time.Duration
+
+data class SavedPartSteal(
+    var participantId: Long,
+    var puuid: String,
+    var team: String,
+    var timeStamp: Long
+)
 
 data class Calc_PentaSteal (
     val sqlData: SQLData_R2DBC,
@@ -19,49 +28,63 @@ data class Calc_PentaSteal (
     val mch: Matches
 ) {
     suspend fun calculte() {
-        if (mch.bots) return
-        var isNeedCalculate = sqlData.getSavedParticipantsForMatch(mch.id).filter { it.kills4 > 0 }.isEmpty()
-        if (isNeedCalculate) {
-            val parts = mch.getParticipants()
-            calcDataPenta(LeagueMainObject.catchPentaSteal(sqlData, match.metadata.matchId)).forEach { pair ->
-                val firstPart = parts.find { sqlData.getLOL(it.LOLperson_id)?.LOL_puuid == pair.first }
-                val secondPart = parts.find { sqlData.getLOL(it.LOLperson_id)?.LOL_puuid == pair.second }
-                var textPSteal = ""
+        if (!isNeedCalc()) return
+        calcDataPenta(LeagueMainObject.catchPentaSteal(match.metadata.matchId)).forEach { pair ->
 
-                if (firstPart == null) {
-                    textPSteal += "Participant with PUUID ${pair.first} not found in SQL. Match: ${match.metadata.matchId}\n"
-                }
-                if (secondPart == null) {
-                    textPSteal += "Participant with PUUID ${pair.second} not found in SQL. Match: ${match.metadata.matchId}\n"
-                }
-                if (firstPart == secondPart) {
-                    textPSteal += "Participants with PUUID ${pair.first} are Equals. Match: ${match.metadata.matchId}\n"
-                }
+            writeLog(pair.third)
 
-                asyncLaunch {
-                    textPSteal += "PENTASTEAL (${match.metadata.matchId})\nЧел ${sqlData.getLOL(firstPart?.LOLperson_id)?.LOL_riotIdName} на ${firstPart?.championName} состили Пенту у ${sqlData.getLOL(secondPart?.LOLperson_id)?.LOL_riotIdName} на ${secondPart?.championName}"
-                    sqlData.sendMessage(sqlData.guildSQL.messageIdDebug, textPSteal)
-                    sqlData.sendEmail("PENTASTEAL (${match.metadata.matchId})", "$textPSteal\n\n${pair.third}")
-                }
+            val firstPart = R2DBC.getParticipants {
+                tbl_participants.match_id eq mch.id
+                tbl_participants.guild_id eq mch.guild_id
+                tbl_participants.LOLperson_id eq pair.first?.id
+            }.firstOrNull()
+
+            val secondPart = R2DBC.getParticipants {
+                tbl_participants.match_id eq mch.id
+                tbl_participants.guild_id eq mch.guild_id
+                tbl_participants.LOLperson_id eq pair.second?.id
+            }.firstOrNull()
+
+            var textPSteal = ""
+            if (firstPart == null) {
+                textPSteal += "Participant with PUUID ${pair.first} not found in SQL. Match: ${match.metadata.matchId}\n"
+            }
+            if (secondPart == null) {
+                textPSteal += "Participant with PUUID ${pair.second} not found in SQL. Match: ${match.metadata.matchId}\n"
+            }
+            if (firstPart == secondPart) {
+                textPSteal += "Participants with PUUID ${pair.first} are Equals. Match: ${match.metadata.matchId}\n"
+            }
+            asyncLaunch {
+                textPSteal += "PENTASTEAL (${match.metadata.matchId})\nЧел ${firstPart?.LOLpersonObj()?.getCorrectName()} на ${firstPart?.championName} состили Пенту у ${secondPart?.LOLpersonObj()?.getCorrectName()} на ${secondPart?.championName}"
+                sqlData.sendMessage(sqlData.guildSQL.messageIdDebug, textPSteal)
             }
         }
     }
 
-    private fun calcDataPenta(dto: MatchTimelineDTO?) : ArrayList<Triple<String, String, String>> {
-        val result = ArrayList<Triple<String, String, String>>()
+    private fun isNeedCalc() : Boolean {
+        if (mch.bots) return false
+        return match.info.participants.any { it.quadraKills > 0 }
+    }
+
+    private suspend fun calcDataPenta(dto: MatchTimelineDTO?) : ArrayList<Triple<LOLs?, LOLs?, String>> {
+        val result = ArrayList<Triple<LOLs?, LOLs?, String>>()
 
         if (dto == null) return result
 
-        val mapPUUID = HashMap<Long, String>()
+        val mapPUUID = HashMap<Long, LOLs?>()
         dto.info.participants.forEach { part ->
-            mapPUUID[part.participantId] = part.puuid
+            mapPUUID[part.participantId] = R2DBC.getLOLs { LOLs.tbl_lols.LOL_puuid eq part.puuid }.firstOrNull()
         }
 
         var lastDate = System.currentTimeMillis()
         var removedPart: SavedPartSteal? = null
         var isNextCheck = false
         val arrayQuadras = ArrayList<SavedPartSteal>()
-        var mainText = ""
+
+        var textLog = ""
+        mapPUUID.forEach { (l, loLs) -> textLog += "PART: $l LOL: $loLs\n" }
+        textLog += "\n\n"
 
         dto.info.frames.forEach { frame ->
             frame.events.forEach lets@ { event ->
@@ -70,14 +93,13 @@ data class Calc_PentaSteal (
                     val resDate = getStrongDate(event.timestamp)
                     lastDate = event.timestamp
 
-                    val textLog = "EVENT: team:${if (event.killerId <= 5) "BLUE" else "RED"} killerId:${event.killerId} multiKillLength:${event.multiKillLength ?: 0} killType: ${event.killType?:""} type:${event.type} ${resDate.timeSec} STAMP: ${event.timestamp} BETsec: ${betw.toSeconds()}\n"
-                    mainText += textLog
+                    textLog += "${if (event.killerId <= 5) "BLUE" else "RED"} killer:${mapPUUID[event.killerId]?.getCorrectName()}(${event.killerId}) victimId:${mapPUUID[event.victimId]?.getCorrectName()}(${event.victimId}) multiKillLength:${event.multiKillLength ?: 0} type:${event.type} ${resDate.timeSec} STAMP: ${event.timestamp} BETsec: ${betw.toSeconds()}\n"
 
                     if (isNextCheck && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL")) {
                         arrayQuadras.forEach saved@ { sPart ->
                             if (sPart.team == (if (event.killerId <= 5) "BLUE" else "RED") && sPart.participantId != event.killerId) {
-                                printLog("PENTESTEAL. Чел PUUID ${mapPUUID[event.killerId]} состилил Пенту у ${sPart.puuid}")
-                                result.add(Triple(mapPUUID[event.killerId]!!, sPart.puuid, mainText))
+                                textLog += "PENTESTEAL. Чел ${mapPUUID[event.killerId]} состилил Пенту у ${mapPUUID[sPart.participantId]}\n"
+                                result.add(Triple(mapPUUID[event.killerId]!!, mapPUUID[sPart.participantId]!!, textLog))
                                 removedPart = sPart
                                 return@saved
                             }
@@ -89,7 +111,7 @@ data class Calc_PentaSteal (
                         isNextCheck = false
                     }
                     if (event.multiKillLength == 4L) {
-                        arrayQuadras.add(SavedPartSteal(event.killerId, mapPUUID[event.killerId] ?: "", if (event.killerId <= 5) "BLUE" else "RED", event.timestamp))
+                        arrayQuadras.add(SavedPartSteal(event.killerId, mapPUUID[event.killerId]?.LOL_puuid ?: "", if (event.killerId <= 5) "BLUE" else "RED", event.timestamp))
                         isNextCheck = true
                     }
                 }

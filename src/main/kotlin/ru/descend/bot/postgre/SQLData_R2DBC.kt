@@ -5,8 +5,7 @@ import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
-import ru.descend.bot.lolapi.leaguedata.match_dto.MatchDTO
-import ru.descend.bot.savedObj.GMailSender
+import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.postgre.calculating.Calc_PentaSteal
@@ -24,15 +23,15 @@ import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.printLog
+import ru.descend.bot.toStringMap
 import java.util.WeakHashMap
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
-data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int?, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
+data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     var isNeedUpdateDatas = true
-    var listMainData = ArrayList<KORDLOLs>()
 
     val dataKORDLOL = WorkData<KORDLOLs>()
     val dataKORD = WorkData<KORDs>()
@@ -99,7 +98,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 val id = row.int("id")
                 val mmr_aram = row.double("mmr_aram")
                 val mmr_aram_saved = row.double("mmr_aram_saved")
-                val games = row.int("games")
+                val games = row.int("games")?:0
                 val champion_id = row.int("champion_id")
                 val mmr = row.double("mmr")
                 val match_id = row.string("match_id")
@@ -122,11 +121,11 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         Calc_PentaSteal(this, match, newMatch).calculte()
     }
 
-    suspend fun getWinStreak() : WeakHashMap<Int, Int> {
-        var mapWinStreak = WeakHashMap<Int, Int>()
+    suspend fun getWinStreak() : HashMap<Int, Int> {
+        var mapWinStreak = HashMap<Int, Int>()
         R2DBC.runQuery {
             QueryDsl.fromTemplate("SELECT * FROM get_streak_results_param(${guildSQL.id})").select { row ->
-                val pers = row.int("PERS")
+                val pers = row.int("PERS")?:-1
                 val res = row.int("RES")?:0
                 val ZN = row.string("ZN")?:""
                 when (ZN) {
@@ -148,25 +147,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     suspend fun getSavedParticipantsForMatch(matchId: Int) = dataSavedParticipants.get(true).filter { it.match_id == matchId }
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
-
-    fun sendEmail(theme: String, message: String) {
-        try {
-            GMailSender("llps.sys.bot@gmail.com", "esjk bphc hsjh otcx")
-                .sendMail(
-                    "[${guildSQL.name}] $theme",
-                    message,
-                    "llps.sys.bot@gmail.com",
-                    "kaltemeis@gmail.com"
-                )
-        }catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    fun executeProcedure(body: String) {
-        QueryDsl.executeScript(body)
-    }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -176,7 +156,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         if (guild != other.guild) return false
         if (guildSQL != other.guildSQL) return false
         if (isNeedUpdateDatas != other.isNeedUpdateDatas) return false
-        if (listMainData != other.listMainData) return false
         if (dataKORDLOL != other.dataKORDLOL) return false
         if (dataKORD != other.dataKORD) return false
         if (dataMMR != other.dataMMR) return false
@@ -190,7 +169,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         var result = guild.hashCode()
         result = 31 * result + guildSQL.hashCode()
         result = 31 * result + isNeedUpdateDatas.hashCode()
-        result = 31 * result + listMainData.hashCode()
         result = 31 * result + dataKORDLOL.hashCode()
         result = 31 * result + dataKORD.hashCode()
         result = 31 * result + dataMMR.hashCode()

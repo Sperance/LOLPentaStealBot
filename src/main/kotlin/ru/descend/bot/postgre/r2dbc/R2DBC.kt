@@ -47,31 +47,15 @@ object R2DBC {
             runQuery(query)
         }
 
-    suspend fun <T> runTransaction(block: suspend (CoroutineTransactionOperator) -> T) = db.withTransaction { block.invoke(it) }
-
     suspend fun initialize() {
         db.withTransaction {
-            db.runQuery {
-                QueryDsl.create(tbl_guilds)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_kordlols)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_kords)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_lols)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_matches)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_mmrs)
-            }
-            db.runQuery {
-                QueryDsl.create(tbl_participants)
-            }
+            db.runQuery { QueryDsl.create(tbl_guilds) }
+            db.runQuery { QueryDsl.create(tbl_kordlols) }
+            db.runQuery { QueryDsl.create(tbl_kords) }
+            db.runQuery { QueryDsl.create(tbl_lols) }
+            db.runQuery { QueryDsl.create(tbl_matches) }
+            db.runQuery { QueryDsl.create(tbl_mmrs) }
+            db.runQuery { QueryDsl.create(tbl_participants) }
         }
     }
 
