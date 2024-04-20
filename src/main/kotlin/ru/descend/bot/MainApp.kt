@@ -126,7 +126,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         val checkMatches = ArrayList<String>()
         sqlData.dataSavedLOL.get(true).forEach {
             if (it.LOL_puuid == "") return@forEach
-            LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 10).forEach ff@{ matchId ->
+            LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 50).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }

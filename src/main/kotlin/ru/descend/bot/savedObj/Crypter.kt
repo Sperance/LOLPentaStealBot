@@ -5,8 +5,6 @@ import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.DESKeySpec
 
-const val MAIN_ROLE_NAME = "Пентастилька"
-const val SECOND_ROLE_NAME = "Демасия"
 const val DSC_PS = "MTE2NzE0MTUxNzYzMTE2ODU0Mg.GdmE_M.CWl4aktgkUs4lj0OLBfUCzYKtOB-mjAmW0-bos"
 
 fun encrypt(input: String, password: String): ByteArray {

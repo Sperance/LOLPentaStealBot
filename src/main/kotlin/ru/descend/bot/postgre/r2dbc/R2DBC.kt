@@ -38,7 +38,7 @@ object R2DBC {
         .option(ConnectionFactoryOptions.DATABASE, "postgres")
         .build()
 
-    val db = R2dbcDatabase(connectionFactory)
+    private val db = R2dbcDatabase(connectionFactory)
 
     suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
     suspend fun <T> runQuery(block: QueryScope.() -> Query<T>) =
@@ -59,7 +59,7 @@ object R2DBC {
         }
     }
 
-    suspend fun getGuilds(declaration: WhereDeclaration?) : List<Guilds> {
+    private suspend fun getGuilds(declaration: WhereDeclaration?) : List<Guilds> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_guilds) else QueryDsl.from(tbl_guilds).where(declaration) } }
     }
 

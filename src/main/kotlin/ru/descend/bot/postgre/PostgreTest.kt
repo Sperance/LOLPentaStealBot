@@ -3,32 +3,14 @@ package ru.descend.bot.postgre
 import dev.shreyaspatil.ai.client.generativeai.GenerativeModel
 import dev.shreyaspatil.ai.client.generativeai.type.content
 import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.toKotlinLocalDate
 import org.junit.Test
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.r2dbc.create
-import ru.descend.bot.postgre.r2dbc.delete
-import ru.descend.bot.postgre.r2dbc.getField
-import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.getDate
-import ru.descend.bot.savedObj.getStrongDate
-import ru.descend.bot.savedObj.toDate
-import ru.descend.bot.size
-import ru.descend.bot.sizeInKb
-import ru.descend.bot.sizeInMb
 import ru.descend.bot.toFormat
-import java.io.File
-import java.nio.file.Files
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Calendar
-import java.util.Date
-import java.util.GregorianCalendar
-import kotlin.io.path.Path
-import kotlin.io.path.pathString
 
 class PostgreTest {
 

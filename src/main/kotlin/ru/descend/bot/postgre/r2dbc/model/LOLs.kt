@@ -10,6 +10,7 @@ import org.komapper.core.dsl.Meta
 import ru.descend.bot.catchToken
 import ru.descend.bot.lolapi.LeagueApi
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
 import ru.descend.bot.lolapi.Result
 import ru.descend.bot.lolapi.safeApiCall
 import ru.descend.bot.printLog
@@ -32,6 +33,7 @@ data class LOLs(
     var LOL_riotIdTagline: String? = "",
     var LOL_region: String? = "",
     var LOL_summonerLevel: Int = 1,
+    var profile_icon: Int = 0,
 
     @KomapperCreatedAt
     var createdAt: LocalDateTime = LocalDateTime.MIN,
@@ -62,12 +64,17 @@ data class LOLs(
             newLOL.LOL_summonerId = dataLOL.id
             newLOL.LOL_accountId = dataLOL.accountId
             newLOL.LOL_summonerName = dataLOL.name
+            newLOL.profile_icon = dataLOL.profileIconId
             newLOL.LOL_region = region
             newLOL.LOL_summonerLevel = dataLOL.summonerLevel
             newLOL
         } else {
             null
         }
+    }
+
+    fun getIconURL() : String {
+        return "https://ddragon.leagueoflegends.com/cdn/$LOL_VERSION/img/profileicon/$profile_icon.png"
     }
 
     fun getCorrectName() : String {
@@ -94,6 +101,7 @@ data class LOLs(
         if (LOL_riotIdTagline != other.LOL_riotIdTagline) return false
         if (LOL_region != other.LOL_region) return false
         if (LOL_summonerLevel != other.LOL_summonerLevel) return false
+        if (profile_icon != other.profile_icon) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
 
@@ -105,11 +113,12 @@ data class LOLs(
         result = 31 * result + LOL_puuid.hashCode()
         result = 31 * result + LOL_summonerId.hashCode()
         result = 31 * result + LOL_accountId.hashCode()
-        result = 31 * result + LOL_summonerName.hashCode()
+        result = 31 * result + (LOL_summonerName?.hashCode() ?: 0)
         result = 31 * result + (LOL_riotIdName?.hashCode() ?: 0)
         result = 31 * result + (LOL_riotIdTagline?.hashCode() ?: 0)
         result = 31 * result + (LOL_region?.hashCode() ?: 0)
         result = 31 * result + LOL_summonerLevel
+        result = 31 * result + profile_icon
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result

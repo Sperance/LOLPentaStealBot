@@ -97,7 +97,7 @@ data class Calc_PentaSteal (
 
                     if (isNextCheck && (event.type == "CHAMPION_KILL" || event.type == "CHAMPION_SPECIAL_KILL")) {
                         arrayQuadras.forEach saved@ { sPart ->
-                            if (sPart.team == (if (event.killerId <= 5) "BLUE" else "RED") && sPart.participantId != event.killerId) {
+                            if (sPart.team == (if (event.killerId <= 5) "BLUE" else "RED") && sPart.participantId != event.killerId && betw.toSeconds() < 60) {
                                 textLog += "PENTESTEAL. Чел ${mapPUUID[event.killerId]} состилил Пенту у ${mapPUUID[sPart.participantId]}\n"
                                 result.add(Triple(mapPUUID[event.killerId]!!, mapPUUID[sPart.participantId]!!, textLog))
                                 removedPart = sPart

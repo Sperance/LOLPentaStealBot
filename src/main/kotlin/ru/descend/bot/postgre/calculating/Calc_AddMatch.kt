@@ -96,12 +96,13 @@ data class Calc_AddMatch (
             }
 
             //Вдруг что изменится в профиле игрока
-            if (curLOL.LOL_summonerLevel != part.summonerLevel || curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName) {
+            if (curLOL.LOL_summonerLevel != part.summonerLevel || curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon) {
                 curLOL.LOL_summonerName = part.summonerName
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
                 curLOL.LOL_summonerId = part.summonerId
                 curLOL.LOL_riotIdName = part.riotIdGameName
                 curLOL.LOL_summonerLevel = part.summonerLevel
+                curLOL.profile_icon = part.profileIcon
                 curLOL = if (isNewLOL) curLOL.create(LOLs::LOL_puuid)
                 else curLOL.update()
             }
@@ -120,15 +121,16 @@ data class Calc_AddMatch (
     private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
         var users = ""
         R2DBC.getParticipants { tbl_participants.match_id eq pMatch.id ; tbl_participants.guild_id eq sqlData.guildSQL.id }.forEach {par ->
-            val data = Calc_MMR(sqlData, par, pMatch, kordLol, sqlData.getMMRforChampion(par.championName))
-            data.init()
-            users += sqlData.getLOL(par.LOLperson_id)?.LOL_summonerName + " hero: ${par.championName} size: ${R2DBC.getParticipants { tbl_participants.LOLperson_id eq par.LOLperson_id }.size} $data\n"
+            val dataText = if (pMatch.matchMode == "ARAM") {
+                val data = Calc_MMR(sqlData, par, pMatch, kordLol, sqlData.getMMRforChampion(par.championName))
+                data.init()
+                data.toString()
+            } else {
+                ""
+            }
+            val lolObj = sqlData.getLOL(par.LOLperson_id)
+            users += "* " + lolObj?.getCorrectName() + " hero: ${par.championName} size: ${R2DBC.getParticipants { tbl_participants.LOLperson_id eq par.LOLperson_id }.size} $dataText\n"
         }
-//        sqlData.getSavedParticipantsForMatch(pMatch.id).forEach {
-//            val data = Calc_MMR(sqlData, it, pMatch, kordLol, sqlData.getMMRforChampion(it.championName))
-//            data.init()
-//            users += sqlData.getLOL(it.LOLperson_id)?.LOL_summonerName + " hero: ${it.championName} $data\n"
-//        }
         sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
             "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                     "${pMatch.matchDateStart.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +

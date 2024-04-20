@@ -53,11 +53,10 @@ object LeagueMainObject {
         heroObjects.clear()
         champions.data::class.java.declaredFields.forEach {
             it.isAccessible = true
-            val curData = it.get(champions.data)
+            val curData = it.get(champions.data) as InterfaceChampionBase
             heroObjects.add(curData)
-            val nameField = curData::class.java.getDeclaredField("name")
-            nameField.isAccessible = true
-            namesAllHero.add(nameField.get(curData).toString())
+            val nameField = curData.name
+            namesAllHero.add(nameField)
         }
 
         LOL_VERSION = champions.version
