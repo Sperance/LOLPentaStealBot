@@ -5,6 +5,7 @@ import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
 import dev.kord.common.entity.PresenceStatus
 import dev.kord.common.entity.Snowflake
+import dev.kord.core.behavior.channel.createMessage
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
@@ -20,13 +21,20 @@ import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.lolapi.dto.currentGameInfo.Participant
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Guilds
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 @OptIn(PrivilegedIntent::class)
 @KordPreview
@@ -61,13 +69,21 @@ fun main() {
         onStart {
             firstInitialize()
             kord.guilds.collect {
-                removeMessage(it, R2DBC.getGuild(it))
+                val guilds = R2DBC.getGuild(it)
+                mapMainData[it] = SQLData_R2DBC(it, guilds)
+                mapMainData[it]?.initialize()
+
+                removeMessage(it)
+
                 timerRequestReset((2).minutes)
                 timerMainInformation(it, (5).minutes)
+//                timerRealtimeInformation(it, (5).minutes, skipFirst = true)
             }
         }
     }
 }
+
+val mapMainData = HashMap<Guild, SQLData_R2DBC>()
 
 fun timerRequestReset(duration: Duration) = launch {
     while (true) {
@@ -76,15 +92,16 @@ fun timerRequestReset(duration: Duration) = launch {
     }
 }
 
-fun timerMainInformation(guild: Guild, duration: Duration) = launch {
-    val localData = SQLData_R2DBC(guild, R2DBC.getGuild(guild))
-    localData.initialize()
+fun timerMainInformation(guild: Guild, duration: Duration, skipFirst: Boolean = false) = launch {
+    var skipped = skipFirst
     while (true) {
-        if (localData.guildSQL.botChannelId.isNotEmpty()) {
-            localData.printWorkSize()
-            showLeagueHistory(localData)
-            localData.printWorkSize()
-            printMemoryUsage("end clear")
+        if (mapMainData[guild]!!.guildSQL.botChannelId.isNotEmpty()) {
+            if (!skipped) {
+                showLeagueHistory(mapMainData[guild]!!)
+                printMemoryUsage()
+            } else {
+                skipped = true
+            }
         }
         delay(duration)
     }
@@ -95,10 +112,10 @@ private suspend fun firstInitialize() {
     R2DBC.initialize()
 }
 
-suspend fun removeMessage(guild: Guild, guildSQL: Guilds) {
-    if (guildSQL.botChannelId.isNotEmpty()){
-        guild.getChannelOf<TextChannel>(Snowflake(guildSQL.botChannelId)).messages.collect {
-            if (it.id.value.toString() in listOf(guildSQL.messageIdGlobalStatisticData, guildSQL.messageIdMain, guildSQL.messageIdArammmr)) {
+suspend fun removeMessage(guild: Guild) {
+    if (mapMainData[guild]!!.guildSQL.botChannelId.isNotEmpty()){
+        guild.getChannelOf<TextChannel>(Snowflake(mapMainData[guild]!!.guildSQL.botChannelId)).messages.collect {
+            if (it.id.value.toString() in listOf(mapMainData[guild]!!.guildSQL.messageIdGlobalStatisticData, mapMainData[guild]!!.guildSQL.messageIdMain, mapMainData[guild]!!.guildSQL.messageIdArammmr)) {
                 Unit
             } else {
                 it.delete()
@@ -109,6 +126,77 @@ suspend fun removeMessage(guild: Guild, guildSQL: Guilds) {
 
 var globalLOLRequests = 0
 var statusLOLRequests = 0
+data class LolActiveGame(
+    val lol: LOLs? = null,
+    val kordlol: KORDLOLs? = null,
+    val part: Participant,
+    val matchId: Int,
+    val messageId: Long? = null
+)
+
+suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
+    val channel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(1225762638735085620))
+    val arrayActives = ArrayList<LolActiveGame>()
+    sqlData.dataSavedLOL.get().forEach {
+        if (it.LOL_puuid == "") return@forEach
+        if (arrayActives.find { ara -> ara.part.puuid == it.LOL_puuid } != null) return@forEach
+        val kordlol = sqlData.getKORDLOL().firstOrNull { kd -> kd.LOL_id == it.id && kd.guild_id == sqlData.guildSQL.id }
+        val gameInfo = LeagueMainObject.catchActiveGame(it.LOL_puuid)
+        if (gameInfo != null) {
+            gameInfo.participants.forEach { part ->
+                val tmpLol = R2DBC.getLOLs { tbl_lols.LOL_puuid eq part.puuid }.firstOrNull()
+                if (tmpLol != null) {
+                    val tmpKordLOL = sqlData.getKORDLOL().find { kl -> kl.LOL_id == tmpLol.id }
+                    arrayActives.add(LolActiveGame(
+                        lol = tmpLol,
+                        kordlol = tmpKordLOL,
+                        part = part,
+                        matchId = gameInfo.gameId)
+                    )
+                } else {
+                    arrayActives.add(LolActiveGame(
+                        part = part,
+                        matchId = gameInfo.gameId)
+                    )
+                }
+            }
+
+            val mainDataList1 = (arrayActives.map { dat ->
+                if (dat.kordlol != null) "**" + dat.part.riotId + " / " + LeagueMainObject.catchHeroForId(dat.part.championId.toString())?.name + " / " + dat.part.teamId + "**"
+                else dat.part.riotId + " / " + LeagueMainObject.catchHeroForId(dat.part.championId.toString())?.name + " / " + dat.part.teamId
+            })
+            val mainDataList2 = (arrayActives.map { dat -> gameInfo.gameMode })
+
+            val message = channel.createMessage {
+                content = "Match game ID: ${gameInfo.gameId}"
+                embed {
+                    field {
+                        name = "User/Hero/Team"
+                        value = mainDataList1.joinToString(separator = "\n")
+                        inline = true
+                    }
+                    field {
+                        name = "Match"
+                        value = mainDataList2.joinToString(separator = "\n")
+                        inline = true
+                    }
+                }
+            }
+
+            if (kordlol?.realtime_match_message != message.id.value.toString()) {
+                kordlol?.realtime_match_message = message.id.value.toString()
+                kordlol?.update()
+            }
+
+        } else {
+            if (kordlol?.realtime_match_message != "") {
+                kordlol?.realtime_match_message = ""
+                kordlol?.update()
+            }
+        }
+        arrayActives.clear()
+    }
+}
 
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
 
@@ -121,6 +209,10 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.isNeedUpdateDatas = false
 
     sqlData.onCalculateTimer()
+
+//    launch {
+//        showRealtimeHistory(sqlData)
+//    }.join()
 
     launch {
         val checkMatches = ArrayList<String>()
@@ -232,6 +324,8 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
 
     builder.content = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
 
+    if (!sqlData.isNeedUpdateDatas) return
+
     val data = sqlData.getKORDLOL()
     data.sortBy { it.showCode }
 
@@ -282,8 +376,8 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
         else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + (it.mmr_aram / it.games).toFormat(2)
     })
     val mainDataList3 = (aramData.map {
-        if (it.match_id == it.last_match_id) "**" + LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + "**"
-        else LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr
+        if (it.match_id == it.last_match_id) "**" + LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + " " + it.mvp_lvp_info + "**"
+        else LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + " " + it.mvp_lvp_info
     })
 
 

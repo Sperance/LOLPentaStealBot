@@ -2,8 +2,6 @@ package ru.descend.bot.commands
 
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
-import dev.kord.core.behavior.edit
-import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.channel.TextChannel
 import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
@@ -80,7 +78,7 @@ fun arguments() = commands("Arguments") {
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
-            var KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID() ; tbl_kords.guild_id eq guilds.id }.firstOrNull()
+            val KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID() ; tbl_kords.guild_id eq guilds.id }.firstOrNull()
             if (KORD == null) {
                 respond("Пользователь ${user.lowDescriptor()} не зарегистрирован в боте. Его изменение невозможно")
                 return@execute

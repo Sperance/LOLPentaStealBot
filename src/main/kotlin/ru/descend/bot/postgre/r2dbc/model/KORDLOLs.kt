@@ -34,6 +34,7 @@ data class KORDLOLs(
     var showCode: Int = 0,
     var mmrAram: Double = 0.0,
     var mmrAramSaved: Double = 0.0,
+    var realtime_match_message: String = "",
 
     @KomapperCreatedAt
     var createdAt: LocalDateTime = LocalDateTime.MIN,
@@ -92,6 +93,7 @@ data class KORDLOLs(
         if (mmrAramSaved != other.mmrAramSaved) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
+        if (realtime_match_message != other.realtime_match_message) return false
 
         return true
     }
@@ -106,6 +108,7 @@ data class KORDLOLs(
         result = 31 * result + mmrAramSaved.hashCode()
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
+        result = 31 * result + realtime_match_message.hashCode()
         return result
     }
 }

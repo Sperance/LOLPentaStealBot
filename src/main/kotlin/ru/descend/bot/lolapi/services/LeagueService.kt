@@ -27,7 +27,7 @@ interface LeagueService {
     @GET("/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top")
     suspend fun getChampionMastery(@Path("puuid") puuid: String) : Response<ChampionMasteryDto>
 
-    @GET("/lol/spectator/v4/active-games/by-summoner/{encryptedSummonerId}")
-    suspend fun getActiveGame(@Path("encryptedSummonerId") encryptedSummonerId: String) : Response<CurrentGameInfo>
+    @GET("/lol/spectator/v5/active-games/by-summoner/{encryptedPUUID}")
+    suspend fun getActiveGame(@Path("encryptedPUUID") encryptedPUUID: String) : Response<CurrentGameInfo>
 
 }

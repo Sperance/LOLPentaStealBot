@@ -27,7 +27,7 @@ import ru.descend.bot.toStringMap
 import java.util.WeakHashMap
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
-data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
+data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
@@ -58,10 +58,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 R2DBC.runQuery(QueryDsl.from(tbl_participants).where { tbl_participants.LOLperson_id.inList(kordLol_lol_id) })
             }
         }
-    }
-
-    fun printWorkSize() {
-        printLog("KORDLOL:${dataKORDLOL.getSize()} KORD:${dataKORD.getSize()} MMR:${dataMMR.getSize()} SavedLOL:${dataSavedLOL.getSize()} SavedParticipants:${dataSavedParticipants.getSize()}")
     }
 
     suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
@@ -102,8 +98,9 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 val champion_id = row.int("champion_id")
                 val mmr = row.double("mmr")
                 val match_id = row.string("match_id")
+                val mvp_lvp_info = row.string("mvp_lvp_info")
                 val last_match_id = row.string("last_match_id")
-                arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, games, champion_id, mmr, match_id, last_match_id, false, null))
+                arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, games, champion_id, mmr, match_id, last_match_id, mvp_lvp_info,false, null))
             }
         }
         arrayAramMMRData.forEach {

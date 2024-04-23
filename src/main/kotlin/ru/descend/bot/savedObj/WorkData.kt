@@ -10,8 +10,6 @@ class WorkData<T> {
         return listData
     }
 
-    fun getSize() = listData.size
-
     fun set(list: List<T>) {
         listData.clear()
         listData.addAll(list)

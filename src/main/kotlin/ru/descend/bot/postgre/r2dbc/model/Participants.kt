@@ -50,6 +50,7 @@ data class Participants(
     var team: Int = -1,
     var profileIcon: Int = -1,
     var win: Boolean = false,
+    var mvpLvpInfo: String = "",
 
     var snowballsHit: Int = 0, //snowballs_hit
     var skillshotsHit: Int = 0, //skillshots_hit
@@ -129,6 +130,11 @@ data class Participants(
 
     suspend fun LOLpersonObj() = R2DBC.getLOLs { tbl_lols.id eq LOLperson_id }.firstOrNull()
 
+
+    override fun toString(): String {
+        return "Participants(id=$id, match_id=$match_id, LOLperson_id=$LOLperson_id, guild_id=$guild_id, championName='$championName')"
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -136,6 +142,9 @@ data class Participants(
         other as Participants
 
         if (id != other.id) return false
+        if (match_id != other.match_id) return false
+        if (LOLperson_id != other.LOLperson_id) return false
+        if (guild_id != other.guild_id) return false
         if (championId != other.championId) return false
         if (championName != other.championName) return false
         if (kills5 != other.kills5) return false
@@ -165,6 +174,7 @@ data class Participants(
         if (team != other.team) return false
         if (profileIcon != other.profileIcon) return false
         if (win != other.win) return false
+        if (mvpLvpInfo != other.mvpLvpInfo) return false
         if (snowballsHit != other.snowballsHit) return false
         if (skillshotsHit != other.skillshotsHit) return false
         if (soloKills != other.soloKills) return false
@@ -180,15 +190,15 @@ data class Participants(
         if (tookLargeDamageSurvived != other.tookLargeDamageSurvived) return false
         if (longestTimeSpentLiving != other.longestTimeSpentLiving) return false
         if (totalTimeSpentDead != other.totalTimeSpentDead) return false
-        if (match_id != other.match_id) return false
-        if (LOLperson_id != other.LOLperson_id) return false
-        if (guild_id != other.guild_id) return false
 
         return true
     }
 
     override fun hashCode(): Int {
         var result = id
+        result = 31 * result + match_id
+        result = 31 * result + LOLperson_id
+        result = 31 * result + guild_id
         result = 31 * result + championId
         result = 31 * result + championName.hashCode()
         result = 31 * result + kills5
@@ -218,6 +228,7 @@ data class Participants(
         result = 31 * result + team
         result = 31 * result + profileIcon
         result = 31 * result + win.hashCode()
+        result = 31 * result + mvpLvpInfo.hashCode()
         result = 31 * result + snowballsHit
         result = 31 * result + skillshotsHit
         result = 31 * result + soloKills
@@ -233,13 +244,6 @@ data class Participants(
         result = 31 * result + tookLargeDamageSurvived
         result = 31 * result + longestTimeSpentLiving
         result = 31 * result + totalTimeSpentDead
-        result = 31 * result + match_id
-        result = 31 * result + LOLperson_id
-        result = 31 * result + guild_id
         return result
-    }
-
-    override fun toString(): String {
-        return "Participants(id=$id, match_id=$match_id, LOLperson_id=$LOLperson_id, guild_id=$guild_id, championName='$championName')"
     }
 }

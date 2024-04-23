@@ -120,21 +120,38 @@ data class Calc_AddMatch (
 
     private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
         var users = ""
+        val arrayKORDmmr = ArrayList<Triple<KORDLOLs?, Participants, Double>>()
         R2DBC.getParticipants { tbl_participants.match_id eq pMatch.id ; tbl_participants.guild_id eq sqlData.guildSQL.id }.forEach {par ->
             val dataText = if (pMatch.matchMode == "ARAM") {
                 val data = Calc_MMR(sqlData, par, pMatch, kordLol, sqlData.getMMRforChampion(par.championName))
                 data.init()
+                arrayKORDmmr.add(Triple(kordLol.find { kd -> kd.LOL_id == par.LOLperson_id }, par, data.mmrValue))
                 data.toString()
             } else {
                 ""
             }
             val lolObj = sqlData.getLOL(par.LOLperson_id)
-            users += "* " + lolObj?.getCorrectName() + " hero: ${par.championName} size: ${R2DBC.getParticipants { tbl_participants.LOLperson_id eq par.LOLperson_id }.size} $dataText\n"
+            users += "* __" + lolObj?.getCorrectName() + "__ ${LeagueMainObject.findHeroForKey(par.championId.toString())} size: ${R2DBC.getParticipants { tbl_participants.LOLperson_id eq par.LOLperson_id }.size} win:${par.win} $dataText\n"
         }
+
+        //Обработка MVP
+        if (arrayKORDmmr.isNotEmpty()){
+            val mmrForMVP = 2.0
+            val maxed = arrayKORDmmr.maxBy { it.third }
+            if (maxed.first != null) {
+                maxed.second.mvpLvpInfo = "MVP"
+                maxed.second.mmr += mmrForMVP
+                maxed.second.update()
+
+                maxed.first!!.mmrAram += mmrForMVP
+                maxed.first!!.update()
+            }
+        }
+
         sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
-            "Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
+            "**Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                     "${pMatch.matchDateStart.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
-                    "Mode: ${pMatch.matchMode} Surrender: $isSurrender Bots: $isBots\n" +
-                    "Users: $users")
+                    "Mode: ${pMatch.matchMode} Surrender: $isSurrender Bots: $isBots**\n$users"
+        )
     }
 }

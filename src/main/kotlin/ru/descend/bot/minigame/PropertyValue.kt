@@ -4,87 +4,92 @@ fun Double.addPercent(percent: Double) : Double {
     return this + (this / 100 * percent)
 }
 
-data class DataProperties(
-    val isUnit: Boolean,
-    val strength: PropertyValue = PropertyValue("Сила", 1, isUnit),
-    val level: Property = PropertySimple("Уровень", 1),
-) {
-    fun addProperties(obj: DataProperties) : DataProperties {
-        DataProperties::class.java.declaredFields.forEach {
-            when (val getting = it.get(this)) {
-                is PropertyValue -> {
-                    getting.add(it.get(obj) as PropertyValue)
-                }
-                is PropertyBonus -> {
-                    getting.add(it.get(obj) as PropertyBonus)
-                }
-                is Property -> {
-                    getting.add(it.get(obj) as Property)
-                }
-            }
-        }
-        return this
-    }
-}
-
-interface IntProperty {
-    fun get() : Double
-    fun add(obj: Property)
-}
-
-open class Property(
+open class Property<T: Number> (
     val name: String,
-    @Transient
-    val gsonClassCode: Int,
-    @Transient
-    val gsonCategoryCode: Int,
-    var value: Double = 0.0,
-) : IntProperty {
-
-    override fun get() : Double {
-        return value
-    }
-
-    override fun add(obj: Property) {
-        this.value += obj.value
-    }
-
+    var value: T,
+) {
+    open fun get() = value
+    open fun add(obj: Property<T>) {}
+    open fun isInitialized() = true
     override fun toString(): String {
         return "Property(name='$name', value=$value, get=${get()})"
     }
 }
 
-class PropertySimple(
-    name: String,
-    gsonCategoryCode: Int,
-) : Property(name, gsonClassCode = 0, gsonCategoryCode = gsonCategoryCode, value = 0.0)
+data class PropertiesPerson(
+    val level: PropertyValue = PropertyValue("Уровень"),
+)
+data class PropertiesCalculablePerson(
+    val strength: PropertyStatGlobal = PropertyStatGlobal("Сила"),
+    val agility: PropertyStatGlobal = PropertyStatGlobal("Ловкость")
+)
 
-class PropertyBonus(
-    name: String,
-    gsonCategoryCode: Int,
-) : Property(name, gsonClassCode = 2, gsonCategoryCode = gsonCategoryCode, value = 0.0)
+data class PropertiesItem(
+    val level: PropertyValue = PropertyValue("Уровень"),
+    val price: PropertyValue = PropertyValue("Стоимость"),
+)
+data class PropertiesCalculableItem(
+    val strength: PropertyStatLocal = PropertyStatLocal("Сила"),
+    val agility: PropertyStatLocal = PropertyStatLocal("Ловкость")
+)
 
-class PropertyValue(
+open class PropertyValue(
     name: String,
-    gsonCategoryCode: Int,
-    var isUnit: Boolean,
+) : Property<Int>(name, value = 0) {
+    override fun add(obj: Property<Int>) {
+        value += obj.value
+    }
+    override fun isInitialized(): Boolean {
+        return true
+    }
+}
+
+open class PropertyStatLocal(
+    name: String,
     var localPercent: Double = 0.0,
-    var globalPercent: Double = 0.0
-) : Property(name, gsonClassCode = 1, gsonCategoryCode = gsonCategoryCode, value = 0.0)  {
+    var globalPercent: Double = 0.0,
+) : Property<Double>(name, value = 0.0)  {
 
     override fun get() : Double {
-        return if (isUnit) value.addPercent(globalPercent)
-        else value.addPercent(localPercent)
+        return value.addPercent(localPercent)
     }
 
-    override fun add(obj: Property) {
-        this.value += obj.get()
-        if (obj is PropertyValue) {
-            this.globalPercent += obj.globalPercent
+    override fun isInitialized(): Boolean {
+        return value != 0.0 || localPercent != 0.0
+    }
+
+    override fun add(obj: Property<Double>) {
+        value += obj.get()
+    }
+
+    override fun toString(): String {
+        if (!isInitialized()) return "<Not init>"
+        return "PropertyStatLocal(name='$name', value=$value, local=$localPercent, global=$globalPercent, get=${get()})"
+    }
+}
+
+open class PropertyStatGlobal(
+    name: String,
+    var percent: Double = 0.0
+) : Property<Double>(name, value = 0.0)  {
+
+    override fun get() : Double {
+        return value.addPercent(percent)
+    }
+
+    override fun isInitialized(): Boolean {
+        return value != 0.0 || percent != 0.0
+    }
+
+    override fun add(obj: Property<Double>) {
+        value += obj.get()
+        if (obj is PropertyStatLocal) {
+            percent += obj.globalPercent
         }
     }
 
     override fun toString(): String {
-        return "PropertyValue(name='$name', value=$value, localPercent=$localPercent, globalPercent=$globalPercent, get=${get()})"
+        if (!isInitialized()) return "<Not init>"
+        return "PropertyStatGlobal(name='$name', value=$value, percent=$percent, get=${get()})"
     }
 }

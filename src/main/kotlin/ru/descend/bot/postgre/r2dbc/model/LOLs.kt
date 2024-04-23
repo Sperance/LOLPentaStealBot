@@ -13,6 +13,8 @@ import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
 import ru.descend.bot.lolapi.Result
 import ru.descend.bot.lolapi.safeApiCall
+import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.writeLog
@@ -81,7 +83,6 @@ data class LOLs(
         if (!LOL_riotIdName.isNullOrEmpty()) return LOL_riotIdName!!
         return LOL_summonerName?:""
     }
-
     override fun toString(): String {
         return "LOLs(id=$id, puuid='$LOL_puuid', summonerName='$LOL_summonerName', riotIdName=$LOL_riotIdName)"
     }

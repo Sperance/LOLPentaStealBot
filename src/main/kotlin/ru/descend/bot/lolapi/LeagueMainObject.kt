@@ -5,8 +5,8 @@ import ru.descend.bot.catchToken
 import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
+import ru.descend.bot.lolapi.dto.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
-import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.writeLog
@@ -79,6 +79,22 @@ object LeagueMainObject {
                 printLog(messageError)
                 writeLog(messageError)
                 listOf()
+            }
+        }
+    }
+
+    suspend fun catchActiveGame(encryptedPUUID: String) : CurrentGameInfo? {
+        globalLOLRequests++
+        delay(checkRiotQuota())
+        printLog("[catchActiveGame::$globalLOLRequests] started with encryptedPUUID: $encryptedPUUID")
+        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getActiveGame(encryptedPUUID) }){
+            is Result.Success -> { res.data }
+            is Result.Error -> {
+//                statusLOLRequests = 1
+//                val messageError = "catchActiveGame failure: ${res.message} with encryptedPUUID: $encryptedPUUID"
+//                printLog(messageError)
+//                writeLog(messageError)
+                null
             }
         }
     }

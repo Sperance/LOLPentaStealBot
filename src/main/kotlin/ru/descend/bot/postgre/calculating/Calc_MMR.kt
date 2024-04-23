@@ -14,7 +14,7 @@ import kotlin.reflect.KMutableProperty1
 
 class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Participants, var match: Matches, var kordlol: List<KORDLOLs>, private var mmrTable: MMRs?) {
 
-    private var mmrValue = 0.0
+    var mmrValue = 0.0
     private var mmrEmailText = ""
     private var mmrModificator = 1.0
     private var countFields = 0.0
@@ -147,8 +147,8 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 
         val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
 
-        //В принципе победа - докидываем 2ММР сверху
-        addedValue += 2.0
+        //В принципе победа - докидываем 1ММР сверху
+        addedValue += 1.0
 
         //обработка штрафа к получаемому ММР в зависимости от ранга
         val removeMMR = (rank.rankValue / 10.0 * 2).to2Digits()
@@ -175,9 +175,11 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
     private fun calcRemoveMMR(kordlol: KORDLOLs) : Double {
         var value: Double
 
+        val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
+
         value = if (mmrValue < countFields) {
             //кол-во всех полей минус текущий ММР (сколько нехватило до Нормы)
-            (countFields - mmrValue) * 1.5
+            (countFields - mmrValue) * (1.0 + (rank.rankValue / 10.0))
         } else {
             //иначе если катали лучше Нормы - снимаем жалкую единичку
             1.0
@@ -191,9 +193,6 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
             value = countFields
         }
 
-
-        val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
-
         //лимит на максимальное снятие
         val maxRemoved = (rank.rankValue + 1.0).to2Digits()
         if (value > maxRemoved){
@@ -202,7 +201,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         }
 
         //лимит на минимальное снятие
-        val minRemoved = (rank.rankValue * 0.5).to2Digits()
+        val minRemoved = (1 + rank.rankValue * 0.5).to2Digits()
         if (value < minRemoved) {
             mmrEmailText += "[calcRemoveMMR] попытка снять меньше ММР(${value.to2Digits()} чем минимальный лимит по рангу: $minRemoved (rankValue:${rank.rankValue} * 0.5). Снимаем лимит.\n"
             value = minRemoved

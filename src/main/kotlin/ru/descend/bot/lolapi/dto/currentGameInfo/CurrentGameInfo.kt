@@ -1,7 +1,7 @@
 package ru.descend.bot.lolapi.dto.currentGameInfo
 
 data class CurrentGameInfo(
-    val bannedChampions: List<Any>,
+    val bannedChampions: List<BannedChampion>,
     val gameId: Int,
     val gameLength: Int,
     val gameMode: String,
