@@ -5,31 +5,25 @@ import dev.shreyaspatil.ai.client.generativeai.type.content
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MediaType
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
 import org.junit.Test
+import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.enums.EnumMMRRank
+import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.create
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
+import ru.descend.bot.postgre.r2dbc.model.Matches
+import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
+import ru.descend.bot.to2Digits
 import ru.descend.bot.toFormat
 import java.io.IOException
 import java.net.HttpURLConnection
-import java.net.URI
 import java.net.URL
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.time.LocalDate
+import java.util.HashMap
 
 class PostgreTest {
 
@@ -83,6 +77,45 @@ class PostgreTest {
 
             val response = sendMessageToGIGAChatAPI(accessToken, message)
             println("Response from GIGAChat API: $response")
+        }
+    }
+
+    @Test
+    fun test_calc_winrate() {
+        runBlocking {
+            val lolid = 14
+
+            val arrayARAM = HashMap<Int, ArrayList<Pair<Int, Int>>>()
+
+            val allKORDLOLS = R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq 1; tbl_kordlols.LOL_id notEq lolid }
+            val savedParticipantsMatches = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq lolid }
+            val arrayMatches = R2DBC.getMatches { Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }) ; Matches.tbl_matches.guild_id eq 1 ; Matches.tbl_matches.surrender eq false ; Matches.tbl_matches.bots eq false }
+            val lastParticipants = R2DBC.getParticipants { Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }) ; Participants.tbl_participants.LOLperson_id.inList(allKORDLOLS.map { it.LOL_id }) }
+            lastParticipants.forEach {
+                if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "ARAM") {
+                    if (arrayARAM[it.LOLperson_id] == null) {
+                        arrayARAM[it.LOLperson_id] = ArrayList()
+                        arrayARAM[it.LOLperson_id]!!.add(Pair(if (it.win) 1 else 0, if (!it.win) 1 else 0))
+                    } else {
+                        arrayARAM[it.LOLperson_id]!!.add(Pair(if (it.win) 1 else 0, if (!it.win) 1 else 0))
+                    }
+                }
+            }
+
+            val arrayStat = ArrayList<DataStatRate>()
+            arrayARAM.forEach { (i, pairs) ->
+                var winGames = 0.0
+                pairs.forEach {
+                    if (it.first == 1) winGames++
+                }
+                arrayStat.add(DataStatRate(lol_id = i, allGames = pairs.size, winGames = winGames))
+            }
+
+            arrayStat.sortByDescending { (it.winGames / it.allGames * 100.0).to2Digits() }
+
+            arrayStat.forEach {
+                printLog("** ${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectName()}** ${(it.winGames / it.allGames * 100.0).to2Digits()}% Games:${it.allGames}")
+            }
         }
     }
 

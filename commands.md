@@ -19,6 +19,7 @@
 | clearMainChannel   |                            | Очистка основного канал для бота                                          |
 | clearStatusChannel |                            | Очистка канала для сообщений бота                                         |
 | genText            | request                    | Получить ответ от Gemini AI на запрос                                     |
+| getAlliesWinrate   |                            | Просмотр Винрейта каждого игрока сервера (в боте) по отношению к себе     |
 | initDebugChannel   | channel                    | Канал для системных сообщений                                             |
 | initMainChannel    | channel                    | Основной канал для бота                                                   |
 | initStatusChannel  | channel                    | Канал для сообщений бота                                                  |

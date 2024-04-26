@@ -16,7 +16,8 @@ data class Calc_Birthday(private var sqlData: SQLData_R2DBC, var dataList: List<
 
     suspend fun calculate() {
         dataList.filter { isBirthday(it.date_birthday) }.forEach {
-            val textMessage = Gemini.generateForText("Напиши красивое поздравление с днём рождения пользователю с ником ${it.asUser(sqlData.guild).lowDescriptor()} в контексте игры League of Legends")
+            var textMessage = Gemini.generateForText("Напиши красивое поздравление с днём рождения пользователю с ником ${it.asUser(sqlData.guild).lowDescriptor()} в контексте игры League of Legends")
+            if (textMessage.isEmpty()) textMessage = "**Поздравляем призывателя ${it.asUser(sqlData.guild).lowDescriptor()} с Днём Рождения!!!\nОт всего сервера желаем счастья, здоровья, любви, ласки, заботы, деняк, побольше арамов и хорошего настроения**"
             sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, textMessage)
             writeLog(textMessage)
             val currentTextBirthday = it.date_birthday

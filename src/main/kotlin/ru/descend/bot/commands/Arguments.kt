@@ -7,6 +7,7 @@ import me.jakejmattson.discordkt.arguments.*
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.util.fullName
 import ru.descend.bot.asyncLaunch
+import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
@@ -17,17 +18,91 @@ import ru.descend.bot.postgre.r2dbc.delete
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
+import ru.descend.bot.postgre.r2dbc.model.Matches
+import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.Gemini
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toStringUID
-import java.util.ArrayList
 import java.util.Calendar
 import java.util.GregorianCalendar
+import java.util.HashMap
+import kotlin.collections.ArrayList
 
 fun arguments() = commands("Arguments") {
+
+    slash("getAlliesWinrate", "Просмотр Винрейта каждого игрока сервера (в боте) по отношению к себе") {
+        execute {
+            val textCommand = "[Start command] '$name' from ${author.fullName}"
+            printLog(textCommand)
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
+
+            val KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq author.toStringUID() ; tbl_kords.guild_id eq guilds.id }.firstOrNull()
+            if (KORD == null) {
+                respond("Вы ${author.lowDescriptor()} не зарегистрированы в боте. Обратитесь к Администратору")
+                return@execute
+            }
+            val KORDLOL = R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id ; tbl_kordlols.guild_id eq guilds.id }.firstOrNull()
+            if (KORDLOL == null) {
+                respond("Вы ${author.lowDescriptor()} не привязаны к аккаунту Лиги Легенд. Обратитесь к Администратору")
+                return@execute
+            }
+
+            val arrayARAM = HashMap<Int, ArrayList<Pair<Int, Int>>>()
+            val arrayCLASSIC = HashMap<Int, ArrayList<Pair<Int, Int>>>()
+
+            val allKORDLOLS = R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq 1; tbl_kordlols.LOL_id notEq KORDLOL.LOL_id }
+            val savedParticipantsMatches = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id }
+            val arrayMatches = R2DBC.getMatches { Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }) ; Matches.tbl_matches.guild_id eq 1 ; Matches.tbl_matches.surrender eq false ; Matches.tbl_matches.bots eq false }
+            val lastParticipants = R2DBC.getParticipants { Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }) ; Participants.tbl_participants.LOLperson_id.inList(allKORDLOLS.map { it.LOL_id }) }
+            lastParticipants.forEach {
+                if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "ARAM") {
+                    if (arrayARAM[it.LOLperson_id] == null) {
+                        arrayARAM[it.LOLperson_id] = ArrayList()
+                        arrayARAM[it.LOLperson_id]!!.add(Pair(if (it.win) 1 else 0, if (!it.win) 1 else 0))
+                    } else {
+                        arrayARAM[it.LOLperson_id]!!.add(Pair(if (it.win) 1 else 0, if (!it.win) 1 else 0))
+                    }
+                } else if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "CLASSIC") {
+                    if (arrayCLASSIC[it.LOLperson_id] == null) {
+                        arrayCLASSIC[it.LOLperson_id] = ArrayList()
+                        arrayCLASSIC[it.LOLperson_id]!!.add(Pair(if (it.win) 1 else 0, if (!it.win) 1 else 0))
+                    } else {
+                        arrayCLASSIC[it.LOLperson_id]!!.add(Pair(if (it.win) 1 else 0, if (!it.win) 1 else 0))
+                    }
+                }
+            }
+
+            val arrayStatAram = ArrayList<DataStatRate>()
+            arrayARAM.forEach { (i, pairs) ->
+                var winGames = 0.0
+                pairs.forEach { if (it.first == 1) winGames++ }
+                arrayStatAram.add(DataStatRate(lol_id = i, allGames = pairs.size, winGames = winGames))
+            }
+
+            val arrayStatClassic = ArrayList<DataStatRate>()
+            arrayCLASSIC.forEach { (i, pairs) ->
+                var winGames = 0.0
+                pairs.forEach { if (it.first == 1) winGames++ }
+                arrayStatClassic.add(DataStatRate(lol_id = i, allGames = pairs.size, winGames = winGames))
+            }
+
+            var textRespond = "**ARAM DATA**\n"
+            arrayStatAram.sortByDescending { (it.winGames / it.allGames * 100.0).to2Digits() }
+            arrayStatAram.forEach {
+                textRespond += "* __${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectName()}__ ${(it.winGames / it.allGames * 100.0).to2Digits()}% Games:${it.allGames}\n"
+            }
+            textRespond += "\n**CLASSIC DATA**\n"
+            arrayStatClassic.sortByDescending { (it.winGames / it.allGames * 100.0).to2Digits() }
+            arrayStatClassic.forEach {
+                textRespond += "* __${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectName()}__ ${(it.winGames / it.allGames * 100.0).to2Digits()}% Games:${it.allGames}\n"
+            }
+            respond(textRespond)
+        }
+    }
 
     slash("genText", "Получить ответ от Gemini AI на запрос", Permissions(Permission.UseApplicationCommands)){
         execute(AnyArg("request")) {

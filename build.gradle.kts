@@ -20,22 +20,22 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val komapperVersion = "1.17.0"
+val komapperVersion = "1.17.1"
 
 dependencies {
     platform("org.komapper:komapper-platform:$komapperVersion").let {
         implementation(it)
         ksp(it)
     }
-    implementation("org.komapper:komapper-tx-core:1.12.1")
+    implementation("org.komapper:komapper-tx-core:$komapperVersion")
     implementation("org.komapper:komapper-template:$komapperVersion")
     implementation("org.komapper:komapper-starter-r2dbc:$komapperVersion")
     implementation("org.komapper:komapper-dialect-postgresql-r2dbc")
     ksp("org.komapper:komapper-processor")
 
     implementation("com.google.code.gson:gson:2.10.1")
-    implementation("com.squareup.retrofit2:retrofit:2.10.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.10.0")
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
     implementation("me.jakejmattson", "DiscordKt", "0.24.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
