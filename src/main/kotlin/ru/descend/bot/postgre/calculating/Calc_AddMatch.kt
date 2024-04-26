@@ -21,6 +21,8 @@ import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDateTime
 import ru.descend.bot.writeLog
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 data class Calc_AddMatch (
     val sqlData: SQLData_R2DBC,
@@ -148,9 +150,16 @@ data class Calc_AddMatch (
             }
         }
 
+        var minsDuration: Int
+        var secondsDuration: Int
+        pMatch.matchDuration.toDuration(DurationUnit.SECONDS).toComponents { hours, minutes, seconds, nanoseconds ->
+            minsDuration = minutes
+            secondsDuration = seconds
+        }
         sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
             "**Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                     "${pMatch.matchDateStart.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
+                    "Duration: $minsDuration:$secondsDuration\n" +
                     "Mode: ${pMatch.matchMode} Surrender: $isSurrender Bots: $isBots**\n$users"
         )
     }

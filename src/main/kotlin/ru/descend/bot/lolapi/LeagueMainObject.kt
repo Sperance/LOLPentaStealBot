@@ -5,6 +5,7 @@ import ru.descend.bot.catchToken
 import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
+import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.lolapi.dto.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.printLog
@@ -22,7 +23,6 @@ object LeagueMainObject {
     private var heroObjects = ArrayList<Any>()
 
     var LOL_VERSION = ""
-    var LOL_HEROES = 0
 
     fun catchHeroForId(id: String) : InterfaceChampionBase? {
         heroObjects.forEach {
@@ -60,7 +60,6 @@ object LeagueMainObject {
         }
 
         LOL_VERSION = champions.version
-        LOL_HEROES = namesAllHero.size
 
         printLog("Version Data: ${champions.version} Heroes: ${namesAllHero.size}")
 
@@ -76,6 +75,22 @@ object LeagueMainObject {
             is Result.Error -> {
                 statusLOLRequests = 1
                 val messageError = "catchMatchID failure: ${res.message} puuid: $puuid start: $start count: $count"
+                printLog(messageError)
+                writeLog(messageError)
+                listOf()
+            }
+        }
+    }
+
+    suspend fun catchChampionMasteries(puuid: String) : List<ChampionMasteryDtoItem> {
+        globalLOLRequests++
+        delay(checkRiotQuota())
+        printLog("[catchChampionMasteries::$globalLOLRequests] started with puuid: $puuid")
+        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getChampionMastery(puuid) }){
+            is Result.Success -> { res.data }
+            is Result.Error -> {
+                statusLOLRequests = 1
+                val messageError = "catchChampionMasteries failure: ${res.message} puuid: $puuid"
                 printLog(messageError)
                 writeLog(messageError)
                 listOf()

@@ -90,37 +90,37 @@ fun arguments() = commands("Arguments") {
                 arrayStatClassic.add(DataStatRate(lol_id = i, allGames = pairs.size, winGames = winGames))
             }
 
-            var textRespond = "**ARAM DATA**\n"
+            var textRespond = "**ARAM**\n"
             arrayStatAram.sortByDescending { (it.winGames / it.allGames * 100.0).to2Digits() }
             arrayStatAram.forEach {
-                textRespond += "* __${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectName()}__ ${(it.winGames / it.allGames * 100.0).to2Digits()}% Games:${it.allGames}\n"
+                textRespond += "* __${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectNameWithTag()}__ ${(it.winGames / it.allGames * 100.0).to2Digits()}% Games:${it.allGames}\n"
             }
-            textRespond += "\n**CLASSIC DATA**\n"
+            textRespond += "\n**CLASSIC**\n"
             arrayStatClassic.sortByDescending { (it.winGames / it.allGames * 100.0).to2Digits() }
             arrayStatClassic.forEach {
-                textRespond += "* __${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectName()}__ ${(it.winGames / it.allGames * 100.0).to2Digits()}% Games:${it.allGames}\n"
+                textRespond += "* __${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectNameWithTag()}__ ${(it.winGames / it.allGames * 100.0).to2Digits()}% Games:${it.allGames}\n"
             }
             respond(textRespond)
         }
     }
 
-    slash("genText", "Получить ответ от Gemini AI на запрос", Permissions(Permission.UseApplicationCommands)){
-        execute(AnyArg("request")) {
-            val (request) = args
-            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'request'=${request}"
-            printLog(textCommand)
+//    slash("genText", "Получить ответ от Gemini AI на запрос", Permissions(Permission.UseApplicationCommands)){
+//        execute(AnyArg("request")) {
+//            val (request) = args
+//            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'request'=${request}"
+//            printLog(textCommand)
+//
+//            asyncLaunch {
+//                var result = "${author.lowDescriptor()}: $request\n\nОтвет:\n"
+//                result += Gemini.generateForText(request)
+//                channel.createMessage(result)
+//            }
+//
+//            respond("Ожидание ответа...")
+//        }
+//    }
 
-            asyncLaunch {
-                var result = "${author.lowDescriptor()}: $request\n\nОтвет:\n"
-                result += Gemini.generateForText(request)
-                channel.createMessage(result)
-            }
-
-            respond("Ожидание ответа...")
-        }
-    }
-
-    slash("setBirthdayDate", "Ввести дату рождения пользователя (в формате ddmmyyyy, например 03091990)", Permissions(Permission.UseApplicationCommands)){
+    slash("setBirthdayDate", "Ввести дату рождения пользователя (в формате ddmmyyyy, например 03091990)", Permissions(Permission.UseApplicationCommands, Permission.ChangeNickname)){
         execute(UserArg("user", "Пользователь Discord"), AnyArg("date")){
             val (user, date) = args
             var dateText = date

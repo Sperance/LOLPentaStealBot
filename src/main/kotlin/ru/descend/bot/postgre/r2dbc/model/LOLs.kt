@@ -83,6 +83,11 @@ data class LOLs(
         if (!LOL_riotIdName.isNullOrEmpty()) return LOL_riotIdName!!
         return LOL_summonerName?:""
     }
+
+    fun getCorrectNameWithTag() : String {
+        return getCorrectName() + "#" + LOL_riotIdTagline
+    }
+
     override fun toString(): String {
         return "LOLs(id=$id, puuid='$LOL_puuid', summonerName='$LOL_summonerName', riotIdName=$LOL_riotIdName)"
     }

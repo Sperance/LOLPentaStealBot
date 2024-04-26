@@ -43,6 +43,11 @@ data class Guilds(
      * Таблица ММР арама и последней игры
      */
     var messageIdArammmr: String = "",
+    /**
+     * Таблица мастерства ТОП 3 чемпионов
+     */
+    var messageIdMasteries: String = "",
+    var messageIdMasteriesUpdated: Long = 0,
 
     @KomapperCreatedAt
     var createdAt: LocalDateTime = LocalDateTime.MIN,
@@ -62,6 +67,10 @@ data class Guilds(
         return curGuild.create(Guilds::idGuild)
     }
 
+    override fun toString(): String {
+        return "Guilds(id=$id, idGuild='$idGuild', name='$name', botChannedId='$botChannelId')"
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -78,6 +87,8 @@ data class Guilds(
         if (messageIdDebug != other.messageIdDebug) return false
         if (messageIdGlobalStatisticData != other.messageIdGlobalStatisticData) return false
         if (messageIdArammmr != other.messageIdArammmr) return false
+        if (messageIdMasteries != other.messageIdMasteries) return false
+        if (messageIdMasteriesUpdated != other.messageIdMasteriesUpdated) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
 
@@ -95,12 +106,10 @@ data class Guilds(
         result = 31 * result + messageIdDebug.hashCode()
         result = 31 * result + messageIdGlobalStatisticData.hashCode()
         result = 31 * result + messageIdArammmr.hashCode()
+        result = 31 * result + messageIdMasteries.hashCode()
+        result = 31 * result + messageIdMasteriesUpdated.hashCode()
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
-    }
-
-    override fun toString(): String {
-        return "Guilds(id=$id, idGuild='$idGuild', name='$name', botChannedId='$botChannelId')"
     }
 }

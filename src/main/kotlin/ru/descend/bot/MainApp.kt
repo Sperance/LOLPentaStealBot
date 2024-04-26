@@ -19,6 +19,7 @@ import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
+import ru.descend.bot.datas.LolActiveGame
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.currentGameInfo.Participant
@@ -30,6 +31,7 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
+import ru.descend.bot.savedObj.isCurrentDay
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -115,7 +117,7 @@ private suspend fun firstInitialize() {
 suspend fun removeMessage(guild: Guild) {
     if (mapMainData[guild]!!.guildSQL.botChannelId.isNotEmpty()){
         guild.getChannelOf<TextChannel>(Snowflake(mapMainData[guild]!!.guildSQL.botChannelId)).messages.collect {
-            if (it.id.value.toString() in listOf(mapMainData[guild]!!.guildSQL.messageIdGlobalStatisticData, mapMainData[guild]!!.guildSQL.messageIdMain, mapMainData[guild]!!.guildSQL.messageIdArammmr)) {
+            if (it.id.value.toString() in listOf(mapMainData[guild]!!.guildSQL.messageIdGlobalStatisticData, mapMainData[guild]!!.guildSQL.messageIdMain, mapMainData[guild]!!.guildSQL.messageIdArammmr, mapMainData[guild]!!.guildSQL.messageIdMasteries)) {
                 Unit
             } else {
                 it.delete()
@@ -126,19 +128,12 @@ suspend fun removeMessage(guild: Guild) {
 
 var globalLOLRequests = 0
 var statusLOLRequests = 0
-data class LolActiveGame(
-    val lol: LOLs? = null,
-    val kordlol: KORDLOLs? = null,
-    val part: Participant,
-    val matchId: Int,
-    val messageId: Long? = null
-)
 
 suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
     val channel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(1225762638735085620))
     val arrayActives = ArrayList<LolActiveGame>()
     sqlData.dataSavedLOL.get().forEach {
-        if (it.LOL_puuid == "") return@forEach
+        if (it.LOL_puuid.isEmpty()) return@forEach
         if (arrayActives.find { ara -> ara.part.puuid == it.LOL_puuid } != null) return@forEach
         val kordlol = sqlData.getKORDLOL().firstOrNull { kd -> kd.LOL_id == it.id && kd.guild_id == sqlData.guildSQL.id }
         val gameInfo = LeagueMainObject.catchActiveGame(it.LOL_puuid)
@@ -251,6 +246,13 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }) {
             createMessageGlobalStatistic(channelText, sqlData)
         }
+        if (!sqlData.guildSQL.messageIdMasteriesUpdated.toDate().isCurrentDay()) {
+            editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, {
+                editMessageMasteriesContent(it, sqlData)
+            }) {
+                createMessageMasteries(channelText, sqlData)
+            }
+        }
     }.join()
 }
 
@@ -290,6 +292,16 @@ suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData_
     sqlData.guildSQL.update()
 }
 
+suspend fun createMessageMasteries(channelText: TextChannel, sqlData: SQLData_R2DBC) {
+    val message = channelText.createMessage("Initial Message Masteries")
+    channelText.getMessage(message.id).edit {
+        editMessageMasteriesContent(this, sqlData)
+    }
+
+    sqlData.guildSQL.messageIdMasteries = message.id.value.toString()
+    sqlData.guildSQL.update()
+}
+
 suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
 
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
@@ -317,6 +329,49 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
         }
     }
 
+    printLog(sqlData.guild, "[editMessageGlobalStatisticContent] completed")
+}
+
+data class DataMasteriesChampion(
+    val championId: Int,
+    val championPoints: Int
+)
+
+suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
+
+    builder.content = "**Мастерство чемпионов**\nОбновлено: ${TimeStamp.now()}\n"
+
+    val savedPartsHash = HashMap<KORDLOLs, ArrayList<DataMasteriesChampion>>()
+    sqlData.dataSavedLOL.get().forEach {
+        if (it.LOL_puuid.isEmpty()) return@forEach
+        val kordlol = sqlData.getKORDLOL().find { kl -> kl.LOL_id == it.id } ?: return@forEach
+        savedPartsHash[kordlol] = ArrayList()
+        LeagueMainObject.catchChampionMasteries(it.LOL_puuid).forEach { dto ->
+            savedPartsHash[kordlol]!!.add(DataMasteriesChampion(dto.championId, dto.championPoints))
+        }
+    }
+
+    val savedParts = savedPartsHash.map { it.key to it.value }.sortedBy { it.first.showCode }.toMap()
+
+    val charStr = " / "
+    val mainDataList1 = (savedParts.map { formatInt(it.key.showCode, 2) + "| " + LeagueMainObject.catchHeroForId(it.value[0].championId.toString())?.name.toMaxSymbols(8, "..") + charStr + LeagueMainObject.catchHeroForId(it.value[1].championId.toString())?.name.toMaxSymbols(8, "..") + charStr + LeagueMainObject.catchHeroForId(it.value[2].championId.toString())?.name.toMaxSymbols(8, "..") })
+    val mainDataList2 = (savedParts.map { it.value[0].championPoints.toFormatK() + charStr + it.value[1].championPoints.toFormatK() + charStr + it.value[2].championPoints.toFormatK() })
+
+    builder.embed {
+        field {
+            name = "Champions"
+            value = mainDataList1.joinToString(separator = "\n")
+            inline = true
+        }
+        field {
+            name = "Points"
+            value = mainDataList2.joinToString(separator = "\n")
+            inline = true
+        }
+    }
+
+    sqlData.guildSQL.messageIdMasteriesUpdated = System.currentTimeMillis()
+    sqlData.guildSQL.update()
     printLog(sqlData.guild, "[editMessageGlobalStatisticContent] completed")
 }
 

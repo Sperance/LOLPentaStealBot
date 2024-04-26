@@ -119,7 +119,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun getWinStreak() : HashMap<Int, Int> {
-        var mapWinStreak = HashMap<Int, Int>()
+        val mapWinStreak = HashMap<Int, Int>()
         R2DBC.runQuery {
             QueryDsl.fromTemplate("SELECT * FROM get_streak_results_param(${guildSQL.id})").select { row ->
                 val pers = row.int("PERS")?:-1
@@ -141,8 +141,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }.toSet())
         return list
     }
-
-    suspend fun getSavedParticipantsForMatch(matchId: Int) = dataSavedParticipants.get(true).filter { it.match_id == matchId }
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
