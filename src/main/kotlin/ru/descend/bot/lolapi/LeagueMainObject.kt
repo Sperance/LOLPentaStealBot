@@ -24,9 +24,16 @@ object LeagueMainObject {
 
     var LOL_VERSION = ""
 
-    fun catchHeroForId(id: String) : InterfaceChampionBase? {
+    fun catchHeroForId(id: Int?) : InterfaceChampionBase? {
         heroObjects.forEach {
-            if (it is InterfaceChampionBase && it.key == id) return it
+            if (it is InterfaceChampionBase && it.key.lowercase() == id.toString().lowercase()) return it
+        }
+        return null
+    }
+
+    fun catchHeroForName(name: String) : InterfaceChampionBase? {
+        heroObjects.forEach {
+            if (it is InterfaceChampionBase && it.id.lowercase() == name.lowercase()) return it
         }
         return null
     }

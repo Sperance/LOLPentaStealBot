@@ -1,7 +1,7 @@
 package ru.descend.bot.postgre.calculating
 
 import ru.descend.bot.enums.EnumMMRRank
-import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.lolapi.LeagueMainObject.catchHeroForId
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.MMRs
@@ -33,7 +33,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 
             var isFighterTank = false
             var isMageSupport = false
-            LeagueMainObject.catchHeroForId(participant.championId.toString())?.let {
+            catchHeroForId(participant.championId)?.let {
                 if (it.tags.contains("Fighter") || it.tags.contains("Tank")) isFighterTank = true
                 if (it.tags.contains("Mage") || it.tags.contains("Support")) isMageSupport = true
             }

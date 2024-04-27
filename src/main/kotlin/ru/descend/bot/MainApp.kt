@@ -157,8 +157,8 @@ suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
             }
 
             val mainDataList1 = (arrayActives.map { dat ->
-                if (dat.kordlol != null) "**" + dat.part.riotId + " / " + LeagueMainObject.catchHeroForId(dat.part.championId.toString())?.name + " / " + dat.part.teamId + "**"
-                else dat.part.riotId + " / " + LeagueMainObject.catchHeroForId(dat.part.championId.toString())?.name + " / " + dat.part.teamId
+                if (dat.kordlol != null) "**" + dat.part.riotId + " / " + LeagueMainObject.catchHeroForId(dat.part.championId)?.name + " / " + dat.part.teamId + "**"
+                else dat.part.riotId + " / " + LeagueMainObject.catchHeroForId(dat.part.championId)?.name + " / " + dat.part.teamId
             })
             val mainDataList2 = (arrayActives.map { dat -> gameInfo.gameMode })
 
@@ -230,28 +230,26 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     launch {
         //Таблица Главная - ID никнейм серияпобед
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
-            editMessageMainDataContent(it, sqlData)
+            editMessageMainDataContent(it, sqlData, false)
         }) {
             createMessageMainData(channelText, sqlData)
         }
         //Таблица ММР - все про ММР арама
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, {
-            editMessageAramMMRDataContent(it, sqlData)
+            editMessageAramMMRDataContent(it, sqlData, false)
         }) {
             createMessageAramMMRData(channelText, sqlData)
         }
         //Таблица по играм\винрейту\сериям убийств
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, {
-            editMessageGlobalStatisticContent(it, sqlData)
+            editMessageGlobalStatisticContent(it, sqlData, false)
         }) {
             createMessageGlobalStatistic(channelText, sqlData)
         }
-        if (!sqlData.guildSQL.messageIdMasteriesUpdated.toDate().isCurrentDay()) {
-            editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, {
-                editMessageMasteriesContent(it, sqlData)
-            }) {
-                createMessageMasteries(channelText, sqlData)
-            }
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, {
+            editMessageMasteriesContent(it, sqlData, false)
+        }) {
+            createMessageMasteries(channelText, sqlData)
         }
     }.join()
 }
@@ -268,7 +266,7 @@ suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, editB
 
 suspend fun createMessageMainData(channelText: TextChannel, sqlData: SQLData_R2DBC) {
     val message = channelText.createMessage("Initial Message MainData")
-    channelText.getMessage(message.id).edit { editMessageMainDataContent(this, sqlData) }
+    channelText.getMessage(message.id).edit { editMessageMainDataContent(this, sqlData, true) }
 
     sqlData.guildSQL.messageIdMain = message.id.value.toString()
     sqlData.guildSQL.update()
@@ -277,7 +275,7 @@ suspend fun createMessageMainData(channelText: TextChannel, sqlData: SQLData_R2D
 suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLData_R2DBC) {
     val message = channelText.createMessage("Initial Message GlobalStatistic")
     channelText.getMessage(message.id).edit {
-        editMessageGlobalStatisticContent(this, sqlData)
+        editMessageGlobalStatisticContent(this, sqlData, true)
     }
 
     sqlData.guildSQL.messageIdGlobalStatisticData = message.id.value.toString()
@@ -286,7 +284,7 @@ suspend fun createMessageGlobalStatistic(channelText: TextChannel, sqlData: SQLD
 
 suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData_R2DBC) {
     val message = channelText.createMessage("Initial Message AramMMR")
-    channelText.getMessage(message.id).edit { editMessageAramMMRDataContent(this, sqlData) }
+    channelText.getMessage(message.id).edit { editMessageAramMMRDataContent(this, sqlData, true) }
 
     sqlData.guildSQL.messageIdArammmr = message.id.value.toString()
     sqlData.guildSQL.update()
@@ -295,18 +293,20 @@ suspend fun createMessageAramMMRData(channelText: TextChannel, sqlData: SQLData_
 suspend fun createMessageMasteries(channelText: TextChannel, sqlData: SQLData_R2DBC) {
     val message = channelText.createMessage("Initial Message Masteries")
     channelText.getMessage(message.id).edit {
-        editMessageMasteriesContent(this, sqlData)
+        editMessageMasteriesContent(this, sqlData, true)
     }
 
     sqlData.guildSQL.messageIdMasteries = message.id.value.toString()
     sqlData.guildSQL.update()
 }
 
-suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
+suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
 
-    if (!sqlData.isNeedUpdateDatas) return
+    if (!afterCreating) {
+        if (!sqlData.isNeedUpdateDatas) return
+    }
 
     val charStr = " / "
     val savedParts = sqlData.getSavedParticipants()
@@ -337,9 +337,13 @@ data class DataMasteriesChampion(
     val championPoints: Int
 )
 
-suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
+suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
-    builder.content = "**Мастерство чемпионов**\nОбновлено: ${TimeStamp.now()}\n"
+    if (!afterCreating) {
+        if (sqlData.guildSQL.messageIdMasteriesUpdated.toDate().isCurrentDay()) return
+    }
+
+    builder.content = "**Мастерство чемпионов (ТОП 3)**\nОбновлено: ${TimeStamp.now()}\n"
 
     val savedPartsHash = HashMap<KORDLOLs, ArrayList<DataMasteriesChampion>>()
     sqlData.dataSavedLOL.get().forEach {
@@ -354,7 +358,7 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
     val savedParts = savedPartsHash.map { it.key to it.value }.sortedBy { it.first.showCode }.toMap()
 
     val charStr = " / "
-    val mainDataList1 = (savedParts.map { formatInt(it.key.showCode, 2) + "| " + LeagueMainObject.catchHeroForId(it.value[0].championId.toString())?.name.toMaxSymbols(8, "..") + charStr + LeagueMainObject.catchHeroForId(it.value[1].championId.toString())?.name.toMaxSymbols(8, "..") + charStr + LeagueMainObject.catchHeroForId(it.value[2].championId.toString())?.name.toMaxSymbols(8, "..") })
+    val mainDataList1 = (savedParts.map { formatInt(it.key.showCode, 2) + "| " + LeagueMainObject.catchHeroForId(it.value[0].championId)?.name.toMaxSymbols(8, "..") + charStr + LeagueMainObject.catchHeroForId(it.value[1].championId)?.name.toMaxSymbols(8, "..") + charStr + LeagueMainObject.catchHeroForId(it.value[2].championId)?.name.toMaxSymbols(8, "..") })
     val mainDataList2 = (savedParts.map { it.value[0].championPoints.toFormatK() + charStr + it.value[1].championPoints.toFormatK() + charStr + it.value[2].championPoints.toFormatK() })
 
     builder.embed {
@@ -375,11 +379,13 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
     printLog(sqlData.guild, "[editMessageGlobalStatisticContent] completed")
 }
 
-suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
+suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
     builder.content = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
 
-    if (!sqlData.isNeedUpdateDatas) return
+    if (!afterCreating) {
+        if (!sqlData.isNeedUpdateDatas) return
+    }
 
     val data = sqlData.getKORDLOL()
     data.sortBy { it.showCode }
@@ -411,11 +417,13 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
     printLog(sqlData.guild, "[editMessageMainDataContent] completed")
 }
 
-suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
+suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
     builder.content = "**Статистика ММР**\nОбновлено: ${TimeStamp.now()}\n"
 
-    if (!sqlData.isNeedUpdateDatas) return
+    if (!afterCreating) {
+        if (!sqlData.isNeedUpdateDatas) return
+    }
 
     val charStr = " / "
     val aramData = sqlData.getArrayAramMMRData()
@@ -431,8 +439,8 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
         else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + (it.mmr_aram / it.games).toFormat(2)
     })
     val mainDataList3 = (aramData.map {
-        if (it.match_id == it.last_match_id) "**" + LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + " " + it.mvp_lvp_info + "**"
-        else LeagueMainObject.catchHeroForId(it.champion_id.toString())?.name + charStr + it.mmr + " " + it.mvp_lvp_info
+        if (it.match_id == it.last_match_id) "**" + LeagueMainObject.catchHeroForId(it.champion_id)?.name + charStr + it.mmr + " " + it.mvp_lvp_info + "**"
+        else LeagueMainObject.catchHeroForId(it.champion_id)?.name + charStr + it.mmr + " " + it.mvp_lvp_info
     })
 
 

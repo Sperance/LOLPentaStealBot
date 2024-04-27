@@ -8,7 +8,9 @@ import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.util.fullName
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.datas.DataStatRate
+import ru.descend.bot.lolapi.LeagueMainObject.catchHeroForName
 import ru.descend.bot.lowDescriptor
+import ru.descend.bot.postgre.PostgreTest
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -23,15 +25,87 @@ import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.Gemini
+import ru.descend.bot.savedObj.toDate
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toStringUID
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.GregorianCalendar
 import java.util.HashMap
 import kotlin.collections.ArrayList
 
 fun arguments() = commands("Arguments") {
+
+    slash("getChampionsWinrate", "Просмотр Винрейта по всем своим сыгранным чемпионам за последние 30 дней") {
+        execute {
+
+            val textCommand = "[Start command] '$name' from ${author.fullName}"
+            printLog(textCommand)
+            val guilds = R2DBC.getGuild(guild)
+            guild.sendMessage(guilds.messageIdDebug, textCommand)
+
+            val KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq author.toStringUID() ; tbl_kords.guild_id eq guilds.id }.firstOrNull()
+            if (KORD == null) {
+                respond("Вы ${author.lowDescriptor()} не зарегистрированы в боте. Обратитесь к Администратору")
+                return@execute
+            }
+            val KORDLOL = R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id ; tbl_kordlols.guild_id eq guilds.id }.firstOrNull()
+            if (KORDLOL == null) {
+                respond("Вы ${author.lowDescriptor()} не привязаны к аккаунту Лиги Легенд. Обратитесь к Администратору")
+                return@execute
+            }
+
+            val arrayARAM = HashMap<String, PostgreTest.DataChampionWinstreak>()
+            val arrayCLASSIC = HashMap<String, PostgreTest.DataChampionWinstreak>()
+
+            val dateCurrent = LocalDate.now()
+            val modifiedDate = dateCurrent.minusMonths(1).toDate().time
+
+            val savedParticipantsMatches = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id }
+            val arrayMatches = R2DBC.getMatches { Matches.tbl_matches.matchDateStart greaterEq modifiedDate ; Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }) ; Matches.tbl_matches.guild_id eq 1 ; Matches.tbl_matches.surrender eq false ; Matches.tbl_matches.bots eq false }
+            val lastParticipants = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id ; Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }) }
+            lastParticipants.forEach {
+                if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "ARAM") {
+                    if (arrayARAM[it.championName] == null) {
+                        arrayARAM[it.championName] = PostgreTest.DataChampionWinstreak(it.championId, 1, if (it.win) 1 else 0, it.kda)
+                    } else {
+                        val curData = arrayARAM[it.championName]!!
+                        curData.championGames++
+                        curData.championWins += if (it.win) 1 else 0
+                        curData.championKDA += it.kda
+                        arrayARAM[it.championName] = curData
+                    }
+                } else if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "CLASSIC") {
+                    if (arrayCLASSIC[it.championName] == null) {
+                        arrayCLASSIC[it.championName] = PostgreTest.DataChampionWinstreak(it.championId, 1, if (it.win) 1 else 0, it.kda)
+                    } else {
+                        val curData = arrayCLASSIC[it.championName]!!
+                        curData.championGames++
+                        curData.championWins += if (it.win) 1 else 0
+                        curData.championKDA += it.kda
+                        arrayCLASSIC[it.championName] = curData
+                    }
+                }
+            }
+
+            var textResult = "**ARAM**\n"
+            val savedPartsARAM = arrayARAM.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap()
+            savedPartsARAM.forEach { (i, pairs) ->
+                if (pairs.championGames < 5) return@forEach
+                textResult += "* ${if (catchHeroForName(i) == null) i else catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()} KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}\n"
+                if (textResult.length > 1000) return@forEach
+            }
+            textResult += "\n**CLASSIC**\n"
+            val savedPartsCLASSIC = arrayCLASSIC.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap()
+            savedPartsCLASSIC.forEach { (i, pairs) ->
+                if (pairs.championGames < 10) return@forEach
+                textResult += "* ${catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()} KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}\n"
+                if (textResult.length > 1900) return@forEach
+            }
+            respond(textResult)
+        }
+    }
 
     slash("getAlliesWinrate", "Просмотр Винрейта каждого игрока сервера (в боте) по отношению к себе") {
         execute {
@@ -54,9 +128,9 @@ fun arguments() = commands("Arguments") {
             val arrayARAM = HashMap<Int, ArrayList<Pair<Int, Int>>>()
             val arrayCLASSIC = HashMap<Int, ArrayList<Pair<Int, Int>>>()
 
-            val allKORDLOLS = R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq 1; tbl_kordlols.LOL_id notEq KORDLOL.LOL_id }
+            val allKORDLOLS = R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guilds.id; tbl_kordlols.LOL_id notEq KORDLOL.LOL_id }
             val savedParticipantsMatches = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id }
-            val arrayMatches = R2DBC.getMatches { Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }) ; Matches.tbl_matches.guild_id eq 1 ; Matches.tbl_matches.surrender eq false ; Matches.tbl_matches.bots eq false }
+            val arrayMatches = R2DBC.getMatches { Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }) ; Matches.tbl_matches.guild_id eq guilds.id ; Matches.tbl_matches.surrender eq false ; Matches.tbl_matches.bots eq false }
             val lastParticipants = R2DBC.getParticipants { Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }) ; Participants.tbl_participants.LOLperson_id.inList(allKORDLOLS.map { it.LOL_id }) }
             lastParticipants.forEach {
                 if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "ARAM") {

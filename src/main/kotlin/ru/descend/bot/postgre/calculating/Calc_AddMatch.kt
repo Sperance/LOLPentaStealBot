@@ -54,12 +54,9 @@ data class Calc_AddMatch (
         ).create(Matches::matchId)
         sqlData.isNeedUpdateDatas = true
 
-//        if (pMatch.id % 1000 == 0){
-//            asyncLaunch {
-//                sqlData.sendEmail("Sys", "execute method AVGs()")
-//                sqlData.executeProcedure("call \"GetAVGs\"()")
-//            }
-//        }
+        if (pMatch.id % 1000 == 0){
+            R2DBC.executeProcedure("call \"GetAVGs\"()")
+        }
 
         val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->

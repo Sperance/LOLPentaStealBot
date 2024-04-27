@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import org.junit.Test
 import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.enums.EnumMMRRank
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.create
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
@@ -17,6 +18,7 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
+import ru.descend.bot.savedObj.toDate
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
 import ru.descend.bot.toFormat
@@ -25,6 +27,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
+import java.util.Date
 import java.util.HashMap
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
@@ -83,6 +86,54 @@ class PostgreTest {
 
             val response = sendMessageToGIGAChatAPI(accessToken, message)
             println("Response from GIGAChat API: $response")
+        }
+    }
+
+    data class DataChampionWinstreak(
+        val championId: Int,
+        var championGames: Int,
+        var championWins: Int,
+        var championKDA: Double
+    )
+
+    @Test
+    fun test_calc_champion_winrate() {
+        runBlocking {
+            val lolid = 14
+
+            val arrayARAM = HashMap<String, DataChampionWinstreak>()
+            val dateCurrent = LocalDate.now()
+            val modifiedDate = dateCurrent.minusMonths(1).toDate().time
+
+            val savedParticipantsMatches = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq lolid }
+            val arrayMatches = R2DBC.getMatches { Matches.tbl_matches.matchDateStart greaterEq modifiedDate ; Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }) ; Matches.tbl_matches.guild_id eq 1 ; Matches.tbl_matches.surrender eq false ; Matches.tbl_matches.bots eq false }
+            val lastParticipants = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq lolid ; Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }) }
+            lastParticipants.forEach {
+                if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "ARAM") {
+                    if (arrayARAM[it.championName] == null) {
+                        arrayARAM[it.championName] = DataChampionWinstreak(it.championId, 1, if (it.win) 1 else 0, it.kda)
+                    } else {
+                        val curData = arrayARAM[it.championName]!!
+                        curData.championGames++
+                        curData.championWins += if (it.win) 1 else 0
+                        curData.championKDA += it.kda
+                        arrayARAM[it.championName] = curData
+                    }
+                }
+            }
+
+            val savedParts = arrayARAM.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap()
+
+            savedParts.forEach { (i, pairs) ->
+                printLog("$i Games: ${pairs.championGames} Winrate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()} KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}")
+            }
+        }
+    }
+
+    @Test
+    fun test_proc() {
+        runBlocking {
+            R2DBC.executeProcedure("call \"GetAVGs\"()")
         }
     }
 

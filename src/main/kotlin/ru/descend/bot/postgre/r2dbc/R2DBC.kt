@@ -59,6 +59,13 @@ object R2DBC {
         }
     }
 
+    suspend fun executeProcedure(command: String) {
+        printLog("[executeProcedure] $command")
+        runQuery {
+            QueryDsl.executeScript(command)
+        }
+    }
+
     private suspend fun getGuilds(declaration: WhereDeclaration?) : List<Guilds> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_guilds) else QueryDsl.from(tbl_guilds).where(declaration) } }
     }
