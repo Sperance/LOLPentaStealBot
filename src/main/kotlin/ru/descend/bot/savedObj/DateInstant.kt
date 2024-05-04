@@ -22,6 +22,12 @@ fun Date.isCurrentDay() : Boolean {
     return currentDate.date == inDate.date
 }
 
+fun Date.isBeforeDay() : Boolean {
+    val currentDate = System.currentTimeMillis().toDate().toLocalDate().minusDays(1).toDate().getStrongDate()
+    val inDate = this.getStrongDate()
+    return currentDate.date == inDate.date
+}
+
 fun LocalDate.toDate(): Date = Date.from(
     this
         .atStartOfDay(

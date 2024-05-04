@@ -20,23 +20,20 @@ import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
 import ru.descend.bot.datas.LolActiveGame
+import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.lolapi.dto.currentGameInfo.Participant
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
-import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
-import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
+import ru.descend.bot.postgre.r2dbc.model.Matches
+import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.savedObj.isCurrentDay
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 @OptIn(PrivilegedIntent::class)
 @KordPreview
@@ -117,7 +114,7 @@ private suspend fun firstInitialize() {
 suspend fun removeMessage(guild: Guild) {
     if (mapMainData[guild]!!.guildSQL.botChannelId.isNotEmpty()){
         guild.getChannelOf<TextChannel>(Snowflake(mapMainData[guild]!!.guildSQL.botChannelId)).messages.collect {
-            if (it.id.value.toString() in listOf(mapMainData[guild]!!.guildSQL.messageIdGlobalStatisticData, mapMainData[guild]!!.guildSQL.messageIdMain, mapMainData[guild]!!.guildSQL.messageIdArammmr, mapMainData[guild]!!.guildSQL.messageIdMasteries)) {
+            if (it.id.value.toString() in listOf(mapMainData[guild]!!.guildSQL.messageIdGlobalStatisticData, mapMainData[guild]!!.guildSQL.messageIdMain, mapMainData[guild]!!.guildSQL.messageIdArammmr, mapMainData[guild]!!.guildSQL.messageIdMasteries, mapMainData[guild]!!.guildSQL.messageIdTop)) {
                 Unit
             } else {
                 it.delete()
@@ -201,8 +198,6 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.dataSavedParticipants.clear()
     sqlData.dataMMR.clear()
 
-    sqlData.isNeedUpdateDatas = false
-
     sqlData.onCalculateTimer()
 
 //    launch {
@@ -246,12 +241,21 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }) {
             createMessageGlobalStatistic(channelText, sqlData)
         }
+        //Таблица по Мастерству ТОП3 чемпионов каждого игрока
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, {
             editMessageMasteriesContent(it, sqlData, false)
         }) {
             createMessageMasteries(channelText, sqlData)
         }
+        //Таблица по ТОП чемпионам сервера
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, {
+            editMessageTopContent(it, sqlData, false)
+        }) {
+            createMessageTop(channelText, sqlData)
+        }
     }.join()
+
+    sqlData.isNeedUpdateDatas = false
 }
 
 suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, editBody: suspend (UserMessageModifyBuilder) -> Unit, createBody: suspend () -> Unit) {
@@ -300,6 +304,16 @@ suspend fun createMessageMasteries(channelText: TextChannel, sqlData: SQLData_R2
     sqlData.guildSQL.update()
 }
 
+suspend fun createMessageTop(channelText: TextChannel, sqlData: SQLData_R2DBC) {
+    val message = channelText.createMessage("Initial Message Top")
+    channelText.getMessage(message.id).edit {
+        editMessageTopContent(this, sqlData, true)
+    }
+
+    sqlData.guildSQL.messageIdTop = message.id.value.toString()
+    sqlData.guildSQL.update()
+}
+
 suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
@@ -332,6 +346,60 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
     printLog(sqlData.guild, "[editMessageGlobalStatisticContent] completed")
 }
 
+suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean){
+
+    if (!afterCreating && !sqlData.isNeedUpdateDays) {
+        if (sqlData.guildSQL.messageIdTopUpdated.toDate().isCurrentDay()) return
+    }
+    if (sqlData.isNeedUpdateDays) sqlData.isNeedUpdateDays = false
+
+    builder.content = "**ТОП сервера по параметрам (за матч)**\nОбновлено: ${TimeStamp.now()}\n"
+
+    val statClass = Toppartisipants()
+    val savedKORDLOLS = R2DBC.getKORDLOLs { KORDLOLs.tbl_kordlols.guild_id eq sqlData.guildSQL.id }
+    val normalMatches = R2DBC.getMatches { Matches.tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; Matches.tbl_matches.bots eq false ; Matches.tbl_matches.surrender eq false }
+    val savedparticipants = R2DBC.getParticipants { Participants.tbl_participants.match_id.inList(normalMatches.map { it.id }) ; Participants.tbl_participants.LOLperson_id.inList(savedKORDLOLS.map { it.LOL_id }) }
+    savedparticipants.forEach {
+        statClass.calculateField(it, "Убийств", it.kills.toDouble())
+        statClass.calculateField(it, "Смертей", it.deaths.toDouble())
+        statClass.calculateField(it, "Ассистов", it.assists.toDouble())
+        statClass.calculateField(it, "KDA", it.kda)
+        statClass.calculateField(it, "Урон в минуту", it.damagePerMinute)
+        statClass.calculateField(it, "Эффектных щитов/хилов", it.effectiveHealAndShielding)
+        statClass.calculateField(it, "Урона строениям", it.damageDealtToBuildings.toDouble())
+        statClass.calculateField(it, "Урона поглощено", it.damageSelfMitigated.toDouble())
+        statClass.calculateField(it, "Секунд контроля врагам", it.enemyChampionImmobilizations.toDouble())
+        statClass.calculateField(it, "Получено золота", it.goldEarned.toDouble())
+//        statClass.calculateField(it, "Уничтожено ингибиторов", it.inhibitorKills.toDouble())
+        statClass.calculateField(it, "Критический удар", it.largestCriticalStrike.toDouble())
+        statClass.calculateField(it, "Магического урона чемпионам", it.magicDamageDealtToChampions.toDouble())
+        statClass.calculateField(it, "Физического урона чемпионам", it.physicalDamageDealtToChampions.toDouble())
+        statClass.calculateField(it, "Чистого урона чемпионам", it.trueDamageDealtToChampions.toDouble())
+        statClass.calculateField(it, "Убито миньонов", it.minionsKills.toDouble())
+        statClass.calculateField(it, "Использовано заклинаний", it.skillsCast.toDouble())
+        statClass.calculateField(it, "Уклонений от заклинаний", it.skillshotsDodged.toDouble())
+        statClass.calculateField(it, "Попаданий заклинаниями", it.skillshotsHit.toDouble())
+        statClass.calculateField(it, "Попаданий снежками", it.snowballsHit.toDouble())
+//        statClass.calculateField(it, "Соло-убийств", it.soloKills.toDouble())
+//        statClass.calculateField(it, "Провёл в контроле (сек)", it.timeCCingOthers.toDouble())
+        statClass.calculateField(it, "Наложено щитов союзникам", it.totalDamageShieldedOnTeammates.toDouble())
+        statClass.calculateField(it, "Получено урона", it.totalDamageTaken.toDouble())
+        statClass.calculateField(it, "Нанесено урона чемпионам", it.totalDmgToChampions.toDouble())
+        statClass.calculateField(it, "Лечение союзников", it.totalHealsOnTeammates.toDouble())
+//        statClass.calculateField(it, "Контроль врагов (сек)", it.totalTimeCCDealt.toDouble())
+    }
+
+    var resultText = ""
+    statClass.getResults().forEach {
+        resultText += "* $it\n"
+    }
+    builder.content += resultText
+
+    sqlData.guildSQL.messageIdTopUpdated = System.currentTimeMillis()
+    sqlData.guildSQL.update()
+    printLog(sqlData.guild, "[editMessageTopContent] completed")
+}
+
 data class DataMasteriesChampion(
     val championId: Int,
     val championPoints: Int
@@ -339,9 +407,10 @@ data class DataMasteriesChampion(
 
 suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
-    if (!afterCreating) {
+    if (!afterCreating && !sqlData.isNeedUpdateDays) {
         if (sqlData.guildSQL.messageIdMasteriesUpdated.toDate().isCurrentDay()) return
     }
+    if (sqlData.isNeedUpdateDays) sqlData.isNeedUpdateDays = false
 
     builder.content = "**Мастерство чемпионов (ТОП 3)**\nОбновлено: ${TimeStamp.now()}\n"
 

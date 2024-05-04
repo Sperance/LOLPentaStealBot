@@ -10,6 +10,7 @@ import ru.descend.bot.asyncLaunch
 import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.lolapi.LeagueMainObject.catchHeroForName
 import ru.descend.bot.lowDescriptor
+import ru.descend.bot.mapMainData
 import ru.descend.bot.postgre.PostgreTest
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
@@ -24,7 +25,6 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.Gemini
 import ru.descend.bot.savedObj.toDate
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
@@ -93,14 +93,14 @@ fun arguments() = commands("Arguments") {
             val savedPartsARAM = arrayARAM.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap()
             savedPartsARAM.forEach { (i, pairs) ->
                 if (pairs.championGames < 5) return@forEach
-                textResult += "* ${if (catchHeroForName(i) == null) i else catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()} KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}\n"
+                textResult += "* ${if (catchHeroForName(i) == null) i else catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()}% KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}\n"
                 if (textResult.length > 1000) return@forEach
             }
             textResult += "\n**CLASSIC**\n"
             val savedPartsCLASSIC = arrayCLASSIC.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap()
             savedPartsCLASSIC.forEach { (i, pairs) ->
                 if (pairs.championGames < 10) return@forEach
-                textResult += "* ${catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()} KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}\n"
+                textResult += "* ${catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()}% KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}\n"
                 if (textResult.length > 1900) return@forEach
             }
             respond(textResult)
@@ -359,7 +359,8 @@ fun arguments() = commands("Arguments") {
                 resultData.showCode = arrayData.last().showCode + 1
                 resultData.update()
             }
-
+            mapMainData[guild]!!.isNeedUpdateDatas = true
+            mapMainData[guild]!!.isNeedUpdateDays = true
             respond("Пользователь ${user.lowDescriptor()} успешно связан с учётной записью ${LOL.LOL_summonerName}")
         }
     }
@@ -380,6 +381,7 @@ fun arguments() = commands("Arguments") {
                 dataKORD.deleteWithKORDLOL(guilds)
                 "Удаление произошло успешно"
             }
+            mapMainData[guild]!!.isNeedUpdateDays = true
             respond(textMessage)
         }
     }

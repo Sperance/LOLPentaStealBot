@@ -4,7 +4,6 @@ import dev.kord.common.entity.Snowflake
 import dev.kord.core.cache.data.UserData
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
-import org.junit.jupiter.params.aggregator.ArgumentAccessException
 import org.komapper.annotation.KomapperAutoIncrement
 import org.komapper.annotation.KomapperCreatedAt
 import org.komapper.annotation.KomapperEntity
@@ -12,7 +11,6 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.delete
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols

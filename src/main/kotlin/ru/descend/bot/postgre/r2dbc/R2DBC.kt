@@ -7,7 +7,6 @@ import org.komapper.core.dsl.expression.WhereDeclaration
 import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.QueryScope
 import org.komapper.r2dbc.R2dbcDatabase
-import org.komapper.tx.core.CoroutineTransactionOperator
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs

@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Test
 import ru.descend.bot.datas.DataStatRate
+import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.r2dbc.R2DBC
@@ -15,24 +16,21 @@ import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
+import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.toDate
-import ru.descend.bot.sendMessage
 import ru.descend.bot.to2Digits
+import ru.descend.bot.toDate
 import ru.descend.bot.toFormat
-import ru.descend.bot.toFormatDateTime
+import ru.descend.bot.toFormatDate
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
-import java.util.Date
 import java.util.HashMap
-import kotlin.time.Duration
-import kotlin.time.DurationUnit
-import kotlin.time.ExperimentalTime
-import kotlin.time.toDuration
 
 class PostgreTest {
 
@@ -126,6 +124,49 @@ class PostgreTest {
 
             savedParts.forEach { (i, pairs) ->
                 printLog("$i Games: ${pairs.championGames} Winrate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()} KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}")
+            }
+        }
+    }
+
+    @Test
+    fun test_all_stats() {
+        runBlocking {
+            val statClass = Toppartisipants()
+            val savedKORDLOLS = R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq 1 }
+            val normalMatches = R2DBC.getMatches { tbl_matches.bots eq false ; tbl_matches.surrender eq false }
+            val savedparticipants = R2DBC.getParticipants { tbl_participants.match_id.inList(normalMatches.map { it.id }) ; tbl_participants.LOLperson_id.inList(savedKORDLOLS.map { it.LOL_id }) }
+            savedparticipants.forEach {
+                statClass.calculateField(it, "Убийств", it.kills.toDouble())
+                statClass.calculateField(it, "Смертей", it.deaths.toDouble())
+                statClass.calculateField(it, "Ассистов", it.assists.toDouble())
+                statClass.calculateField(it, "KDA", it.kda)
+                statClass.calculateField(it, "Урон в минуту", it.damagePerMinute)
+                statClass.calculateField(it, "Эффектных щитов/хилов", it.effectiveHealAndShielding)
+                statClass.calculateField(it, "Урона строениям", it.damageDealtToBuildings.toDouble())
+                statClass.calculateField(it, "Урона поглощено", it.damageSelfMitigated.toDouble())
+                statClass.calculateField(it, "Секунд контроля врагам", it.enemyChampionImmobilizations.toDouble())
+                statClass.calculateField(it, "Получено золота", it.goldEarned.toDouble())
+                statClass.calculateField(it, "Уничтожено ингибиторов", it.inhibitorKills.toDouble())
+                statClass.calculateField(it, "Критический удар", it.largestCriticalStrike.toDouble())
+                statClass.calculateField(it, "Магического урона чемпионам", it.magicDamageDealtToChampions.toDouble())
+                statClass.calculateField(it, "Физического урона чемпионам", it.physicalDamageDealtToChampions.toDouble())
+                statClass.calculateField(it, "Чистого урона чемпионам", it.trueDamageDealtToChampions.toDouble())
+                statClass.calculateField(it, "Убито миньонов", it.minionsKills.toDouble())
+                statClass.calculateField(it, "Использовано заклинаний", it.skillsCast.toDouble())
+                statClass.calculateField(it, "Уклонений от заклинаний", it.skillshotsDodged.toDouble())
+                statClass.calculateField(it, "Попаданий заклинаниями", it.skillshotsHit.toDouble())
+                statClass.calculateField(it, "Попаданий снежками", it.snowballsHit.toDouble())
+//                statClass.calculateField(it, "Соло-убийств", it.soloKills.toDouble())
+//                statClass.calculateField(it, "Провёл в контроле (сек)", it.timeCCingOthers.toDouble())
+                statClass.calculateField(it, "Наложено щитов союзникам", it.totalDamageShieldedOnTeammates.toDouble())
+                statClass.calculateField(it, "Получено урона", it.totalDamageTaken.toDouble())
+                statClass.calculateField(it, "Нанесено урона чемпионам", it.totalDmgToChampions.toDouble())
+                statClass.calculateField(it, "Лечение союзников", it.totalHealsOnTeammates.toDouble())
+//                statClass.calculateField(it, "Контроль врагов (сек)", it.totalTimeCCDealt.toDouble())
+            }
+
+            statClass.getResults().forEach {
+                printLog("$it")
             }
         }
     }

@@ -48,6 +48,11 @@ data class Guilds(
      */
     var messageIdMasteries: String = "",
     var messageIdMasteriesUpdated: Long = 0,
+    /**
+     * Таблица ТОПА сервера
+     */
+    var messageIdTop: String = "",
+    var messageIdTopUpdated: Long = 0,
 
     @KomapperCreatedAt
     var createdAt: LocalDateTime = LocalDateTime.MIN,
@@ -89,6 +94,8 @@ data class Guilds(
         if (messageIdArammmr != other.messageIdArammmr) return false
         if (messageIdMasteries != other.messageIdMasteries) return false
         if (messageIdMasteriesUpdated != other.messageIdMasteriesUpdated) return false
+        if (messageIdTop != other.messageIdTop) return false
+        if (messageIdTopUpdated != other.messageIdTopUpdated) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
 
@@ -108,6 +115,8 @@ data class Guilds(
         result = 31 * result + messageIdArammmr.hashCode()
         result = 31 * result + messageIdMasteries.hashCode()
         result = 31 * result + messageIdMasteriesUpdated.hashCode()
+        result = 31 * result + messageIdTop.hashCode()
+        result = 31 * result + messageIdTopUpdated.hashCode()
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
         return result
