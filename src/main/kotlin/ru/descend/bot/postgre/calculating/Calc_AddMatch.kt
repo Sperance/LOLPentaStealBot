@@ -13,6 +13,7 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.create
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
+import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.savedObj.Gemini
@@ -29,9 +30,19 @@ data class Calc_AddMatch (
     val match: MatchDTO,
     val kordLol: ArrayList<KORDLOLs>? = null
 ) {
+
+    val arrayOtherLOLs = ArrayList<LOLs>()
+
     suspend fun calculate() : Matches {
+        arrayOtherLOLs.clear()
         var isBots = false
         var isSurrender = false
+
+        val alreadyMatch = R2DBC.getMatches { tbl_matches.matchId eq match.metadata.matchId }.firstOrNull()
+        if (alreadyMatch != null) {
+            return alreadyMatch
+        }
+
         match.info.participants.forEach {
             if (it.summonerId == "BOT" || it.puuid == "BOT") {
                 isBots = true
@@ -104,6 +115,10 @@ data class Calc_AddMatch (
                 curLOL.profile_icon = part.profileIcon
                 curLOL = if (isNewLOL) curLOL.create(LOLs::LOL_puuid)
                 else curLOL.update()
+            }
+
+            if (isNewLOL) {
+                arrayOtherLOLs.add(curLOL)
             }
 
             arrayNewParts.add(Participants(part, pMatch, curLOL))

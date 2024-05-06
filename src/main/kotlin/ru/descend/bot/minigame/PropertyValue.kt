@@ -17,20 +17,29 @@ open class Property<T: Number> (
 }
 
 data class PropertiesPerson(
-    val level: PropertyValue = PropertyValue("Уровень"),
+    val level: PropertyValue = PropertyValue("Уровень")
 )
 data class PropertiesCalculablePerson(
-    val strength: PropertyStatGlobal = PropertyStatGlobal("Сила"),
-    val agility: PropertyStatGlobal = PropertyStatGlobal("Ловкость")
-)
+    val health: PropertyStatGlobal = PropertyStatGlobal("Здоровье"),
+    val attackDamage: PropertyStatGlobal = PropertyStatGlobal("Урон"),
+    val attackSpeed: PropertyStatGlobal = PropertyStatGlobal("Скорость атаки"),
+    val strength: PropertyStatGlobal = PropertyStatGlobal("Сила")
+) {
+    fun initForBattle() {
+        health.initForBattle()
+        attackDamage.initForBattle()
+        attackSpeed.initForBattle()
+        strength.initForBattle()
+    }
+}
 
 data class PropertiesItem(
     val level: PropertyValue = PropertyValue("Уровень"),
     val price: PropertyValue = PropertyValue("Стоимость"),
 )
 data class PropertiesCalculableItem(
-    val strength: PropertyStatLocal = PropertyStatLocal("Сила"),
-    val agility: PropertyStatLocal = PropertyStatLocal("Ловкость")
+    val health: PropertyStatLocal = PropertyStatLocal("Здоровье"),
+    val strength: PropertyStatLocal = PropertyStatLocal("Сила")
 )
 
 open class PropertyValue(
@@ -72,6 +81,19 @@ open class PropertyStatGlobal(
     name: String,
     var percent: Double = 0.0
 ) : Property<Double>(name, value = 0.0)  {
+
+    private var battleValue: Double = 0.0
+    fun initForBattle() {
+        battleValue = get()
+    }
+
+    fun getForBattle() = battleValue
+    fun removeForBattle(value: Double) {
+        battleValue -= value
+    }
+    fun setForBattle(value: Double) {
+        battleValue = value
+    }
 
     override fun get() : Double {
         return value.addPercent(percent)

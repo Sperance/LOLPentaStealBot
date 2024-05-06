@@ -216,7 +216,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         listChecked.sortBy { it }
         listChecked.forEach { newMatch ->
             LeagueMainObject.catchMatch(newMatch)?.let { match ->
-                sqlData.addMatch(match)
+                sqlData.addMatch(match, true)
             }
         }
     }.join()

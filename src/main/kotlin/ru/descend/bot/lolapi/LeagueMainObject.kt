@@ -121,7 +121,7 @@ object LeagueMainObject {
         }
     }
 
-    suspend fun catchMatch(matchId: String) : MatchDTO? {
+    suspend fun catchMatch(matchId: String, agained: Boolean = false) : MatchDTO? {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
@@ -132,7 +132,9 @@ object LeagueMainObject {
                 val messageError = "catchMatch failure: ${res.message} with matchId: $matchId"
                 printLog(messageError)
                 writeLog(messageError)
-                null
+
+                if (agained) null
+                else catchMatch(matchId, true)
             }
         }
     }

@@ -5,6 +5,7 @@ import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_Birthday
@@ -111,9 +112,29 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         Calc_Birthday(this, dataKORD.get()).calculate()
     }
 
-    suspend fun addMatch(match: MatchDTO) {
-        val newMatch = Calc_AddMatch(this, match, getKORDLOL()).calculate()
-        Calc_PentaSteal(this, match, newMatch).calculte()
+    suspend fun addMatch(match: MatchDTO, innerLevel: Boolean) {
+        val newMatch = Calc_AddMatch(this, match, getKORDLOL())
+        newMatch.calculate()
+
+        if (innerLevel) {
+            val checkMatches = ArrayList<String>()
+            val othersLOLS = newMatch.arrayOtherLOLs
+            othersLOLS.forEach {
+                if (it.LOL_puuid == "") return@forEach
+                LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 10).forEach ff@{ matchId ->
+                    if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
+                }
+            }
+            val listChecked = getNewMatches(checkMatches)
+            listChecked.sortBy { it }
+            listChecked.forEach { newMatchs ->
+                LeagueMainObject.catchMatch(newMatchs)?.let { match ->
+                    addMatch(match, false)
+                }
+            }
+        }
+
+//        Calc_PentaSteal(this, match, newMatch).calculte()
     }
 
     suspend fun getWinStreak() : HashMap<Int, Int> {

@@ -1,9 +1,23 @@
 package ru.descend.bot.minigame
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import ru.descend.bot.minigame.gamedatas.CalculateBattle
 import ru.descend.bot.postgre.r2dbc.getField
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.printLog
+import ru.descend.bot.to2Digits
+import java.time.LocalDateTime
+import java.util.TimerTask
+import kotlin.concurrent.fixedRateTimer
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 
 enum class EnumItemCategory(nameCategory: String) {
@@ -22,6 +36,10 @@ data class ObjectsConstants(
     var isEquipped: Boolean = false
 )
 
+data class PersonConstants(
+    var isDie: Boolean = false
+)
+
 open class BaseItem (
     val name: String,
     var constItem: ItemsConstants = ItemsConstants(),
@@ -34,8 +52,26 @@ open class BaseItem (
 open class BasePerson (
     val name: String,
     val calcProps: PropertiesCalculablePerson = PropertiesCalculablePerson(),
-    val props: PropertiesPerson = PropertiesPerson()
-)
+    val props: PropertiesPerson = PropertiesPerson(),
+    val constants: PersonConstants = PersonConstants()
+) {
+    fun isDie() = constants.isDie
+
+    fun initForBattle() {
+        calcProps.initForBattle()
+    }
+
+    fun onAttack(enemy: BasePerson) {
+        val currentDamage = calcProps.attackDamage.get().to2Digits()
+        var enemyHealth = enemy.calcProps.health.getForBattle().to2Digits()
+        enemyHealth -= currentDamage
+        if (enemyHealth <= 0.0) {
+            enemyHealth = 0.0
+            enemy.constants.isDie = true
+        }
+        enemy.calcProps.health.setForBattle(enemyHealth.to2Digits())
+    }
+}
 
 class ObjectItem (
     name: String,
@@ -43,7 +79,7 @@ class ObjectItem (
 
 class Person(
     name: String,
-    var arrayItems: ArrayList<BaseItem> = ArrayList(),
+    private var arrayItems: ArrayList<BaseItem> = ArrayList(),
 ) : BasePerson(name) {
 
     fun calcProperties() : PropertiesCalculablePerson {
@@ -68,21 +104,19 @@ class TestClass {
     @Test
     fun test_check() {
         val person = Person("Человек Павук")
-        person.calcProps.strength.value = 30.0
-        person.calcProps.strength.percent = 50.0
+        person.calcProps.health.value = 100.0
+        person.calcProps.attackSpeed.value = 2500.0
+        person.calcProps.attackDamage.value = 15.0
 
-        printLog("person: ${person.calcProperties()}")
+        val enemy = BasePerson("Дух волка")
+        enemy.calcProps.health.value = 10.0
+        enemy.calcProps.attackSpeed.value = 700.0
+        enemy.calcProps.attackDamage.value = 7.3
 
-        val weaponItem = ObjectItem("Меч Силы")
-        weaponItem.calcProps.strength.value = 10.0
-        weaponItem.calcProps.strength.localPercent = 100.0
-        weaponItem.calcProps.strength.globalPercent = 10.0
-
-        printLog("weapom: ${weaponItem.calcProps}")
-
-        person.arrayItems.add(weaponItem)
-
-        printLog("person: ${person.calcProperties()}")
+        runBlocking {
+            val battle = CalculateBattle(person, enemy)
+            battle.doBattle()
+        }
     }
 
     @Test
