@@ -15,18 +15,18 @@ suspend fun <T : Any> safeApiCall(
                 if (body != null) {
                     Result.Success(body)
                 } else {
-                    Result.Error("Response body is null")
+                    Result.Error("Response body is null", response.code())
                 }
             } else {
-                Result.Error("Error response: ${response.code()} ${response.message()}")
+                Result.Error("Error response: ${response.code()} ${response.message()}", response.code())
             }
         } catch (e: Exception) {
-            Result.Error("Network error: ${e.localizedMessage}")
+            Result.Error("Network error: ${e.localizedMessage}", -1)
         }
     }
 }
 
 sealed class Result<out T : Any> {
     data class Success<out T : Any>(val data: T) : Result<T>()
-    data class Error(val message: String) : Result<Nothing>()
+    data class Error(val message: String, val errorCode: Int) : Result<Nothing>()
 }

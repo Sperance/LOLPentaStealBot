@@ -71,6 +71,8 @@ data class LOLs(
         }
     }
 
+    fun isBot() = LOL_puuid.trim() == "BOT"
+
     fun getIconURL() : String {
         return "https://ddragon.leagueoflegends.com/cdn/$LOL_VERSION/img/profileicon/$profile_icon.png"
     }

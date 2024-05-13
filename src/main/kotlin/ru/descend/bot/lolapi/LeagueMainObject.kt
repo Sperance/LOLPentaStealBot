@@ -73,7 +73,7 @@ object LeagueMainObject {
         return namesAllHero
     }
 
-    suspend fun catchMatchID(puuid: String, summonerName: String, start: Int, count: Int) : List<String> {
+    suspend fun catchMatchID(puuid: String, summonerName: String, start: Int, count: Int, agained: Boolean = false) : List<String> {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchMatchID::$globalLOLRequests] started with summonerName: $summonerName start: $start count: $count")
@@ -84,23 +84,29 @@ object LeagueMainObject {
                 val messageError = "catchMatchID failure: ${res.message} puuid: $puuid start: $start count: $count"
                 printLog(messageError)
                 writeLog(messageError)
-                listOf()
+
+                if (agained) listOf()
+                else catchMatchID(puuid, summonerName,start, count, true)
             }
         }
     }
 
-    suspend fun catchChampionMasteries(puuid: String) : List<ChampionMasteryDtoItem> {
+    suspend fun catchChampionMasteries(puuid: String, agained: Boolean = false) : List<ChampionMasteryDtoItem> {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchChampionMasteries::$globalLOLRequests] started with puuid: $puuid")
         return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getChampionMastery(puuid) }){
             is Result.Success -> { res.data }
             is Result.Error -> {
-                statusLOLRequests = 1
                 val messageError = "catchChampionMasteries failure: ${res.message} puuid: $puuid"
                 printLog(messageError)
                 writeLog(messageError)
-                listOf()
+
+                if (res.errorCode == 404 || agained) listOf()
+                else {
+                    statusLOLRequests = 1
+                    catchChampionMasteries(puuid)
+                }
             }
         }
     }
@@ -128,29 +134,35 @@ object LeagueMainObject {
         return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchInfo(matchId) }){
             is Result.Success -> { res.data }
             is Result.Error -> {
-                statusLOLRequests = 1
                 val messageError = "catchMatch failure: ${res.message} with matchId: $matchId"
                 printLog(messageError)
                 writeLog(messageError)
 
-                if (agained) null
-                else catchMatch(matchId, true)
+                if (res.errorCode == 404 || agained) null
+                else {
+                    statusLOLRequests = 1
+                    catchMatch(matchId)
+                }
             }
         }
     }
 
-    suspend fun catchPentaSteal(matchId: String) : MatchTimelineDTO? {
+    suspend fun catchPentaSteal(matchId: String, agained: Boolean = false) : MatchTimelineDTO? {
         globalLOLRequests++
         delay(checkRiotQuota())
         printLog("[catchPentaSteal::$globalLOLRequests] started with matchId: $matchId")
         return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchTimeline(matchId) }){
             is Result.Success -> { res.data }
             is Result.Error -> {
-                statusLOLRequests = 1
                 val messageError = "catchPentaSteal failure: ${res.message} with matchId: $matchId"
                 printLog(messageError)
                 writeLog(messageError)
-                null
+
+                if (agained) null
+                else {
+                    statusLOLRequests = 1
+                    catchPentaSteal(matchId)
+                }
             }
         }
     }
@@ -163,7 +175,7 @@ object LeagueMainObject {
         if (statusLOLRequests != 0 || globalLOLRequests >= 99) {
             statusLOLRequests = 1
             printLog("[leagueApi] checkRiotQuota globalLOLRequests: $globalLOLRequests")
-            return ((2).minutes + (1).seconds) //+1 сек на всякий случай
+            return ((1).minutes + (1).seconds) //+1 сек на всякий случай
         }
         return (0.1).seconds //для безопасности
     }

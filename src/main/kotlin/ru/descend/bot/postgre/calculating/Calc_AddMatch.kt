@@ -33,7 +33,7 @@ data class Calc_AddMatch (
 
     val arrayOtherLOLs = ArrayList<LOLs>()
 
-    suspend fun calculate() : Matches {
+    suspend fun calculate(mainOrder: Boolean) : Matches {
         arrayOtherLOLs.clear()
         var isBots = false
         var isSurrender = false
@@ -117,16 +117,23 @@ data class Calc_AddMatch (
                 else curLOL.update()
             }
 
-            if (isNewLOL) {
+            if (!curLOL.isBot())
                 arrayOtherLOLs.add(curLOL)
-            }
 
             arrayNewParts.add(Participants(part, pMatch, curLOL))
         }
+
+        val savedLOL = sqlData.dataSavedLOL.get()
+        arrayOtherLOLs.removeIf { savedLOL.find { finded -> finded.id == it.id } != null }
         R2DBC.addBatchParticipants(arrayNewParts)
 
-        if (kordLol != null) {
+        if (mainOrder && kordLol != null) {
             calculateMMR(pMatch, isSurrender, isBots, kordLol)
+        }
+        if (!mainOrder) {
+            sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
+                "**Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id} Mode: ${pMatch.matchMode}**"
+            )
         }
 
         return pMatch

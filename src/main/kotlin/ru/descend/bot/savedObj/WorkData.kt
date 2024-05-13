@@ -1,6 +1,8 @@
 package ru.descend.bot.savedObj
 
-class WorkData<T> {
+import ru.descend.bot.printLog
+
+class WorkData<T>(val nameObject: String) {
 
     private val listData = ArrayList<T>()
     var bodyReset: (suspend () -> List<T>)? = null
@@ -25,8 +27,11 @@ class WorkData<T> {
 
     private fun isEmpty() = listData.isEmpty()
     suspend fun reset() {
+        val beforeCounter = listData.size
         listData.clear()
         listData.addAll(bodyReset?.invoke()?: listOf())
+        val afterCounter = listData.size
+        printLog("[$nameObject::reset] $beforeCounter -> $afterCounter")
     }
 
     override fun equals(other: Any?): Boolean {

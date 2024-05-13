@@ -191,13 +191,6 @@ suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
 }
 
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
-
-    sqlData.dataKORDLOL.reset()
-    sqlData.dataKORD.reset()
-
-    sqlData.dataSavedParticipants.clear()
-    sqlData.dataMMR.clear()
-
     sqlData.onCalculateTimer()
 
 //    launch {
@@ -206,7 +199,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
 
     launch {
         val checkMatches = ArrayList<String>()
-        sqlData.dataSavedLOL.get(true).forEach {
+        sqlData.dataSavedLOL.get().forEach {
             if (it.LOL_puuid == "") return@forEach
             LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 50).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
@@ -254,6 +247,14 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
             createMessageTop(channelText, sqlData)
         }
     }.join()
+
+    if (sqlData.isNeedUpdateDatas) {
+        sqlData.dataKORDLOL.reset()
+        sqlData.dataKORD.reset()
+        sqlData.dataSavedLOL.reset()
+        sqlData.dataSavedParticipants.clear()
+        sqlData.dataMMR.clear()
+    }
 
     sqlData.isNeedUpdateDatas = false
 }

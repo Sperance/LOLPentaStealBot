@@ -9,7 +9,6 @@ import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_Birthday
-import ru.descend.bot.postgre.calculating.Calc_PentaSteal
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.savedObj.WorkData
 import ru.descend.bot.postgre.r2dbc.model.Guilds
@@ -32,12 +31,12 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     var isNeedUpdateDatas = true
     var isNeedUpdateDays = false
 
-    val dataKORDLOL = WorkData<KORDLOLs>()
-    val dataKORD = WorkData<KORDs>()
-    val dataMMR = WorkData<MMRs>()
+    val dataKORDLOL = WorkData<KORDLOLs>("KORDLOL")
+    val dataKORD = WorkData<KORDs>("KORD")
+    val dataMMR = WorkData<MMRs>("MMR")
 
-    val dataSavedLOL = WorkData<LOLs>()
-    val dataSavedParticipants = WorkData<Participants>()
+    val dataSavedLOL = WorkData<LOLs>("SavedLOL")
+    val dataSavedParticipants = WorkData<Participants>("SavedParticipants")
 
     fun initialize() {
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guildSQL.id } }
@@ -112,16 +111,16 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         Calc_Birthday(this, dataKORD.get()).calculate()
     }
 
-    suspend fun addMatch(match: MatchDTO, innerLevel: Boolean) {
+    suspend fun addMatch(match: MatchDTO, mainOrder: Boolean) {
         val newMatch = Calc_AddMatch(this, match, getKORDLOL())
-        newMatch.calculate()
+        newMatch.calculate(mainOrder)
 
-        if (innerLevel) {
+        if (mainOrder) {
             val checkMatches = ArrayList<String>()
             val othersLOLS = newMatch.arrayOtherLOLs
             othersLOLS.forEach {
                 if (it.LOL_puuid == "") return@forEach
-                LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 10).forEach ff@{ matchId ->
+                LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 5).forEach ff@{ matchId ->
                     if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
                 }
             }
