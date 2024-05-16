@@ -153,6 +153,29 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return mapWinStreak
     }
 
+    /**
+     * Прогрузка матчей в базу
+     * @param lols список объектов LOLs
+     * @param count кол-во прогружаемых матчей по каждому объекту LOLs
+     * @param mainOrder прогружать ли в базу так же матчи по игрокам из предыдущего матча (рекурсия 1го уровня)
+     */
+    suspend fun loadMatches(lols: List<LOLs>, count: Int, mainOrder: Boolean) {
+        val checkMatches = ArrayList<String>()
+        lols.forEach {
+            if (it.LOL_puuid == "") return@forEach
+            LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, count).forEach ff@{ matchId ->
+                if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
+            }
+        }
+        val listChecked = getNewMatches(checkMatches)
+        listChecked.sortBy { it }
+        listChecked.forEach { newMatch ->
+            LeagueMainObject.catchMatch(newMatch)?.let { match ->
+                addMatch(match, mainOrder)
+            }
+        }
+    }
+
     suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
         list.removeAll(R2DBC.runQuery {
             QueryDsl.from(tbl_matches).where { tbl_matches.guild_id eq guildSQL.id }.select(tbl_matches.matchId)

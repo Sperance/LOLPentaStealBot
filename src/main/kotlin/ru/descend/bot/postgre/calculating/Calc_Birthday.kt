@@ -6,7 +6,6 @@ import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.update
-import ru.descend.bot.savedObj.Gemini
 import ru.descend.bot.sendMessage
 import ru.descend.bot.writeLog
 import java.util.Calendar
@@ -16,7 +15,7 @@ data class Calc_Birthday(private var sqlData: SQLData_R2DBC, var dataList: List<
 
     suspend fun calculate() {
         dataList.filter { isBirthday(it.date_birthday) }.forEach {
-            var textMessage = Gemini.generateForText("Напиши красивое поздравление с днём рождения пользователю с ником ${it.asUser(sqlData.guild).lowDescriptor()} в контексте игры League of Legends")
+            var textMessage = ""
             if (textMessage.isEmpty()) textMessage = "**Поздравляем призывателя ${it.asUser(sqlData.guild).lowDescriptor()} с Днём Рождения!!!\nОт всего сервера желаем счастья, здоровья, любви, ласки, заботы, деняк, побольше арамов и хорошего настроения**"
             sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, textMessage)
             writeLog(textMessage)

@@ -4,8 +4,10 @@ import dev.kord.core.entity.Guild
 import io.r2dbc.spi.ConnectionFactoryOptions
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.expression.WhereDeclaration
+import org.komapper.core.dsl.operator.desc
 import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.QueryScope
+import org.komapper.core.dsl.query.firstOrNull
 import org.komapper.r2dbc.R2dbcDatabase
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
@@ -72,6 +74,16 @@ object R2DBC {
     suspend fun getKORDLOLs(declaration: WhereDeclaration?) : List<KORDLOLs> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_kordlols) else QueryDsl.from(tbl_kordlols).where(declaration) } }
     }
+
+    suspend fun getKORDLOLone(declaration: WhereDeclaration = { tbl_kordlols.id greaterEq 0}, first: Boolean = true) : KORDLOLs? {
+        val sortExpr = if (first) tbl_kordlols.id else tbl_kordlols.id.desc()
+        val query = QueryDsl.from(tbl_kordlols)
+            .where { declaration }
+            .orderBy(sortExpr)
+            .firstOrNull()
+        return db.withTransaction { db.runQuery { query } }
+    }
+
     suspend fun addBatchKORDLOLs(list: List<KORDLOLs>, batchSize: Int = 100) {
         db.withTransaction {
             val miniList = ArrayList<KORDLOLs>()
@@ -132,6 +144,14 @@ object R2DBC {
         }
     }
 
+    suspend fun getLOLone(declaration: WhereDeclaration = { tbl_lols.id greaterEq 0}, first: Boolean = true) : LOLs? {
+        val sortExpr = if (first) tbl_lols.id else tbl_lols.id.desc()
+        val query = QueryDsl.from(tbl_lols)
+            .where(declaration)
+            .orderBy(sortExpr)
+            .firstOrNull()
+        return db.withTransaction { db.runQuery { query } }
+    }
     suspend fun getLOLs(declaration: WhereDeclaration?) : List<LOLs> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_lols) else QueryDsl.from(tbl_lols).where(declaration) } }
     }
@@ -174,6 +194,14 @@ object R2DBC {
         }
     }
 
+    suspend fun getMatchOne(declaration: WhereDeclaration = { tbl_matches.id greaterEq 0}, first: Boolean = true) : Matches? {
+        val sortExpr = if (first) tbl_matches.id else tbl_matches.id.desc()
+        val query = QueryDsl.from(tbl_matches)
+            .where(declaration)
+            .orderBy(sortExpr)
+            .firstOrNull()
+        return db.withTransaction { db.runQuery { query } }
+    }
     suspend fun getMatches(declaration: WhereDeclaration?) : List<Matches> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_matches) else QueryDsl.from(tbl_matches).where(declaration) } }
     }

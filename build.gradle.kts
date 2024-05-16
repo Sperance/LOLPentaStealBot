@@ -38,7 +38,6 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
     implementation("me.jakejmattson", "DiscordKt", "0.24.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     implementation("junit:junit:4.13.2")
     implementation("org.junit.jupiter:junit-jupiter:5.10.2")
@@ -46,8 +45,6 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     testImplementation(kotlin("test"))
     implementation(kotlin("reflect"))
-
-    implementation("dev.shreyaspatil.generativeai:generativeai-google:0.2.2-1.0.0")
 }
 
 tasks {

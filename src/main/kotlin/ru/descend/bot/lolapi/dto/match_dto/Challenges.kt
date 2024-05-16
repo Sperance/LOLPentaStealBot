@@ -27,7 +27,7 @@ data class Challenges(
     val epicMonsterKillsWithin30SecondsOfSpawn: Int,
     val epicMonsterSteals: Int,
     val epicMonsterStolenWithoutSmite: Int,
-    val firstTurretKilled: Int,
+    val firstTurretKilled: Double,
     val firstTurretKilledTime: Double,
     val flawlessAces: Int,
     val fullTeamTakedown: Int,

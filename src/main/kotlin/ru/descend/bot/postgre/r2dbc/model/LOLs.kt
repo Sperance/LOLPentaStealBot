@@ -25,8 +25,6 @@ data class LOLs(
 
     var LOL_puuid: String = "",
     var LOL_summonerId: String = "",
-    var LOL_accountId: String = "",
-    var LOL_summonerName: String? = "",
     var LOL_riotIdName: String? = "",
     var LOL_riotIdTagline: String? = "",
     var LOL_region: String? = "",
@@ -60,8 +58,6 @@ data class LOLs(
             val newLOL = LOLs()
             newLOL.LOL_puuid = dataLOL.puuid
             newLOL.LOL_summonerId = dataLOL.id
-            newLOL.LOL_accountId = dataLOL.accountId
-            newLOL.LOL_summonerName = dataLOL.name
             newLOL.profile_icon = dataLOL.profileIconId
             newLOL.LOL_region = region
             newLOL.LOL_summonerLevel = dataLOL.summonerLevel
@@ -78,8 +74,7 @@ data class LOLs(
     }
 
     fun getCorrectName() : String {
-        if (!LOL_riotIdName.isNullOrEmpty()) return LOL_riotIdName!!
-        return LOL_summonerName?:""
+        return LOL_riotIdName?:""
     }
 
     fun getCorrectNameWithTag() : String {
@@ -87,7 +82,7 @@ data class LOLs(
     }
 
     override fun toString(): String {
-        return "LOLs(id=$id, puuid='$LOL_puuid', summonerName='$LOL_summonerName', riotIdName=$LOL_riotIdName)"
+        return "LOLs(id=$id, puuid='$LOL_puuid', riotIdName=$LOL_riotIdName)"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -99,8 +94,6 @@ data class LOLs(
         if (id != other.id) return false
         if (LOL_puuid != other.LOL_puuid) return false
         if (LOL_summonerId != other.LOL_summonerId) return false
-        if (LOL_accountId != other.LOL_accountId) return false
-        if (LOL_summonerName != other.LOL_summonerName) return false
         if (LOL_riotIdName != other.LOL_riotIdName) return false
         if (LOL_riotIdTagline != other.LOL_riotIdTagline) return false
         if (LOL_region != other.LOL_region) return false
@@ -116,8 +109,6 @@ data class LOLs(
         var result = id
         result = 31 * result + LOL_puuid.hashCode()
         result = 31 * result + LOL_summonerId.hashCode()
-        result = 31 * result + LOL_accountId.hashCode()
-        result = 31 * result + (LOL_summonerName?.hashCode() ?: 0)
         result = 31 * result + (LOL_riotIdName?.hashCode() ?: 0)
         result = 31 * result + (LOL_riotIdTagline?.hashCode() ?: 0)
         result = 31 * result + (LOL_region?.hashCode() ?: 0)

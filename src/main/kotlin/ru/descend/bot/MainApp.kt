@@ -198,19 +198,10 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
 //    }.join()
 
     launch {
-        val checkMatches = ArrayList<String>()
-        sqlData.dataSavedLOL.get().forEach {
-            if (it.LOL_puuid == "") return@forEach
-            LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 50).forEach ff@{ matchId ->
-                if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
-            }
-        }
-        val listChecked = sqlData.getNewMatches(checkMatches)
-        listChecked.sortBy { it }
-        listChecked.forEach { newMatch ->
-            LeagueMainObject.catchMatch(newMatch)?.let { match ->
-                sqlData.addMatch(match, true)
-            }
+        sqlData.loadMatches(sqlData.dataSavedLOL.get(), 50, true)
+        if (!sqlData.isNeedUpdateDatas) {
+            val lastLOL = R2DBC.getLOLone(first = false)
+            if (lastLOL != null) sqlData.loadMatches(listOf(lastLOL), 50, false)
         }
     }.join()
 

@@ -16,7 +16,6 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
-import ru.descend.bot.savedObj.Gemini
 import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
@@ -38,7 +37,7 @@ data class Calc_AddMatch (
         var isBots = false
         var isSurrender = false
 
-        val alreadyMatch = R2DBC.getMatches { tbl_matches.matchId eq match.metadata.matchId }.firstOrNull()
+        val alreadyMatch = R2DBC.getMatchOne({tbl_matches.matchId eq match.metadata.matchId})
         if (alreadyMatch != null) {
             return alreadyMatch
         }
@@ -85,8 +84,7 @@ data class Calc_AddMatch (
                         if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
                             val championName = LeagueMainObject.findHeroForKey(part.championId.toString())
                             val textPentasCount = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                            val textPenta = Gemini.generateForText("Напиши поздравление для игрока ${curLOL!!.getCorrectName()} который сделал Пентакилл в игре League of Legends за чемпиона $championName")
-                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n\n$textPenta"
+                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n"
                             sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, resultText)
                             writeLog(resultText)
                         }
@@ -99,15 +97,13 @@ data class Calc_AddMatch (
             if (curLOL == null) {
                 curLOL = LOLs(LOL_puuid = part.puuid,
                     LOL_summonerId = part.summonerId,
-                    LOL_summonerName = part.summonerName,
                     LOL_riotIdName = part.riotIdGameName,
                     LOL_riotIdTagline = part.riotIdTagline)
                 isNewLOL = true
             }
 
             //Вдруг что изменится в профиле игрока
-            if (curLOL.LOL_summonerLevel != part.summonerLevel || curLOL.LOL_summonerName != part.summonerName || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon) {
-                curLOL.LOL_summonerName = part.summonerName
+            if (curLOL.LOL_summonerLevel <= part.summonerLevel && (curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon)) {
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
                 curLOL.LOL_summonerId = part.summonerId
                 curLOL.LOL_riotIdName = part.riotIdGameName
@@ -132,7 +128,7 @@ data class Calc_AddMatch (
         }
         if (!mainOrder) {
             sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
-                "**Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id} Mode: ${pMatch.matchMode}**"
+                "${pMatch.matchId} ID: ${pMatch.id} Mode: ${pMatch.matchMode}"
             )
         }
 

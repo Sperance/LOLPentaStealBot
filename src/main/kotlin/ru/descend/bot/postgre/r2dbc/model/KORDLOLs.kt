@@ -59,16 +59,6 @@ data class KORDLOLs(
     suspend fun KORDidObj() = R2DBC.getKORDs { tbl_kords.id eq KORD_id }.firstOrNull()
     suspend fun LOLidObj() = R2DBC.getLOLs { tbl_lols.id eq LOL_id }.firstOrNull()
 
-    suspend fun getNickName(data: SQLData_R2DBC) : String {
-        if (LOL_id == -1) return ""
-        return if (data.getLOL(LOL_id)?.LOL_riotIdName.isNullOrEmpty()) data.getLOL(LOL_id)?.LOL_summonerName?:""
-        else data.getLOL(LOL_id)?.LOL_riotIdName?:""
-    }
-
-    suspend fun getNickNameWithTag(data: SQLData_R2DBC) : String {
-        return getNickName(data) + "#" + data.getLOL(LOL_id)?.LOL_riotIdTagline
-    }
-
     suspend fun asUser(guild: Guild, data: SQLData_R2DBC) : User {
         if (KORD_id == -1) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
         return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), guild.kord)

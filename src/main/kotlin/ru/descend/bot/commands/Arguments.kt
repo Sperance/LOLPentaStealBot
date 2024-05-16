@@ -178,22 +178,6 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-//    slash("genText", "Получить ответ от Gemini AI на запрос", Permissions(Permission.UseApplicationCommands)){
-//        execute(AnyArg("request")) {
-//            val (request) = args
-//            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'request'=${request}"
-//            printLog(textCommand)
-//
-//            asyncLaunch {
-//                var result = "${author.lowDescriptor()}: $request\n\nОтвет:\n"
-//                result += Gemini.generateForText(request)
-//                channel.createMessage(result)
-//            }
-//
-//            respond("Ожидание ответа...")
-//        }
-//    }
-
     slash("setBirthdayDate", "Ввести дату рождения пользователя (в формате ddmmyyyy, например 03091990)", Permissions(Permission.UseApplicationCommands, Permission.ChangeNickname)){
         execute(UserArg("user", "Пользователь Discord"), AnyArg("date")){
             val (user, date) = args
@@ -361,7 +345,7 @@ fun arguments() = commands("Arguments") {
             }
             mapMainData[guild]!!.isNeedUpdateDatas = true
             mapMainData[guild]!!.isNeedUpdateDays = true
-            respond("Пользователь ${user.lowDescriptor()} успешно связан с учётной записью ${LOL.LOL_summonerName}")
+            respond("Пользователь ${user.lowDescriptor()} успешно связан с учётной записью ${LOL.getCorrectName()}")
         }
     }
 

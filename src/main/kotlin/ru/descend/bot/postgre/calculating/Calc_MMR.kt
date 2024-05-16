@@ -75,7 +75,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         if (match.surrender) return
         if (match.bots) return
 
-        mmrEmailText += "\n[BEGIN] User(kordlol_id): ${kordlol.id} Summoner: ${sqlData.getLOL(kordlol.LOL_id)?.LOL_summonerName} Champion: ${participant.championName} Win: ${participant.win}\n"
+        mmrEmailText += "\n[BEGIN] User(kordlol_id): ${kordlol.id} Summoner: ${sqlData.getLOL(kordlol.LOL_id)?.getCorrectNameWithTag()} Champion: ${participant.championName} Win: ${participant.win}\n"
         mmrEmailText += "[BEGIN] MMR: ${kordlol.mmrAram.to2Digits()} SavedMMR: ${kordlol.mmrAramSaved.to2Digits()}\n"
 
         val partMMR: Double

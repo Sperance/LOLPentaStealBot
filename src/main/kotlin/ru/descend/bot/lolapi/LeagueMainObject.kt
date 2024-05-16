@@ -172,7 +172,7 @@ object LeagueMainObject {
      * 100 запросов за 2 минуты
      */
     private fun checkRiotQuota(): kotlin.time.Duration {
-        if (statusLOLRequests != 0 || globalLOLRequests >= 99) {
+        if (statusLOLRequests != 0) {
             statusLOLRequests = 1
             printLog("[leagueApi] checkRiotQuota globalLOLRequests: $globalLOLRequests")
             return ((1).minutes + (1).seconds) //+1 сек на всякий случай
