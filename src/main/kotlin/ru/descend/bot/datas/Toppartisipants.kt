@@ -6,8 +6,7 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.savedObj.isBeforeDay
-import ru.descend.bot.savedObj.isCurrentDay
-import ru.descend.bot.to2Digits
+import ru.descend.bot.to1Digits
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDate
 
@@ -24,7 +23,7 @@ data class TopPartObject(
 ) {
     override fun toString(): String {
         val textBold = stat_date_long.toDate().isBeforeDay()
-        return "${if (textBold) "**" else ""}__${stat_name}:__ ${stat_value.to2Digits()} '${LeagueMainObject.catchHeroForName(stat_champion)?.name?:stat_champion}' $stat_date $stat_lol_name${if (textBold) "**" else ""}"
+        return "${if (textBold) "**" else ""}__${stat_name}:__ ${stat_value.to1Digits()} '${LeagueMainObject.catchHeroForName(stat_champion)?.name?:stat_champion}' $stat_date $stat_lol_name${if (textBold) "**" else ""}"
     }
 }
 

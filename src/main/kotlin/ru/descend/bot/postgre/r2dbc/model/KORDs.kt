@@ -30,6 +30,7 @@ data class KORDs(
     var KORD_name: String = "",
     var KORD_discriminator: String = "",
     var date_birthday: String = "",
+    var donations: Double = 0.0,
 
     @KomapperCreatedAt
     var createdAt: LocalDateTime = LocalDateTime.MIN,
@@ -75,9 +76,10 @@ data class KORDs(
         if (KORD_id != other.KORD_id) return false
         if (KORD_name != other.KORD_name) return false
         if (KORD_discriminator != other.KORD_discriminator) return false
+        if (date_birthday != other.date_birthday) return false
+        if (donations != other.donations) return false
         if (createdAt != other.createdAt) return false
         if (updatedAt != other.updatedAt) return false
-        if (date_birthday != other.date_birthday) return false
 
         return true
     }
@@ -88,9 +90,10 @@ data class KORDs(
         result = 31 * result + KORD_id.hashCode()
         result = 31 * result + KORD_name.hashCode()
         result = 31 * result + KORD_discriminator.hashCode()
+        result = 31 * result + date_birthday.hashCode()
+        result = 31 * result + donations.hashCode()
         result = 31 * result + createdAt.hashCode()
         result = 31 * result + updatedAt.hashCode()
-        result = 31 * result + date_birthday.hashCode()
         return result
     }
 }

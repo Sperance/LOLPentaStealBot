@@ -36,8 +36,10 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     implementation("me.jakejmattson", "DiscordKt", "0.24.0")
+    implementation("ru.gildor.coroutines:kotlin-coroutines-okhttp:1.0")
 
     implementation("junit:junit:4.13.2")
     implementation("org.junit.jupiter:junit-jupiter:5.10.2")

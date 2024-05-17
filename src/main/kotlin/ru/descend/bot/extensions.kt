@@ -1,5 +1,6 @@
 package ru.descend.bot
 
+import com.google.gson.GsonBuilder
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.behavior.channel.createMessage
@@ -12,11 +13,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.util.descriptor
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
 import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.savedObj.DSC_PS
 import ru.descend.bot.savedObj.decrypt
-import ru.descend.bot.savedObj.encrypt
 import ru.descend.bot.savedObj.getStrongDate
+import ru.gildor.coroutines.okhttp.await
 import java.io.File
 import java.math.RoundingMode
 import java.nio.file.Files
@@ -114,7 +120,7 @@ fun Long.toDate() : Date {
 
 fun Double.format(digits: Int) = "%.${digits}f".format(this)
 
-fun Double.to2Digits() = String.format("%.2f", this).replace(",", ".").toDouble()
+fun Double.to1Digits() = String.format("%.1f", this).replace(",", ".").toDouble()
 
 fun Double.toModMax(mod: Double, max: Double) : Double {
     val result = this / mod
@@ -147,6 +153,29 @@ fun catchToken(): List<String> {
         //TODO Write token 1 - dicsord/2 - LOL/3 - Gemini
     }
     return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
+}
+
+suspend fun generateAIText(requestText: String) : String {
+    val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
+    val JSON = "application/json; charset=utf-8".toMediaType()
+    val body = RequestBody.create(JSON, "{\n" +
+            "        \"model\": \"gpt-3.5-turbo-1106\",\n" +
+            "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
+            "    }")
+    val request = Request.Builder()
+        .addHeader("Authorization", "Bearer sk-LT7VD2dmZoQtR0VXftSq4YpXnkS8xcxW")
+        .url(url)
+        .post(body)
+        .build()
+
+    return try {
+        val response = OkHttpClient().newCall(request).await()
+        val resultString = response.body?.string()
+        val forecast = GsonBuilder().create().fromJson(resultString, AIResponse::class.java)
+        forecast.choices.first().message.content
+    } catch (e: Exception) {
+        ""
+    }
 }
 
 fun writeLog(text: String?) {

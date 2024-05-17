@@ -8,7 +8,7 @@ import org.komapper.core.dsl.Meta
 import ru.descend.bot.lolapi.dto.match_dto.Participant
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
-import ru.descend.bot.to2Digits
+import ru.descend.bot.to1Digits
 
 @KomapperEntity
 @KomapperTable("tbl_participants")
@@ -100,11 +100,11 @@ data class Participants(
         this.enemyChampionImmobilizations = participant.challenges?.enemyChampionImmobilizations?:0
         this.survivedThreeImmobilizesInFight = participant.challenges?.survivedThreeImmobilizesInFight?:0
         this.tookLargeDamageSurvived = participant.challenges?.tookLargeDamageSurvived?:0
-        this.effectiveHealAndShielding = participant.challenges?.effectiveHealAndShielding?.to2Digits()?:0.0
-        this.damageTakenOnTeamPercentage = participant.challenges?.damageTakenOnTeamPercentage?.to2Digits()?:0.0
-        this.damagePerMinute = participant.challenges?.damagePerMinute?.to2Digits()?:0.0
-        this.kda = participant.challenges?.kda?.to2Digits()?:0.0
-        this.teamDamagePercentage = participant.challenges?.teamDamagePercentage?.to2Digits()?:0.0
+        this.effectiveHealAndShielding = participant.challenges?.effectiveHealAndShielding?.to1Digits()?:0.0
+        this.damageTakenOnTeamPercentage = participant.challenges?.damageTakenOnTeamPercentage?.to1Digits()?:0.0
+        this.damagePerMinute = participant.challenges?.damagePerMinute?.to1Digits()?:0.0
+        this.kda = participant.challenges?.kda?.to1Digits()?:0.0
+        this.teamDamagePercentage = participant.challenges?.teamDamagePercentage?.to1Digits()?:0.0
         this.snowballsHit = participant.challenges?.snowballsHit?:0
         this.skillshotsHit = participant.challenges?.skillshotsHit?:0
         this.soloKills = participant.challenges?.soloKills?:0

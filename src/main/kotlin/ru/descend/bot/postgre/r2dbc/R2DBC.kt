@@ -123,6 +123,14 @@ object R2DBC {
         }
     }
 
+    suspend fun getParticipantOne(declaration: WhereDeclaration = { tbl_participants.id greaterEq 0}, first: Boolean = true) : Participants? {
+        val sortExpr = if (first) tbl_participants.id else tbl_participants.id.desc()
+        val query = QueryDsl.from(tbl_participants)
+            .where(declaration)
+            .orderBy(sortExpr)
+            .firstOrNull()
+        return db.withTransaction { db.runQuery { query } }
+    }
     suspend fun getParticipants(declaration: WhereDeclaration?) : List<Participants> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_participants) else QueryDsl.from(tbl_participants).where(declaration) } }
     }
@@ -152,7 +160,7 @@ object R2DBC {
             .firstOrNull()
         return db.withTransaction { db.runQuery { query } }
     }
-    suspend fun getLOLs(declaration: WhereDeclaration?) : List<LOLs> {
+    suspend fun getLOLs(declaration: WhereDeclaration? = null) : List<LOLs> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_lols) else QueryDsl.from(tbl_lols).where(declaration) } }
     }
     suspend fun addBatchLOLs(list: List<LOLs>, batchSize: Int = 100) {

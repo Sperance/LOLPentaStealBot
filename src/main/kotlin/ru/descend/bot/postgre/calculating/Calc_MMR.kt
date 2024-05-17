@@ -9,7 +9,7 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
-import ru.descend.bot.to2Digits
+import ru.descend.bot.to1Digits
 import kotlin.reflect.KMutableProperty1
 
 class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Participants, var match: Matches, var kordlol: List<KORDLOLs>, private var mmrTable: MMRs?) {
@@ -23,7 +23,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 
     suspend fun init() {
         if (mmrTable != null) {
-            mmrModificator = (match.matchDuration.toDouble().fromDoubleValue(mmrTable!!.matchDuration) / 100.0).to2Digits()
+            mmrModificator = (match.matchDuration.toDouble().fromDoubleValue(mmrTable!!.matchDuration) / 100.0).to1Digits()
             if (mmrModificator < 0) {
                 printLog("[CalculateMMR] mmrModificator < 0: $mmrModificator. Match: ${match.matchId}. Setting modificator 1.0")
                 mmrModificator = 1.0
@@ -76,7 +76,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         if (match.bots) return
 
         mmrEmailText += "\n[BEGIN] User(kordlol_id): ${kordlol.id} Summoner: ${sqlData.getLOL(kordlol.LOL_id)?.getCorrectNameWithTag()} Champion: ${participant.championName} Win: ${participant.win}\n"
-        mmrEmailText += "[BEGIN] MMR: ${kordlol.mmrAram.to2Digits()} SavedMMR: ${kordlol.mmrAramSaved.to2Digits()}\n"
+        mmrEmailText += "[BEGIN] MMR: ${kordlol.mmrAram.to1Digits()} SavedMMR: ${kordlol.mmrAramSaved.to1Digits()}\n"
 
         val partMMR: Double
         var newSavedMMR = calcAddSavedMMR(kordlol)
@@ -84,27 +84,27 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         val newAramValue: Double
         if (participant.win) {
             newAramValue = calcAddingMMR(kordlol)
-            partMMR = mmrValue.to2Digits()
+            partMMR = mmrValue.to1Digits()
         } else {
             var minusMMR = calcRemoveMMR(kordlol)
-            partMMR = -minusMMR.to2Digits()
+            partMMR = -minusMMR.to1Digits()
 
             val resultMin = calcRemSavedMMR(newSavedMMR, minusMMR)
             newSavedMMR = resultMin.first
             minusMMR = resultMin.second
 
             newAramValue = (if (kordlol.mmrAram - minusMMR < 0.0) 0.0
-            else kordlol.mmrAram - minusMMR).to2Digits()
+            else kordlol.mmrAram - minusMMR).to1Digits()
         }
 
         newSavedMMR += calcRankAramMMR(kordlol.mmrAram, newAramValue)
-        mmrEmailText += "\n[COMPLETED] calculateMMR: ${mmrValue.to2Digits()} mmrAram: ${newAramValue.to2Digits()} mmrAramSaved: ${newSavedMMR.to2Digits()} participant MMR: ${partMMR.to2Digits()} flat: ${mmrValue.to2Digits()}\n"
+        mmrEmailText += "\n[COMPLETED] calculateMMR: ${mmrValue.to1Digits()} mmrAram: ${newAramValue.to1Digits()} mmrAramSaved: ${newSavedMMR.to1Digits()} participant MMR: ${partMMR.to1Digits()} flat: ${mmrValue.to1Digits()}\n"
 
-        kordlol.mmrAram = newAramValue.to2Digits()
-        kordlol.mmrAramSaved = newSavedMMR.to2Digits()
+        kordlol.mmrAram = newAramValue.to1Digits()
+        kordlol.mmrAramSaved = newSavedMMR.to1Digits()
         kordlol.update()
 
-        participant.mmr = partMMR.to2Digits()
+        participant.mmr = partMMR.to1Digits()
         participant.update()
     }
 
@@ -117,7 +117,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         val oldRank = EnumMMRRank.getMMRRank(oldMMR)
         val newRank = EnumMMRRank.getMMRRank(newMMR)
 
-        if (oldRank.minMMR == newRank.minMMR) return value.to2Digits()
+        if (oldRank.minMMR == newRank.minMMR) return value.to1Digits()
 
         mmrEmailText += "\n[calcRankAramMMR] прошлый ранг: ${oldRank.nameRank}(ММР: ${oldRank.minMMR}) новый ранг: ${newRank.nameRank}(ММР: ${newRank.minMMR})\n"
 
@@ -131,9 +131,9 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 //            value += 10.0
         }
 
-        mmrEmailText += "[calcRankAramMMR] итого добавляем бонусных ММР: ${value.to2Digits()}\n"
+        mmrEmailText += "[calcRankAramMMR] итого добавляем бонусных ММР: ${value.to1Digits()}\n"
 
-        return value.to2Digits()
+        return value.to1Digits()
     }
 
     /**
@@ -141,7 +141,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
      */
     private fun calcAddingMMR(kordlol: KORDLOLs) : Double {
         //Текущее значение ММР + новое значение ММР
-        var addedValue = mmrValue.to2Digits()
+        var addedValue = mmrValue.to1Digits()
 
         mmrEmailText += "\n[calcAddingMMR] текущее значение ММР: ${kordlol.mmrAram} Из них посчитано добавочных: $addedValue\n"
 
@@ -151,22 +151,22 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         addedValue += 1.0
 
         //обработка штрафа к получаемому ММР в зависимости от ранга
-        val removeMMR = (rank.rankValue / 10.0 * 2).to2Digits()
+        val removeMMR = (rank.rankValue / 10.0 * 2).to1Digits()
         if (removeMMR > 0.0) {
-            mmrEmailText += "[calcAddingMMR] штраф за ранг: ${removeMMR.to2Digits()}(rankValue: ${rank.rankValue}) было ММР: $addedValue стало: ${(addedValue - removeMMR).to2Digits()}\n"
+            mmrEmailText += "[calcAddingMMR] штраф за ранг: ${removeMMR.to1Digits()}(rankValue: ${rank.rankValue}) было ММР: $addedValue стало: ${(addedValue - removeMMR).to1Digits()}\n"
             addedValue -= removeMMR
         }
 
         //обработка минимума получаемых ММР
-        if (addedValue < (countFields / 3.0).to2Digits()) {
-            mmrEmailText += "[calcAddingMMR] получаемых ММР $addedValue меньше лимита по полям ${(countFields / 3.0).to2Digits()}(fields: $countFields). Устанавливаем в лимит\n"
-            addedValue = (countFields / 3.0).to2Digits()
+        if (addedValue < (countFields / 3.0).to1Digits()) {
+            mmrEmailText += "[calcAddingMMR] получаемых ММР $addedValue меньше лимита по полям ${(countFields / 3.0).to1Digits()}(fields: $countFields). Устанавливаем в лимит\n"
+            addedValue = (countFields / 3.0).to1Digits()
         }
 
-        mmrEmailText += "[calcAddingMMR] результат получаемых ММР: ${addedValue.to2Digits()}\n"
-        mmrValue = addedValue.to2Digits()
+        mmrEmailText += "[calcAddingMMR] результат получаемых ММР: ${addedValue.to1Digits()}\n"
+        mmrValue = addedValue.to1Digits()
 
-        return (kordlol.mmrAram + addedValue).to2Digits()
+        return (kordlol.mmrAram + addedValue).to1Digits()
     }
 
     /**
@@ -183,33 +183,33 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         } else {
             //иначе если катали лучше Нормы - снимаем жалкую единичку
             1.0
-        }.to2Digits()
+        }.to1Digits()
 
-        mmrEmailText += "\n[calcRemoveMMR] Начало снимания ММР: ${value.to2Digits()}\n"
+        mmrEmailText += "\n[calcRemoveMMR] Начало снимания ММР: ${value.to1Digits()}\n"
 
         //если снимаем больше чем полей*2 - это много, органичиваем общим числом полей
         if (value > countFields) {
-            mmrEmailText += "[calcRemoveMMR] попытка снять ${value.to2Digits()} больше чем кол-во полей($countFields) Снимаем ММР $countFields\n"
+            mmrEmailText += "[calcRemoveMMR] попытка снять ${value.to1Digits()} больше чем кол-во полей($countFields) Снимаем ММР $countFields\n"
             value = countFields
         }
 
         //лимит на максимальное снятие
-        val maxRemoved = (rank.rankValue + 1.0).to2Digits()
+        val maxRemoved = (rank.rankValue + 1.0).to1Digits()
         if (value > maxRemoved){
-            mmrEmailText += "[calcRemoveMMR] попытка снять больше ММР(${value.to2Digits()} чем максимальный лимит по рангу: $maxRemoved (rankValue:${rank.rankValue} + 1). Снимаем лимит.\n"
+            mmrEmailText += "[calcRemoveMMR] попытка снять больше ММР(${value.to1Digits()} чем максимальный лимит по рангу: $maxRemoved (rankValue:${rank.rankValue} + 1). Снимаем лимит.\n"
             value = maxRemoved
         }
 
         //лимит на минимальное снятие
-        val minRemoved = (1 + rank.rankValue * 0.5).to2Digits()
+        val minRemoved = (1 + rank.rankValue * 0.5).to1Digits()
         if (value < minRemoved) {
-            mmrEmailText += "[calcRemoveMMR] попытка снять меньше ММР(${value.to2Digits()} чем минимальный лимит по рангу: $minRemoved (rankValue:${rank.rankValue} * 0.5). Снимаем лимит.\n"
+            mmrEmailText += "[calcRemoveMMR] попытка снять меньше ММР(${value.to1Digits()} чем минимальный лимит по рангу: $minRemoved (rankValue:${rank.rankValue} * 0.5). Снимаем лимит.\n"
             value = minRemoved
         }
 
-        mmrEmailText += "[calcRemoveMMR] итого снимаем ММР: ${value.to2Digits()}\n"
+        mmrEmailText += "[calcRemoveMMR] итого снимаем ММР: ${value.to1Digits()}\n"
 
-        return value.to2Digits()
+        return value.to1Digits()
     }
 
     /**
@@ -219,7 +219,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         val value: Double
 
         //текущее значение бонусных ММР
-        val newSavedMMR = kordlol.mmrAramSaved.to2Digits()
+        val newSavedMMR = kordlol.mmrAramSaved.to1Digits()
 
         val rank = EnumMMRRank.getMMRRank(kordlol.mmrAram)
 
@@ -250,9 +250,9 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 
         value = newSavedMMR + addSavedMMR
 
-        mmrEmailText += "[calcAddSavedMMR] Добавляем бонусные ММР: ${addSavedMMR.to2Digits()}\n"
+        mmrEmailText += "[calcAddSavedMMR] Добавляем бонусные ММР: ${addSavedMMR.to1Digits()}\n"
 
-        return value.to2Digits()
+        return value.to1Digits()
     }
 
     /**
@@ -267,16 +267,16 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 
         //если бонусных ММР больше или равно вычитаемых, всё просто
         if (newSavedMMR >= minusMMR){
-            mmrEmailText += "[calcRemSavedMMR] бонусных ММР $newSavedMMR больше либо равно чем вычитаем: $minusMMR. Вычитаем 0. Осталось бонусных: ${(newSavedMMR - minusMMR).to2Digits()}\n"
+            mmrEmailText += "[calcRemSavedMMR] бонусных ММР $newSavedMMR больше либо равно чем вычитаем: $minusMMR. Вычитаем 0. Осталось бонусных: ${(newSavedMMR - minusMMR).to1Digits()}\n"
             newSavedMMR -= minusMMR
             minusMMR = 0.0
         } else {
-            mmrEmailText += "[calcRemSavedMMR] бонусных ММР $newSavedMMR меньше вычитаемых ММР: $minusMMR. Бонусных 0. Вычитаем всего ${(minusMMR - newSavedMMR).to2Digits()}\n"
+            mmrEmailText += "[calcRemSavedMMR] бонусных ММР $newSavedMMR меньше вычитаемых ММР: $minusMMR. Бонусных 0. Вычитаем всего ${(minusMMR - newSavedMMR).to1Digits()}\n"
             minusMMR -= newSavedMMR
             newSavedMMR = 0.0
         }
 
-        mmrEmailText += "[calcRemSavedMMR] результат бонусных ММР: ${newSavedMMR.to2Digits()} вычитаемых ММР: ${minusMMR.to2Digits()}\n"
+        mmrEmailText += "[calcRemSavedMMR] результат бонусных ММР: ${newSavedMMR.to1Digits()} вычитаемых ММР: ${minusMMR.to1Digits()}\n"
 
         return Pair(newSavedMMR, minusMMR)
     }
@@ -284,7 +284,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
     private fun calculateField(propertyParticipant: KMutableProperty1<Participants, *>, propertyMmr: KMutableProperty1<MMRs, *>, minValue: Double? = null, maxMMR: Double? = null) {
         if (mmrTable == null) return
 
-        val valuePropertyMmr = ((propertyMmr.invoke(mmrTable!!) as Double) * baseModificator).to2Digits()
+        val valuePropertyMmr = ((propertyMmr.invoke(mmrTable!!) as Double) * baseModificator).to1Digits()
         val valuePropertyParticipant = when (val valuePart = propertyParticipant.invoke(participant)){
             is Int -> valuePart.toDouble()
             is Double -> valuePart
@@ -293,24 +293,24 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
                 printLog("[calculateField] Fail convert field Participant ${propertyParticipant.name} to Double: $valuePart")
                 0.0
             }
-        }.to2Digits()
+        }.to1Digits()
 
-        if (minValue != null && valuePropertyMmr < (minValue * mmrModificator).to2Digits()) {
-            mmrEmailText += "[FIELDS] ${propertyParticipant.name} текущее значение $valuePropertyMmr меньше требуемого: ${(minValue * mmrModificator).to2Digits()}. пропускаем поле\n"
+        if (minValue != null && valuePropertyMmr < (minValue * mmrModificator).to1Digits()) {
+            mmrEmailText += "[FIELDS] ${propertyParticipant.name} текущее значение $valuePropertyMmr меньше требуемого: ${(minValue * mmrModificator).to1Digits()}. пропускаем поле\n"
             return
         }
         countFields++
 
-        var localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to2Digits()
+        var localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to1Digits()
         if (maxMMR != null && localMMR > maxMMR) {
             "[FIELDS] ${propertyMmr.name} получено ММР $localMMR за поле $valuePropertyParticipant больше лимита $maxMMR. Устанавливаем ММР в лимит\n"
             localMMR = maxMMR
         }
 
         mmrValue += localMMR
-        mmrValue = mmrValue.to2Digits()
+        mmrValue = mmrValue.to1Digits()
 
-        mmrEmailText += "[FIELDS] ${propertyMmr.name} текущее значение: $valuePropertyParticipant. необходимо: ${(valuePropertyMmr * mmrModificator).to2Digits()}. Вышло ММР: $localMMR\n"
+        mmrEmailText += "[FIELDS] ${propertyMmr.name} текущее значение: $valuePropertyParticipant. необходимо: ${(valuePropertyMmr * mmrModificator).to1Digits()}. Вышло ММР: $localMMR\n"
     }
 
     private fun Double.fromDoubleValue(stock: Double): Double {

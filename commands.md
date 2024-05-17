@@ -14,10 +14,13 @@
 ## Arguments
 | Commands            | Arguments                  | Description                                                               |
 |---------------------|----------------------------|---------------------------------------------------------------------------|
+| addDonation         | user, gold                 | Добавить донат к пользователю                                             |
 | addSavedMMR         | user, savedMMR             | Добавить бонусные MMR пользователю                                        |
 | clearDebugChannel   |                            | Очистка канала для системных сообщений                                    |
 | clearMainChannel    |                            | Очистка основного канал для бота                                          |
 | clearStatusChannel  |                            | Очистка канала для сообщений бота                                         |
+| genText             | request                    | Получить ответ от ChatGPT на запрос                                       |
+| genTextAdmin        | request                    |                                                                           |
 | getAlliesWinrate    |                            | Просмотр Винрейта каждого игрока сервера (в боте) по отношению к себе     |
 | getChampionsWinrate |                            | Просмотр Винрейта по всем своим сыгранным чемпионам за последние 30 дней  |
 | initDebugChannel    | channel                    | Канал для системных сообщений                                             |

@@ -28,7 +28,9 @@ import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches
+import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.savedObj.isCurrentDay
 import java.awt.Color
@@ -201,7 +203,9 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         sqlData.loadMatches(sqlData.dataSavedLOL.get(), 50, true)
         if (!sqlData.isNeedUpdateDatas) {
             val lastLOL = R2DBC.getLOLone(first = false)
-            if (lastLOL != null) sqlData.loadMatches(listOf(lastLOL), 50, false)
+            var countLoading = 95 - sqlData.dataSavedLOL.get().size
+            if (countLoading < 0) countLoading = 0
+            if (lastLOL != null) sqlData.loadMatches(listOf(lastLOL), countLoading, false)
         }
     }.join()
 
@@ -442,7 +446,10 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
-    builder.content = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
+    var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
+    contentText += "* Матчей: ${R2DBC.getMatchOne({ tbl_matches.guild_id eq sqlData.guildSQL.id }, false)?.id}\n"
+    contentText += "* Игроков: ${R2DBC.getLOLone(first = false)?.id}\n"
+    builder.content = contentText
 
     if (!afterCreating) {
         if (!sqlData.isNeedUpdateDatas) return

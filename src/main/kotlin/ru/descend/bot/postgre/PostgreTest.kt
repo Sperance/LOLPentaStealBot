@@ -1,12 +1,20 @@
 package ru.descend.bot.postgre
 
+import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import okhttp3.FormBody
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
 import org.junit.Test
 import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
+import ru.descend.bot.format
+import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.postgre.r2dbc.R2DBC
 import ru.descend.bot.postgre.r2dbc.create
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
@@ -19,7 +27,7 @@ import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participant
 import ru.descend.bot.postgre.r2dbc.update
 import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.toDate
-import ru.descend.bot.to2Digits
+import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormat
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -43,6 +51,13 @@ class PostgreTest {
         printLog(data)
     }
 
+    @Test
+    fun test_digits_double() {
+        printLog((523.523).to1Digits())
+        printLog((523.53).to1Digits())
+        printLog((523.3).to1Digits())
+    }
+
     fun isNeedSetLowerYear(dateValue: String) : Boolean {
         val valueDay = dateValue.substring(0..1).toInt()
         val valueMonth = dateValue.substring(2..3).toInt()
@@ -60,6 +75,64 @@ class PostgreTest {
         var championWins: Int,
         var championKDA: Double
     )
+
+    @Test
+    fun test_api_2() {
+        val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
+
+        val client = OkHttpClient()
+
+        val JSON = "application/json; charset=utf-8".toMediaType()
+        val body = RequestBody.create(JSON, "{\n" +
+                "        \"model\": \"gpt-3.5-turbo-1106\",\n" +
+                "        \"messages\": [{\"role\": \"user\", \"content\": \"Напиши фентезийное поздравление Михаила с днём рождения\"}]\n" +
+                "    }")
+        val request = Request.Builder()
+            .addHeader("Authorization", "Bearer sk-LT7VD2dmZoQtR0VXftSq4YpXnkS8xcxW")
+            .url(url)
+            .post(body)
+            .build()
+
+        val response = client.newCall(request).execute()
+        val resultString = response.body?.string()
+        val forecast = GsonBuilder().create().fromJson(resultString, AIResponse::class.java)
+        println("RESULT: ${forecast.choices.first().message.content}")
+    }
+
+    @Test
+    fun test_simple_api() {
+        val client = OkHttpClient()
+
+        val requestBody = FormBody.Builder()
+            .add("model", "GPT-4o")
+            .add("messages", "[{\"role\": \"user\", \"content\": \"Say this is a test!\"}]")
+            .add("max_tokens", "1024")
+            .build()
+
+        val request = Request.Builder()
+            .url("https://api.proxyapi.ru/openai")
+            .addHeader("Authorization", "Bearer sk-LT7VD2dmZoQtR0VXftSq4YpXnkS8xcxW")
+            .addHeader("Content-Type", "application/json")
+            .post(requestBody)
+            .build()
+
+        printLog("req: ${request.url}")
+
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException("Запрос к серверу не был успешен:" +
+                            " ${response.code} ${response.message}")
+                }
+                // пример получения конкретного заголовка ответа
+                println("Server: ${response.header("Server")}")
+                // вывод тела ответа
+                println(response.body!!.string())
+            }
+        } catch (e: IOException) {
+            println("Ошибка подключения: $e");
+        }
+    }
 
     @Test
     fun test_calc_champion_winrate() {
@@ -90,7 +163,7 @@ class PostgreTest {
             val savedParts = arrayARAM.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap()
 
             savedParts.forEach { (i, pairs) ->
-                printLog("$i Games: ${pairs.championGames} Winrate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to2Digits()} KDA: ${(pairs.championKDA / pairs.championGames).to2Digits()}")
+                printLog("$i Games: ${pairs.championGames} Winrate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to1Digits()} KDA: ${(pairs.championKDA / pairs.championGames).to1Digits()}")
             }
         }
     }
@@ -184,10 +257,10 @@ class PostgreTest {
                 arrayStat.add(DataStatRate(lol_id = i, allGames = pairs.size, winGames = winGames))
             }
 
-            arrayStat.sortByDescending { (it.winGames / it.allGames * 100.0).to2Digits() }
+            arrayStat.sortByDescending { (it.winGames / it.allGames * 100.0).to1Digits() }
 
             arrayStat.forEach {
-                printLog("** ${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectName()}** ${(it.winGames / it.allGames * 100.0).to2Digits()}% Games:${it.allGames}")
+                printLog("** ${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectName()}** ${(it.winGames / it.allGames * 100.0).to1Digits()}% Games:${it.allGames}")
             }
         }
     }

@@ -1,6 +1,7 @@
 package ru.descend.bot.postgre.calculating
 
 import ru.descend.bot.asyncLaunch
+import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.lolapi.dto.match_dto.Participant
@@ -16,8 +17,10 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.postgre.r2dbc.update
+import ru.descend.bot.printLog
 import ru.descend.bot.savedObj.isCurrentDay
 import ru.descend.bot.sendMessage
+import ru.descend.bot.to1Digits
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDateTime
 import ru.descend.bot.writeLog
@@ -39,6 +42,7 @@ data class Calc_AddMatch (
 
         val alreadyMatch = R2DBC.getMatchOne({tbl_matches.matchId eq match.metadata.matchId})
         if (alreadyMatch != null) {
+            printLog("Match ${alreadyMatch.matchId} already saved")
             return alreadyMatch
         }
 
@@ -74,9 +78,8 @@ data class Calc_AddMatch (
         }
 
         val arrayNewParts = ArrayList<Participants>()
-        val lolsArray = R2DBC.getLOLs { tbl_lols.LOL_puuid.inList(arrayHeroName.map { it.puuid }) }
         match.info.participants.forEach {part ->
-            var curLOL = lolsArray.find { it.LOL_puuid == part.puuid }
+            var curLOL = R2DBC.getLOLone({ tbl_lols.LOL_puuid eq part.puuid})
 
             if (kordLol != null && curLOL != null && !isBots && !isSurrender){
                 kordLol.find { it.LOL_id == curLOL?.id }?.let {
@@ -84,7 +87,8 @@ data class Calc_AddMatch (
                         if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
                             val championName = LeagueMainObject.findHeroForKey(part.championId.toString())
                             val textPentasCount = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n"
+                            val generatedText = generateAIText("В очень необычном и смешном стиле напиши поздравление пользователю ${it.asUser(sqlData.guild, sqlData).lowDescriptor()} за то что он сделал Пентакилл в игре League of Legends за чемпиона $championName убив ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}")
+                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n$generatedText"
                             sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, resultText)
                             writeLog(resultText)
                         }
@@ -93,27 +97,26 @@ data class Calc_AddMatch (
             }
 
             //Создаем нового игрока в БД
-            var isNewLOL = false
             if (curLOL == null) {
                 curLOL = LOLs(LOL_puuid = part.puuid,
                     LOL_summonerId = part.summonerId,
                     LOL_riotIdName = part.riotIdGameName,
-                    LOL_riotIdTagline = part.riotIdTagline)
-                isNewLOL = true
+                    LOL_riotIdTagline = part.riotIdTagline,
+                    LOL_summonerLevel = part.summonerLevel,
+                    profile_icon = part.profileIcon).create(LOLs::LOL_puuid)
+            } else if (!curLOL.isBot()) {
+                //Вдруг что изменится в профиле игрока
+                if (curLOL.LOL_summonerLevel <= part.summonerLevel && (curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon)) {
+                    curLOL.LOL_riotIdTagline = part.riotIdTagline
+                    curLOL.LOL_summonerId = part.summonerId
+                    curLOL.LOL_riotIdName = part.riotIdGameName
+                    curLOL.LOL_summonerLevel = part.summonerLevel
+                    curLOL.profile_icon = part.profileIcon
+                    curLOL = curLOL.update()
+                }
             }
 
-            //Вдруг что изменится в профиле игрока
-            if (curLOL.LOL_summonerLevel <= part.summonerLevel && (curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon)) {
-                curLOL.LOL_riotIdTagline = part.riotIdTagline
-                curLOL.LOL_summonerId = part.summonerId
-                curLOL.LOL_riotIdName = part.riotIdGameName
-                curLOL.LOL_summonerLevel = part.summonerLevel
-                curLOL.profile_icon = part.profileIcon
-                curLOL = if (isNewLOL) curLOL.create(LOLs::LOL_puuid)
-                else curLOL.update()
-            }
-
-            if (!curLOL.isBot())
+            if (!curLOL.isBot() && sqlData.dataKORDLOL.get().find { tbl -> tbl.LOL_id == curLOL.id } == null)
                 arrayOtherLOLs.add(curLOL)
 
             arrayNewParts.add(Participants(part, pMatch, curLOL))
@@ -157,10 +160,10 @@ data class Calc_AddMatch (
             val maxed = arrayKORDmmr.maxBy { it.third }
             if (maxed.first != null) {
                 maxed.second.mvpLvpInfo = "MVP"
-                maxed.second.mmr += mmrForMVP
+                maxed.second.mmr = (maxed.second.mmr + mmrForMVP).to1Digits()
                 maxed.second.update()
 
-                maxed.first!!.mmrAram += mmrForMVP
+                maxed.first!!.mmrAram = (maxed.first!!.mmrAram + mmrForMVP).to1Digits()
                 maxed.first!!.update()
             }
         }

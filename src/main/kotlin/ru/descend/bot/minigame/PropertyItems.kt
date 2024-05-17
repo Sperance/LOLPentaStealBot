@@ -1,23 +1,11 @@
 package ru.descend.bot.minigame
 
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import ru.descend.bot.minigame.gamedatas.CalculateBattle
 import ru.descend.bot.postgre.r2dbc.getField
-import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.printLog
-import ru.descend.bot.to2Digits
-import java.time.LocalDateTime
-import java.util.TimerTask
-import kotlin.concurrent.fixedRateTimer
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
+import ru.descend.bot.to1Digits
 
 
 enum class EnumItemCategory(nameCategory: String) {
@@ -62,14 +50,14 @@ open class BasePerson (
     }
 
     fun onAttack(enemy: BasePerson) {
-        val currentDamage = calcProps.attackDamage.get().to2Digits()
-        var enemyHealth = enemy.calcProps.health.getForBattle().to2Digits()
+        val currentDamage = calcProps.attackDamage.get().to1Digits()
+        var enemyHealth = enemy.calcProps.health.getForBattle().to1Digits()
         enemyHealth -= currentDamage
         if (enemyHealth <= 0.0) {
             enemyHealth = 0.0
             enemy.constants.isDie = true
         }
-        enemy.calcProps.health.setForBattle(enemyHealth.to2Digits())
+        enemy.calcProps.health.setForBattle(enemyHealth.to1Digits())
     }
 }
 
