@@ -41,10 +41,16 @@ data class LOLs(
         val tbl_lols = Meta.loLs
     }
 
-    suspend fun connectLOL(region: String, summonerName: String) : LOLs? {
-
-        val dataLOL = when (val res = safeApiCall { LeagueMainObject.leagueService.getBySummonerName(summonerName) }){
-            is Result.Success -> { res.data }
+    suspend fun connectLOL(region: String, summonerName: String, tagline: String) : LOLs? {
+        return when (val res = safeApiCall { LeagueMainObject.leagueService.getByRiotNameWithTag(summonerName, tagline) }){
+            is Result.Success -> {
+                val newLOL = LOLs()
+                newLOL.LOL_puuid = res.data.puuid
+                newLOL.LOL_region = region
+                newLOL.LOL_riotIdTagline = tagline
+                newLOL.LOL_riotIdName = summonerName
+                newLOL
+            }
             is Result.Error -> {
                 statusLOLRequests = 1
                 val messageError = "connectLOL failure: ${res.message} with summonerName: $summonerName"
@@ -52,18 +58,6 @@ data class LOLs(
                 writeLog(messageError)
                 null
             }
-        }
-
-        return if (dataLOL != null) {
-            val newLOL = LOLs()
-            newLOL.LOL_puuid = dataLOL.puuid
-            newLOL.LOL_summonerId = dataLOL.id
-            newLOL.profile_icon = dataLOL.profileIconId
-            newLOL.LOL_region = region
-            newLOL.LOL_summonerLevel = dataLOL.summonerLevel
-            newLOL
-        } else {
-            null
         }
     }
 

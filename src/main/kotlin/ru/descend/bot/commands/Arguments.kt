@@ -406,35 +406,16 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash(
-        "userCreate",
-        "Создание учетной записи Лиги легенд и пользователя Discord",
-        Permissions(Permission.Administrator)
-    ) {
+    slash("userCreate", "Создание учетной записи Лиги легенд и пользователя Discord", Permissions(Permission.Administrator)) {
         execute(
             UserArg("User", "Пользователь Discord"),
-            ChoiceArg(
-                "Region",
-                "Регион аккаунта Лиги легенд",
-                "ru",
-                "br1",
-                "eun1",
-                "euw1",
-                "jp1",
-                "kr",
-                "la1",
-                "la2",
-                "na1",
-                "oc1",
-                "tr1",
-                "pbe1"
-            ),
-            AnyArg("SummonerName", "Имя призывателя в Лиге легенд")
+            ChoiceArg("Region", "Регион аккаунта Лиги легенд", "ru", "br1", "eun1", "euw1", "jp1", "kr", "la1", "la2", "na1", "oc1", "tr1", "pbe1"),
+            AnyArg("SummonerName", "Имя призывателя в Лиге легенд"),
+            AnyArg("TagLine", "Тег игрока")
         ) {
-            val (user, region, summonerName) = args
+            val (user, region, summonerName, tagLine) = args
 
-            val textCommand =
-                "[Start command] '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName'"
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'user=${user.fullName}', 'region=$region', 'summonerName=$summonerName', 'tagLine=$tagLine'"
             printLog(textCommand)
 
             val guilds = R2DBC.getGuild(guild)
@@ -442,29 +423,24 @@ fun arguments() = commands("Arguments") {
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
             var KORD = KORDs(guilds, user)
-            KORD =
-                R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }
-                    .firstOrNull() ?: KORD.create(KORDs::KORD_id)
+            KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }.firstOrNull() ?: KORD.create(KORDs::KORD_id)
 
             //Создаем LOL сразу со связью с аккаунтом Лиги Легенд
-            var LOL = LOLs().connectLOL(region, summonerName)
+            var LOL = LOLs().connectLOL(region, summonerName, tagLine)
             if (LOL == null) {
-                respond("Призыватель $summonerName не найден в Лиге Легенд")
+                respond("Призыватель $summonerName#$tagLine не найден в Лиге Легенд")
                 return@execute
             }
 
             //Если аккаунт есть в базе - ок, если нет - создаём в базе
-            LOL =
-                R2DBC.getLOLs { tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }.firstOrNull() ?: LOL.create(
-                    LOLs::LOL_puuid
-                )
+            LOL = R2DBC.getLOLs { tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }.firstOrNull() ?: LOL.create(LOLs::LOL_puuid)
 
             //Проверка что к пользователю уже привязан какой-либо аккаунт лиги
             val alreadyKORDLOL =
                 R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id }
                     .firstOrNull()
             if (alreadyKORDLOL != null) {
-                respond("Призыватель $summonerName уже связан с аккаунтом лиги легенд (KORDLOL: ${alreadyKORDLOL.id}). Для внесения изменений - сначала удалите из базы пользователя ${user.lowDescriptor()}")
+                respond("Призыватель $summonerName#$tagLine уже связан с аккаунтом лиги легенд (KORDLOL: ${alreadyKORDLOL.id}). Для внесения изменений - сначала удалите из базы пользователя ${user.lowDescriptor()}")
                 return@execute
             }
 
