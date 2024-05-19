@@ -9,8 +9,8 @@ import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
-import ru.descend.bot.lolapi.Result
-import ru.descend.bot.lolapi.safeApiCall
+import ru.descend.bot.datas.Result
+import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.writeLog

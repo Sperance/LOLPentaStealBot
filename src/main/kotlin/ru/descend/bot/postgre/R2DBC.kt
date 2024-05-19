@@ -1,4 +1,4 @@
-package ru.descend.bot.postgre.r2dbc
+package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
 import io.r2dbc.spi.ConnectionFactoryOptions

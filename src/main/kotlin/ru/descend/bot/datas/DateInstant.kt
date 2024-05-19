@@ -1,16 +1,19 @@
-package ru.descend.bot.savedObj
+package ru.descend.bot.datas
 
 import ru.descend.bot.toDate
 import java.text.SimpleDateFormat
 import java.time.LocalDate
-import java.time.Period
 import java.time.ZoneId
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-fun Date.toLocalDate(): LocalDate = LocalDate.parse(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(getDate(this.time)))
-fun Long.toLocalDate(): LocalDate = LocalDate.parse(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(getDate(this)))
+fun Date.toLocalDate(): LocalDate = LocalDate.parse(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(
+    getDate(this.time)
+))
+fun Long.toLocalDate(): LocalDate = LocalDate.parse(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(
+    getDate(this)
+))
 
 fun Long?.toDate(): Date {
     return Date(this?:Date().time)
@@ -63,7 +66,7 @@ fun getDate(time: Long?): Date {
 /**
  * Преобразование подаваемой даты в удобный для форматирования объект
  */
-fun Date.getStrongDate() : StrongDate{
+fun Date.getStrongDate() : StrongDate {
     return getStrongDate(time)
 }
 

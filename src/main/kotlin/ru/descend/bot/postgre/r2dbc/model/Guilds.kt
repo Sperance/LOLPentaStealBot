@@ -8,7 +8,7 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import ru.descend.bot.postgre.r2dbc.create
+import ru.descend.bot.datas.create
 import java.time.LocalDateTime
 
 @KomapperEntity

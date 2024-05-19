@@ -7,18 +7,18 @@ import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.lolapi.dto.match_dto.Participant
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.SQLData_R2DBC
-import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.create
+import ru.descend.bot.datas.create
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
-import ru.descend.bot.postgre.r2dbc.update
+import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.isCurrentDay
+import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toDate
@@ -141,7 +141,7 @@ data class Calc_AddMatch (
     private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
         var users = ""
         val arrayKORDmmr = ArrayList<Triple<KORDLOLs?, Participants, Double>>()
-        R2DBC.getParticipants { tbl_participants.match_id eq pMatch.id ; tbl_participants.guild_id eq sqlData.guildSQL.id }.forEach {par ->
+        R2DBC.getParticipants { tbl_participants.match_id eq pMatch.id ; tbl_participants.guild_id eq sqlData.guildSQL.id }.forEach { par ->
             val dataText = if (pMatch.matchMode == "ARAM") {
                 val data = Calc_MMR(sqlData, par, pMatch, kordLol, sqlData.getMMRforChampion(par.championName))
                 data.init()

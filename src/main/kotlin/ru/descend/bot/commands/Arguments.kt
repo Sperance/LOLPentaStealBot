@@ -18,9 +18,9 @@ import ru.descend.bot.lolapi.LeagueMainObject.catchHeroForName
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mapMainData
 import ru.descend.bot.postgre.PostgreTest
-import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.create
-import ru.descend.bot.postgre.r2dbc.delete
+import ru.descend.bot.postgre.R2DBC
+import ru.descend.bot.datas.create
+import ru.descend.bot.datas.delete
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -29,9 +29,9 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.update
+import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.toDate
+import ru.descend.bot.datas.toDate
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toStringUID

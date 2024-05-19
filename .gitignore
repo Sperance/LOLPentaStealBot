@@ -9,3 +9,7 @@ config/
 .gradle/
 build/
 gradle.properties
+/logs/
+logs
+logs/
+/logs

@@ -1,4 +1,4 @@
-package ru.descend.bot.lolapi
+package ru.descend.bot.datas
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,7 +18,10 @@ suspend fun <T : Any> safeApiCall(
                     Result.Error("Response body is null", response.code())
                 }
             } else {
-                Result.Error("Error response: ${response.code()} ${response.message()}", response.code())
+                Result.Error(
+                    "Error response: ${response.code()} ${response.message()}",
+                    response.code()
+                )
             }
         } catch (e: Exception) {
             Result.Error("Network error: ${e.localizedMessage}", -1)

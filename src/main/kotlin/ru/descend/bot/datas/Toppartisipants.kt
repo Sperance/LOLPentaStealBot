@@ -1,11 +1,10 @@
 package ru.descend.bot.datas
 
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.savedObj.isBeforeDay
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDate

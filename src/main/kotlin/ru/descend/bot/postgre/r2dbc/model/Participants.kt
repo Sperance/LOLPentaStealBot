@@ -6,7 +6,7 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.core.dsl.Meta
 import ru.descend.bot.lolapi.dto.match_dto.Participant
-import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.to1Digits
 

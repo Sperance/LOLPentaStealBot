@@ -1,4 +1,4 @@
-package ru.descend.bot.savedObj
+package ru.descend.bot.datas
 
 import ru.descend.bot.printLog
 

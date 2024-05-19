@@ -2,6 +2,8 @@ package ru.descend.bot.lolapi
 
 import kotlinx.coroutines.delay
 import ru.descend.bot.catchToken
+import ru.descend.bot.datas.Result
+import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.champions.InterfaceChampionBase
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO

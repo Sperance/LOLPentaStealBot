@@ -6,8 +6,6 @@ import dev.kord.common.entity.TextInputStyle
 import dev.kord.core.behavior.interaction.response.respond
 import me.jakejmattson.discordkt.commands.subcommand
 import me.jakejmattson.discordkt.prompts.promptModal
-import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.toStringUID
 
 fun promptCommands() = subcommand("Prompt", Permissions(Permission.UseApplicationCommands)) {
     sub("Account", "Ввести информацию для Бота по текущему аккаунту пользователя Discord") {

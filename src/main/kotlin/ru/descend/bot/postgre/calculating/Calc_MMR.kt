@@ -7,7 +7,7 @@ import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.update
+import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.to1Digits
 import kotlin.reflect.KMutableProperty1

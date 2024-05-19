@@ -1,4 +1,4 @@
-package ru.descend.bot.lolapi.services
+package ru.descend.bot.services
 
 import ru.descend.bot.lolapi.champions.ChampionsDTO
 import retrofit2.Response

@@ -13,10 +13,8 @@ import org.junit.Test
 import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
-import ru.descend.bot.format
 import ru.descend.bot.postgre.openapi.AIResponse
-import ru.descend.bot.postgre.r2dbc.R2DBC
-import ru.descend.bot.postgre.r2dbc.create
+import ru.descend.bot.datas.create
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
@@ -24,9 +22,9 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
-import ru.descend.bot.postgre.r2dbc.update
+import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
-import ru.descend.bot.savedObj.toDate
+import ru.descend.bot.datas.toDate
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormat
 import java.io.IOException

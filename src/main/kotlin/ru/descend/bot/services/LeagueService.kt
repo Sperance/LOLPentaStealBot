@@ -1,4 +1,4 @@
-package ru.descend.bot.lolapi.services
+package ru.descend.bot.services
 
 import retrofit2.Response
 import retrofit2.http.GET

@@ -9,9 +9,8 @@ import dev.kord.core.event.role.RoleCreateEvent
 import dev.kord.core.event.role.RoleDeleteEvent
 import me.jakejmattson.discordkt.dsl.listeners
 import me.jakejmattson.discordkt.util.descriptor
-import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lowDescriptor
-import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.printLog
 import ru.descend.bot.sendMessage
 

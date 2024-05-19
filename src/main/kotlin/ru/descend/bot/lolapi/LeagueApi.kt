@@ -4,8 +4,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import ru.descend.bot.lolapi.services.LLDragonService
-import ru.descend.bot.lolapi.services.LeagueService
+import ru.descend.bot.services.LLDragonService
+import ru.descend.bot.services.LeagueService
 import java.util.concurrent.TimeUnit
 
 class LeagueApi(private val apiKey: String, region: String) {

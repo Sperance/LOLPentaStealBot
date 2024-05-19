@@ -24,15 +24,14 @@ import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
-import ru.descend.bot.postgre.r2dbc.R2DBC
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
-import ru.descend.bot.postgre.r2dbc.update
-import ru.descend.bot.savedObj.isCurrentDay
+import ru.descend.bot.datas.update
+import ru.descend.bot.datas.isCurrentDay
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -77,7 +76,7 @@ fun main() {
                 removeMessage(it)
 
                 timerRequestReset((2).minutes)
-                timerMainInformation(it, (5).minutes)
+                timerMainInformation(it, (3).minutes)
 //                timerRealtimeInformation(it, (5).minutes, skipFirst = true)
             }
         }
@@ -361,7 +360,7 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         statClass.calculateField(it, "Ассистов", it.assists.toDouble())
         statClass.calculateField(it, "KDA", it.kda)
         statClass.calculateField(it, "Урон в минуту", it.damagePerMinute)
-        statClass.calculateField(it, "Эффектных щитов/хилов", it.effectiveHealAndShielding)
+//        statClass.calculateField(it, "Эффектных щитов/хилов", it.effectiveHealAndShielding)
         statClass.calculateField(it, "Урона строениям", it.damageDealtToBuildings.toDouble())
         statClass.calculateField(it, "Урона поглощено", it.damageSelfMitigated.toDouble())
         statClass.calculateField(it, "Секунд контроля врагам", it.enemyChampionImmobilizations.toDouble())
