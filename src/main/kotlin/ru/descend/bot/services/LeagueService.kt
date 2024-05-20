@@ -12,7 +12,7 @@ import ru.descend.bot.lolapi.dto.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 
 interface LeagueService {
-    @GET("/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}")
+    @GET("https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}")
     suspend fun getByRiotNameWithTag(@Path("gameName") gameName: String, @Path("tagLine") tagLine: String) : Response<AccountDTO>
 
     @GET("https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids")

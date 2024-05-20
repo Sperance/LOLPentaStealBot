@@ -36,7 +36,7 @@ object R2DBC {
         .option(ConnectionFactoryOptions.PORT, 5432)
         .option(ConnectionFactoryOptions.USER, "postgres")
         .option(ConnectionFactoryOptions.PASSWORD, "22322137")
-        .option(ConnectionFactoryOptions.DATABASE, "postgres")
+        .option(ConnectionFactoryOptions.DATABASE, "postgres2")
         .build()
 
     private val db = R2dbcDatabase(connectionFactory)

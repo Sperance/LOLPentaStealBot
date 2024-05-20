@@ -5,7 +5,7 @@ data class Info(
     val gameCreation: Long,
     val gameDuration: Int,
     val gameEndTimestamp: Long,
-    val gameId: Int,
+    val gameId: Long,
     val gameMode: String,
     val gameName: String,
     val gameStartTimestamp: Long,
