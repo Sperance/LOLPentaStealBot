@@ -20,7 +20,7 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val komapperVersion = "1.17.1"
+val komapperVersion = "1.18.0"
 
 dependencies {
     platform("org.komapper:komapper-platform:$komapperVersion").let {
@@ -28,7 +28,7 @@ dependencies {
         ksp(it)
     }
     implementation("org.komapper:komapper-tx-core:$komapperVersion")
-    implementation("org.komapper:komapper-template:$komapperVersion")
+//    implementation("org.komapper:komapper-template:$komapperVersion")
     implementation("org.komapper:komapper-starter-r2dbc:$komapperVersion")
     implementation("org.komapper:komapper-dialect-postgresql-r2dbc")
     ksp("org.komapper:komapper-processor")

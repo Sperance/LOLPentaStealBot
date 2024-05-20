@@ -43,6 +43,26 @@ class PostgreTest {
         printLog("MMR: ${EnumMMRRank.getMMRRank(89.5)}")
     }
 
+    private fun asyncLoadMatches(listChecked: List<String>, mainOrder: Boolean) {
+        if (listChecked.size > 2) {
+            val list1 = listChecked.subList(0, listChecked.size / 2).toList()
+            println("list1: ${list1.joinToString()}")
+            val list2 = listChecked.subList(listChecked.size / 2, listChecked.size).toList()
+            println("list2: ${list2.joinToString()}")
+            println()
+        } else {
+//            loadArray(listChecked, mainOrder)
+        }
+    }
+
+    @Test
+    fun test_list() {
+        asyncLoadMatches(listOf("1", "2", "3", "4", "5", "6"), false)
+        asyncLoadMatches(listOf("1", "2", "3", "4", "5"), false)
+        asyncLoadMatches(listOf("1", "2", "3", "4"), false)
+        asyncLoadMatches(listOf("1", "2", "3"), false)
+    }
+
     @Test
     fun test_format_double() {
         val data = (646.5 / 226.0).toFormat(2)

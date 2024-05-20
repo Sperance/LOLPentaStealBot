@@ -22,6 +22,7 @@ import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toDate
+import ru.descend.bot.toFormatDate
 import ru.descend.bot.toFormatDateTime
 import ru.descend.bot.writeLog
 import kotlin.time.DurationUnit
@@ -131,8 +132,7 @@ data class Calc_AddMatch (
         }
         if (!mainOrder) {
             sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
-                "${pMatch.matchId} ID: ${pMatch.id} Mode: ${pMatch.matchMode}"
-            )
+                "${pMatch.matchId} ID: ${pMatch.id} Mode: ${pMatch.matchMode} Date: ${pMatch.matchDateEnd.toFormatDate()} V: ${pMatch.matchGameVersion}")
         }
 
         return pMatch

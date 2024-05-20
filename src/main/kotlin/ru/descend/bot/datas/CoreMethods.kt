@@ -61,18 +61,18 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kPro
     val metaTable = getInstanceClassForTbl(this) as META
 
     val metaProperty = metaTable.properties().find { it.name == kProperty1.name } as PropertyMetamodel<Any, Any, META>
-    val already = R2DBC.runQuery {
-        QueryDsl.from(metaTable)
-            .where { metaProperty eq kProperty1.get(this@create) }
-            .limit(1)
-    }.firstOrNull()
+//    val already = R2DBC.runQuery {
+//        QueryDsl.from(metaTable)
+//            .where { metaProperty eq kProperty1.get(this@create) }
+//            .limit(1)
+//    }.firstOrNull()
+//
+//    if (already != null) {
+//        printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this - already having in SQL")
+//        return already as TYPE
+//    }
 
-    if (already != null) {
-        printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this - already having in SQL")
-        return already as TYPE
-    }
-
-    val result = R2DBC.runQuery { QueryDsl.insert(metaTable).single(this@create) }
+    val result = R2DBC.runQuery { QueryDsl.insert(metaTable).onDuplicateKeyIgnore(metaProperty).single(this@create) }
     printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $result")
     return result as TYPE
 }

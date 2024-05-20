@@ -5,6 +5,7 @@ import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
+import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
@@ -168,7 +169,31 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }
         val listChecked = getNewMatches(checkMatches)
         listChecked.sortBy { it }
-        listChecked.forEach { newMatch ->
+        asyncLoadMatches(listChecked, mainOrder)
+//        listChecked.forEach { newMatch ->
+//            LeagueMainObject.catchMatch(newMatch)?.let { match ->
+//                addMatch(match, mainOrder)
+//            }
+//        }
+    }
+
+    private suspend fun asyncLoadMatches(listChecked: ArrayList<String>, mainOrder: Boolean) {
+        if (listChecked.size > 2) {
+            asyncLaunch {
+                val list1 = listChecked.subList(0, listChecked.size / 2).toList()
+                loadArray(list1, mainOrder)
+            }
+            asyncLaunch {
+                val list2 = listChecked.subList(listChecked.size / 2, listChecked.size).toList()
+                loadArray(list2, mainOrder)
+            }
+        } else {
+            loadArray(listChecked, mainOrder)
+        }
+    }
+
+    private suspend fun loadArray(listChecked: Collection<String>, mainOrder: Boolean) {
+        listChecked.forEach {newMatch ->
             LeagueMainObject.catchMatch(newMatch)?.let { match ->
                 addMatch(match, mainOrder)
             }
