@@ -1,4 +1,4 @@
-package ru.descend.bot.lolapi.champions
+package ru.descend.bot.lolapi.dto
 
 import com.google.gson.annotations.SerializedName
 import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION

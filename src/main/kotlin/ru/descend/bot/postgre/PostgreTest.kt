@@ -10,6 +10,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import org.junit.Test
+import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
@@ -25,6 +26,8 @@ import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participant
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
+import ru.descend.bot.postgre.r2dbc.model.KORDs
+import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormat
 import java.io.IOException
@@ -241,6 +244,22 @@ class PostgreTest {
     fun test_proc() {
         runBlocking {
             R2DBC.executeProcedure("call \"GetAVGs\"()")
+        }
+    }
+
+    @Test
+    fun test_duplicates() {
+        runBlocking {
+            val objectDB = KORDs()
+            objectDB.guild_id = 2
+            objectDB.KORD_id = "KORDID2"
+            objectDB.KORD_name = "null"
+            objectDB.donations = 666.0
+            R2DBC.runQuery {
+                QueryDsl.insert(tbl_kords).onDuplicateKeyUpdate(tbl_kords.donations).set { excl ->
+                    tbl_kords.KORD_id eq "KORDID2"
+                }.single(objectDB)
+            }
         }
     }
 

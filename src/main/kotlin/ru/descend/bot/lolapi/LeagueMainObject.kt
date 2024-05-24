@@ -5,7 +5,7 @@ import ru.descend.bot.catchToken
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.globalLOLRequests
-import ru.descend.bot.lolapi.champions.InterfaceChampionBase
+import ru.descend.bot.lolapi.dto.InterfaceChampionBase
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.lolapi.dto.currentGameInfo.CurrentGameInfo

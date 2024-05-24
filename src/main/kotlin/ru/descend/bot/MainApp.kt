@@ -32,6 +32,7 @@ import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.datas.update
 import ru.descend.bot.datas.isCurrentDay
+import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -235,11 +236,11 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
             createMessageMasteries(channelText, sqlData)
         }
         //Таблица по ТОП чемпионам сервера
-        editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, {
-            editMessageTopContent(it, sqlData, false)
-        }) {
-            createMessageTop(channelText, sqlData)
-        }
+//        editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, {
+//            editMessageTopContent(it, sqlData, false)
+//        }) {
+//            createMessageTop(channelText, sqlData)
+//        }
     }.join()
 
     if (sqlData.isNeedUpdateDatas) {
@@ -352,8 +353,8 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
 
     val statClass = Toppartisipants()
     val savedKORDLOLS = R2DBC.getKORDLOLs { KORDLOLs.tbl_kordlols.guild_id eq sqlData.guildSQL.id }
-    val normalMatches = R2DBC.getMatches { Matches.tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; Matches.tbl_matches.bots eq false ; Matches.tbl_matches.surrender eq false }
-    val savedparticipants = R2DBC.getParticipants { Participants.tbl_participants.match_id.inList(normalMatches.map { it.id }) ; Participants.tbl_participants.LOLperson_id.inList(savedKORDLOLS.map { it.LOL_id }) }
+    val normalMatches = R2DBC.getMatches { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false }
+    val savedparticipants = R2DBC.getParticipants { tbl_participants.match_id.inList(normalMatches.map { it.id }) ; tbl_participants.LOLperson_id.inList(savedKORDLOLS.map { it.LOL_id }) }
     savedparticipants.forEach {
         statClass.calculateField(it, "Убийств", it.kills.toDouble())
         statClass.calculateField(it, "Смертей", it.deaths.toDouble())

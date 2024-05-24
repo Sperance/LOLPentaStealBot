@@ -78,9 +78,14 @@ data class Calc_AddMatch (
             arrayHeroName.add(part)
         }
 
+        val savedLOL = sqlData.dataSavedLOL.get()
+        var isNeedCalcMMR = false
         val arrayNewParts = ArrayList<Participants>()
         match.info.participants.forEach {part ->
             var curLOL = R2DBC.getLOLone({ tbl_lols.LOL_puuid eq part.puuid})
+            if (!isNeedCalcMMR && savedLOL.find { lol -> lol.LOL_puuid == part.puuid } != null) {
+                isNeedCalcMMR = true
+            }
 
             if (kordLol != null && curLOL != null && !isBots && !isSurrender){
                 kordLol.find { it.LOL_id == curLOL?.id }?.let {
@@ -101,7 +106,7 @@ data class Calc_AddMatch (
             if (curLOL == null) {
                 curLOL = LOLs(LOL_puuid = part.puuid,
                     LOL_summonerId = part.summonerId,
-                    LOL_riotIdName = part.riotIdGameName,
+                    LOL_riotIdName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName,
                     LOL_riotIdTagline = part.riotIdTagline,
                     LOL_summonerLevel = part.summonerLevel,
                     profile_icon = part.profileIcon).create(LOLs::LOL_puuid)
@@ -123,11 +128,10 @@ data class Calc_AddMatch (
             arrayNewParts.add(Participants(part, pMatch, curLOL))
         }
 
-        val savedLOL = sqlData.dataSavedLOL.get()
         arrayOtherLOLs.removeIf { savedLOL.find { finded -> finded.id == it.id } != null }
         R2DBC.addBatchParticipants(arrayNewParts)
 
-        if (mainOrder && kordLol != null) {
+        if (isNeedCalcMMR && kordLol != null) {
             calculateMMR(pMatch, isSurrender, isBots, kordLol)
         }
         if (!mainOrder) {

@@ -20,6 +20,7 @@ data class Participants(
     var match_id: Int = -1,
     var LOLperson_id: Int = -1,
     var guild_id: Int = -1,
+    var dataKey: String = "",
 
     var championId: Int = -1,
     var championName: String = "",
@@ -78,6 +79,7 @@ data class Participants(
         this.match_id = match.id
         this.LOLperson_id = LOLperson.id
         this.guild_id = match.guild_id
+        this.dataKey = match.matchId + "#" + LOLperson.id
 
         this.championId = participant.championId
         this.championName = participant.championName
@@ -145,6 +147,7 @@ data class Participants(
         if (match_id != other.match_id) return false
         if (LOLperson_id != other.LOLperson_id) return false
         if (guild_id != other.guild_id) return false
+        if (dataKey != other.dataKey) return false
         if (championId != other.championId) return false
         if (championName != other.championName) return false
         if (kills5 != other.kills5) return false
@@ -199,6 +202,7 @@ data class Participants(
         result = 31 * result + match_id
         result = 31 * result + LOLperson_id
         result = 31 * result + guild_id
+        result = 31 * result + dataKey.hashCode()
         result = 31 * result + championId
         result = 31 * result + championName.hashCode()
         result = 31 * result + kills5

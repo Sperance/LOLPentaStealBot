@@ -20,13 +20,16 @@ open class Property (
 ) : BaseProperty(name, 0.0) {
     open fun get() = value
     open fun set(obj: Number, invokingListeners: Boolean = true) {
-        value = obj.toDouble().to1Digits()
+        change(obj)
     }
     open fun add(obj: Number, invokingListeners: Boolean = true) {
-        value = (value + obj.toDouble()).to1Digits()
+        change(value + obj.toDouble())
     }
     open fun rem(obj: Number, invokingListeners: Boolean = true) {
-        value = (value - obj.toDouble()).to1Digits()
+        change(value - obj.toDouble())
+    }
+    open fun change(newValue: Number) {
+        value = newValue.toDouble().to1Digits()
     }
 
     override fun toString(): String {
@@ -34,39 +37,51 @@ open class Property (
     }
 }
 
-open class BattleProperty (
+class BaseListener <T> {
+    private val arrayListeners = ArrayList<(T) -> Unit>()
+    fun addListener(body: (T) -> Unit) {
+        arrayListeners.add(body)
+    }
+    fun invokeEach(obj: T) {
+        arrayListeners.forEach { it.invoke(obj) }
+    }
+}
+
+class PersonListener (val name: String, val category: EnumPersonLifects) {
+    private val arrayListeners = ArrayList<(Person, Person?) -> Unit>()
+    fun addListener(body: (Person, Person?) -> Unit) {
+        arrayListeners.add(body)
+    }
+    fun invokeEach(cur: Person, enemy: Person?) {
+        arrayListeners.forEach { it.invoke(cur, enemy) }
+    }
+}
+
+class BattleProperty (
     name: String
 ) : Property(name) {
-    private val arrayOnChange = ArrayList<(BattleProperty) -> Unit>()
-    fun addOnChangeListener(body: (BattleProperty) -> Unit) {
-        arrayOnChange.add(body)
-    }
+    val onChangeListeners = BaseListener<BattleProperty>()
+    val onAddListeners = BaseListener<BattleProperty>()
+    val onRemoveListeners = BaseListener<BattleProperty>()
 
-    private val arrayOnAdd = ArrayList<(BattleProperty) -> Unit>()
-    fun addOnAddListener(body: (BattleProperty) -> Unit) {
-        arrayOnAdd.add(body)
-    }
-
-    private val arrayOnRem = ArrayList<(BattleProperty) -> Unit>()
-    fun addOnRemListener(body: (BattleProperty) -> Unit) {
-        arrayOnRem.add(body)
-    }
+    var minimumValue = 0.0
+    var maximumValue = 0.0
 
     override fun set(obj: Number, invokingListeners: Boolean) {
         super.set(obj, invokingListeners)
         if (!invokingListeners) return
-        arrayOnChange.forEach{ i -> i.invoke(this) }
+        onChangeListeners.invokeEach(this)
     }
     override fun add(obj: Number, invokingListeners: Boolean) {
         super.add(obj, invokingListeners)
         if (!invokingListeners) return
-        arrayOnAdd.forEach{ i -> i.invoke(this) }
-        arrayOnChange.forEach{ i -> i.invoke(this) }
+        onAddListeners.invokeEach(this)
+        onChangeListeners.invokeEach(this)
     }
     override fun rem(obj: Number, invokingListeners: Boolean) {
         super.rem(obj, invokingListeners)
         if (!invokingListeners) return
-        arrayOnRem.forEach{ i -> i.invoke(this) }
-        arrayOnChange.forEach{ i -> i.invoke(this) }
+        onRemoveListeners.invokeEach(this)
+        onChangeListeners.invokeEach(this)
     }
 }

@@ -11,6 +11,7 @@ import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.datas.WorkData
+import ru.descend.bot.launch
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
@@ -169,33 +170,33 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }
         val listChecked = getNewMatches(checkMatches)
         listChecked.sortBy { it }
-        asyncLoadMatches(listChecked, mainOrder)
-//        listChecked.forEach { newMatch ->
-//            LeagueMainObject.catchMatch(newMatch)?.let { match ->
-//                addMatch(match, mainOrder)
-//            }
-//        }
-    }
-
-    private suspend fun asyncLoadMatches(listChecked: ArrayList<String>, mainOrder: Boolean) {
-        if (listChecked.size > 2) {
-            asyncLaunch {
-                val list1 = listChecked.subList(0, listChecked.size / 2).toList()
-                loadArray(list1, mainOrder)
-            }
-            asyncLaunch {
-                val list2 = listChecked.subList(listChecked.size / 2, listChecked.size).toList()
-                loadArray(list2, mainOrder)
-            }
-        } else {
-            loadArray(listChecked, mainOrder)
-        }
-    }
-
-    private suspend fun loadArray(listChecked: Collection<String>, mainOrder: Boolean) {
         listChecked.forEach {newMatch ->
             LeagueMainObject.catchMatch(newMatch)?.let { match ->
                 addMatch(match, mainOrder)
+            }
+        }
+//        asyncLoadMatches(listChecked, mainOrder)
+    }
+
+    private suspend fun asyncLoadMatches(listChecked: ArrayList<String>, mainOrder: Boolean) {
+        launch {
+            if (listChecked.size > 2) {
+                val list1 = listChecked.subList(0, listChecked.size / 2).toList()
+                loadArray(list1, mainOrder)
+                val list2 = listChecked.subList(listChecked.size / 2, listChecked.size).toList()
+                loadArray(list2, mainOrder)
+            } else {
+                loadArray(listChecked, mainOrder)
+            }
+        }.join()
+    }
+
+    private suspend fun loadArray(listChecked: Collection<String>, mainOrder: Boolean) {
+        asyncLaunch {
+            listChecked.forEach {newMatch ->
+                LeagueMainObject.catchMatch(newMatch)?.let { match ->
+                    addMatch(match, mainOrder)
+                }
             }
         }
     }

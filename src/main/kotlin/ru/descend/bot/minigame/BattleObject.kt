@@ -6,48 +6,47 @@ import kotlinx.coroutines.flow.flow
 class BattleObject(private val person1: Person, private val person2: Person) {
 
     private var isFighting = false
+    private var periodBattle = 100.0
 
     private fun initForBattle() {
         person1.initForBattle()
+        person1.listeners.onStartBattle.invokeEach(person1, person2)
         person2.initForBattle()
+        person2.listeners.onStartBattle.invokeEach(person2, person1)
     }
 
     suspend fun doBattle() {
         isFighting = true
         initForBattle()
-        tickerFlow(100).collect {
-            checkDealAttack(person1) {
+        var timerFlow1 = 0.0
+        var timerFlow2 = 0.0
+        tickerFlow(periodBattle).collect {
+            timerFlow1 += periodBattle
+            timerFlow2 += periodBattle
+            if (timerFlow1 >= person1.stats.attackSpeed.battleStat.get()) {
                 attackedObject(person1, person2)
+                timerFlow1 = 0.0
             }
-            checkDealAttack(person2) {
+            if (timerFlow2 >= person2.stats.attackSpeed.battleStat.get()) {
                 attackedObject(person2, person1)
+                timerFlow2 = 0.0
             }
-        }
-    }
-
-    private fun checkDealAttack(person: Person, onAttack: () -> Unit) {
-        person.stats.attackSpeed.battleStat.rem(100)
-        if (person.stats.attackSpeed.battleStat.get() <= 0.0) {
-            person.stats.attackSpeed.initForBattle()
-            onAttack.invoke()
         }
     }
 
     private fun attackedObject(from: Person, to: Person) {
-        val fromAttack = from.stats.attack.battleStat.get()
-        to.stats.health.battleStat.rem(fromAttack)
-        println("${from.name} атаковал ${to.name} на $fromAttack. Осталось жизней у ${to.name} : ${to.stats.health.battleStat.get()}")
+        from.onAttacking(to)
         if (!to.personBlobs.isAlive.get()) {
             println("person ${to.name} is DIED")
             isFighting = false
         }
     }
 
-    private fun tickerFlow(period: Long) = flow {
+    private fun tickerFlow(period: Double) = flow {
         while (true) {
             if (!isFighting) return@flow
             emit(Unit)
-            delay(period)
+            delay(period.toLong())
         }
     }
 }

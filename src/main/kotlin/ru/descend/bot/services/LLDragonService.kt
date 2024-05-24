@@ -1,6 +1,6 @@
 package ru.descend.bot.services
 
-import ru.descend.bot.lolapi.champions.ChampionsDTO
+import ru.descend.bot.lolapi.dto.ChampionsDTO
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
