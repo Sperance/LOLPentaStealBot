@@ -7,13 +7,10 @@ interface IntStatBattle {
 /**
  * Здоровье персонажа
  */
-class Health(
-    val person: Person,
-    val battleStat: BattleProperty = BattleProperty("Здоровье")
-) : Property("Здоровье"), IntStatBattle {
+class Health(val person: Person) : Property("Здоровье"), IntStatBattle {
     init {
-        battleStat.onChangeListeners.addListener {
-            if (it.get() <= it.minimumValue) {
+        onChangeListeners.addListener {
+            if (get() <= minimumValue) {
                 person.personBlobs.isAlive.set(false)
                 person.listeners.onDie.invokeEach(person, null)
             }
@@ -21,36 +18,39 @@ class Health(
     }
 
     override fun initForBattle() {
-        battleStat.minimumValue = 0.0
-        battleStat.maximumValue = get()
-        battleStat.set(get())
+        maximumValue = get()
+        setStock(maximumValue!!)
     }
 }
 
 /**
  * Атака персонажа
  */
-class Attack(
-    val person: Person,
-    val battleStat: BattleProperty = BattleProperty("Урон")
-) : Property("Урон"), IntStatBattle {
+class Attack(val person: Person) : Property("Урон"), IntStatBattle {
     override fun initForBattle() {
-        battleStat.set(get())
+
     }
 }
 
 /**
  * Скорость атаки персонажа
  */
-class AttackSpeed(
-    val person: Person,
-    val battleStat: BattleProperty = BattleProperty("Скорость атаки")
-) : Property("Скорость атаки"), IntStatBattle {
+class AttackSpeed(val person: Person) : Property("Скорость атаки"), IntStatBattle {
+    override fun change(newValue: Number) {
+        var settingValue = newValue.toDouble()
+        if (!person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.maxAttackSpeed.value) {
+            settingValue = person.personValues.maxAttackSpeed.value
+            maximumValue = settingValue
+        }
+        if (person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.CONSTmaxAttackSpeed.value) {
+            settingValue = person.personValues.CONSTmaxAttackSpeed.value
+            maximumValue = settingValue
+        }
+        super.change(settingValue)
+    }
     override fun initForBattle() {
-        var settingValue = get()
-        if (!person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.maxAttackSpeed.value) settingValue = person.personValues.maxAttackSpeed.value
-        if (person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.CONSTmaxAttackSpeed.value) settingValue = person.personValues.CONSTmaxAttackSpeed.value
-        battleStat.set(settingValue)
+        maximumValue = get()
+        setStock(maximumValue!!)
     }
 }
 
@@ -68,7 +68,10 @@ data class PersonStats (
 }
 
 enum class EnumPersonLifects {
+    UNDEFINED,
     ON_START_BATTLE,
+    ON_DEAL_DAMAGE,
+    ON_TAKE_DAMAGE,
     ON_DIE
 }
 
@@ -76,9 +79,7 @@ data class PersonListeners (
     val person: Person,
 
     val onStartBattle: PersonListener = PersonListener("Начало боя", EnumPersonLifects.ON_START_BATTLE),
-//    val onBeforeAttack: PersonListener = PersonListener("Перед атакой"),
-//    val onAfterAttack: PersonListener = PersonListener("После атаки"),
-//    val onAttacking: PersonListener = PersonListener("Атаковал"),
-//    val onAttacked: PersonListener = PersonListener("Был атакован"),
+    val onDealDamage: PersonListener = PersonListener("Атаковал", EnumPersonLifects.ON_DEAL_DAMAGE),
+    val onTakeDamage: PersonListener = PersonListener("Получил урон", EnumPersonLifects.ON_TAKE_DAMAGE),
     val onDie: PersonListener = PersonListener("Умер", EnumPersonLifects.ON_DIE)
 )

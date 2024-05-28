@@ -1,7 +1,5 @@
 package ru.descend.bot.minigame
 
-import ru.descend.bot.to1Digits
-
 open class BlobProperty(
     val name: String,
     var value: Boolean
@@ -13,27 +11,56 @@ open class BlobProperty(
 open class BaseProperty(
     val name: String,
     var value: Double
-)
+) {
+    open fun get() = value
+}
 
 open class Property (
     name: String
 ) : BaseProperty(name, 0.0) {
-    open fun get() = value
-    open fun set(obj: Number, invokingListeners: Boolean = true) {
-        change(obj)
+
+    val onChangeListeners = BaseListener<Property>()
+    val onAddListeners = BaseListener<Property>()
+    val onRemoveListeners = BaseListener<Property>()
+
+    var minimumValue: Double = 0.0
+    var maximumValue: Double? = null
+    var additionalValue: Double = 0.0
+
+    override fun get(): Double {
+        return value + additionalValue
     }
-    open fun add(obj: Number, invokingListeners: Boolean = true) {
+
+    private fun checkMinMax() {
+        if (value < minimumValue) value = minimumValue
+        if (maximumValue != null && value > maximumValue!!) value = maximumValue!!
+    }
+
+    open fun setStock(obj: Number, invokingListeners: Boolean = true) {
+        change(obj.toDouble())
+        if (!invokingListeners) return
+        onChangeListeners.invokeEach(this)
+    }
+    open fun addStock(obj: Number, invokingListeners: Boolean = true) {
         change(value + obj.toDouble())
+        if (!invokingListeners) return
+        onAddListeners.invokeEach(this)
+        onChangeListeners.invokeEach(this)
     }
-    open fun rem(obj: Number, invokingListeners: Boolean = true) {
+    open fun remStock(obj: Number, invokingListeners: Boolean = true) {
         change(value - obj.toDouble())
+        if (!invokingListeners) return
+        onRemoveListeners.invokeEach(this)
+        onChangeListeners.invokeEach(this)
     }
+
     open fun change(newValue: Number) {
-        value = newValue.toDouble().to1Digits()
+        value = newValue.toDouble()
+        checkMinMax()
     }
 
     override fun toString(): String {
-        return "Property(name='$name', value=$value)"
+        return "Property(name=$name, value=$value minimumValue=$minimumValue, maximumValue=$maximumValue, additionalValue=$additionalValue)"
     }
 }
 
@@ -54,34 +81,5 @@ class PersonListener (val name: String, val category: EnumPersonLifects) {
     }
     fun invokeEach(cur: Person, enemy: Person?) {
         arrayListeners.forEach { it.invoke(cur, enemy) }
-    }
-}
-
-class BattleProperty (
-    name: String
-) : Property(name) {
-    val onChangeListeners = BaseListener<BattleProperty>()
-    val onAddListeners = BaseListener<BattleProperty>()
-    val onRemoveListeners = BaseListener<BattleProperty>()
-
-    var minimumValue = 0.0
-    var maximumValue = 0.0
-
-    override fun set(obj: Number, invokingListeners: Boolean) {
-        super.set(obj, invokingListeners)
-        if (!invokingListeners) return
-        onChangeListeners.invokeEach(this)
-    }
-    override fun add(obj: Number, invokingListeners: Boolean) {
-        super.add(obj, invokingListeners)
-        if (!invokingListeners) return
-        onAddListeners.invokeEach(this)
-        onChangeListeners.invokeEach(this)
-    }
-    override fun rem(obj: Number, invokingListeners: Boolean) {
-        super.rem(obj, invokingListeners)
-        if (!invokingListeners) return
-        onRemoveListeners.invokeEach(this)
-        onChangeListeners.invokeEach(this)
     }
 }

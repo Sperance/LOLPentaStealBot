@@ -4,10 +4,14 @@ import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
 import dev.kord.core.entity.channel.TextChannel
 import me.jakejmattson.discordkt.arguments.AnyArg
+import me.jakejmattson.discordkt.arguments.AutocompleteArg
+import me.jakejmattson.discordkt.arguments.AutocompleteData
 import me.jakejmattson.discordkt.arguments.ChannelArg
 import me.jakejmattson.discordkt.arguments.ChoiceArg
 import me.jakejmattson.discordkt.arguments.DoubleArg
 import me.jakejmattson.discordkt.arguments.IntegerArg
+import me.jakejmattson.discordkt.arguments.PrimitiveArgument
+import me.jakejmattson.discordkt.arguments.StringArgument
 import me.jakejmattson.discordkt.arguments.UserArg
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.util.fullName
@@ -32,6 +36,8 @@ import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
+import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toStringUID
@@ -477,6 +483,40 @@ fun arguments() = commands("Arguments") {
             }
 
             respond("Ожидание ответа...")
+        }
+    }
+
+    slash("addHeroName", "Добавить наименование чемпиона", Permissions(Permission.UseApplicationCommands)) {
+        execute(AutocompleteArg("hero", description = "Чемпион Лиги Легенд", type = AnyArg(), autocomplete = {R2DBC.getHeroes().map { it.nameRU }}), AnyArg("newNames", description = "Новое имя чемпиона (несколько через ',')")) {
+            val (hero, newNames) = args
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'hero'=$hero, 'newNames'=$newNames"
+            printLog(textCommand)
+
+            val findObj = R2DBC.getHeroesone({tbl_heroes.nameRU eq hero})
+            val retText = if (findObj == null) {
+                "Чемпион $hero не найден. Обратитесь к Администратору"
+            } else {
+                val curNames = findObj.otherNames.split(",")
+                val arrayNewNames = ArrayList<String>()
+                arrayNewNames.addAll(curNames)
+                var appendText = ""
+                newNames.split(",").forEach { str ->
+                    val cStr = str.lowercase().trim().trim(',')
+                    if (!arrayNewNames.contains(cStr)) {
+                        val fObj = R2DBC.getHeroes().find { f -> f.otherNames.contains(cStr) }
+                        if (fObj == null) {
+                            arrayNewNames.add(cStr)
+                        } else {
+                            appendText += "\nимя $cStr не было сохранено, т.к. содержится у Героя ${fObj.nameRU}\n"
+                        }
+                    }
+                }
+                findObj.otherNames = arrayNewNames.joinToString(separator = ",")
+                findObj.update()
+                "Успешно. $appendText Текущий список имен (${findObj.nameRU}): ${arrayNewNames.joinToString(separator = ",")}"
+            }
+
+            respond(retText)
         }
     }
 

@@ -1,44 +1,56 @@
 package ru.descend.bot.minigame
 
-open class BaseEffect(
-    val name: String,
-    val category: EnumPersonLifects,
-    var value: Double,
-    var duration: Long
-) {
-    open fun applyEffect(current: Person?, enemy: Person?){
-        println("[Effect $name applied]")
-    }
-    open fun removeEffect(current: Person?, enemy: Person?){
-        println("[Effect $name removed]")
+abstract class BaseEffect(
+    var name: String
+) { abstract fun applyEffect(current: Person, enemy: Person?) }
+
+open class BaseApplyEffect(name: String, val listEffects: Collection<BaseEffect>, val codeEffect: Int, val category: EnumPersonLifects) : BaseEffect(name) {
+    override fun applyEffect(current: Person, enemy: Person?) {
+        listEffects.forEach { it.applyEffect(current, enemy) }
     }
 }
 
-class BaseEffectAdditionalDamage(value: Double, duration: Long = -1) : BaseEffect("Бонусный урон", EnumPersonLifects.ON_START_BATTLE, value, duration) {
-    override fun applyEffect(current: Person?, enemy: Person?) {
-        super.applyEffect(current, enemy)
-        current?.stats?.attack?.battleStat?.add(value)
-    }
-    override fun removeEffect(current: Person?, enemy: Person?) {
-        super.removeEffect(current, enemy)
-        current?.stats?.attack?.battleStat?.rem(value)
+/********************************/
+
+class BaseEffectAdditionalDamage(var value: Double) : BaseEffect("Бонусный урон") {
+    override fun applyEffect(current: Person, enemy: Person?) {
+        current.stats.attack.addStock(value)
     }
 }
+class BaseEffectAttackSpeedUP(var value: Double) : BaseEffect("Увеличение скорости атаки") {
+    override fun applyEffect(current: Person, enemy: Person?) {
+        current.stats.attackSpeed.remStock(value)
+    }
+}
+class BaseEffectTimeHeal(var value: Double) : BaseEffect("Восстановление здоровья") {
+    override fun applyEffect(current: Person, enemy: Person?) {
+        current.stats.health.addStock(value)
+    }
+}
+
+/********************************/
 
 data class PersonEffects (
     val person: Person
 ) {
-    private val arrayEffects = ArrayList<BaseEffect>()
+    private val arrayEffects = ArrayList<BaseApplyEffect>()
 
-    fun addEffect(effect: BaseEffect) {
+    fun addEffect(effect: BaseApplyEffect) {
         arrayEffects.add(effect)
     }
 
     fun initForBattle() {
         person.listeners.onStartBattle.addListener { person1, person2 ->
-            arrayEffects.filter { it.category == person.listeners.onStartBattle.category }.forEach {
-                it.applyEffect(person1, person2)
-            }
+            arrayEffects.filter { it.category == person.listeners.onStartBattle.category }.forEach { it.applyEffect(person1, person2) }
+        }
+        person.listeners.onDealDamage.addListener { person1, person2 ->
+            arrayEffects.filter { it.category == person.listeners.onDealDamage.category }.forEach { it.applyEffect(person1, person2) }
+        }
+        person.listeners.onTakeDamage.addListener { person1, person2 ->
+            arrayEffects.filter { it.category == person.listeners.onTakeDamage.category }.forEach { it.applyEffect(person1, person2) }
+        }
+        person.listeners.onDie.addListener { person1, person2 ->
+            arrayEffects.filter { it.category == person.listeners.onDie.category }.forEach { it.applyEffect(person1, person2) }
         }
     }
 }

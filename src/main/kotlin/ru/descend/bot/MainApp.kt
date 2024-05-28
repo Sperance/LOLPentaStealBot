@@ -200,12 +200,14 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
 //    }.join()
 
     launch {
-        sqlData.loadMatches(sqlData.dataSavedLOL.get(), 50, true)
-        if (!sqlData.isNeedUpdateDatas) {
-            val lastLOL = R2DBC.getLOLone(first = false)
-            var countLoading = 95 - sqlData.dataSavedLOL.get().size
-            if (countLoading < 0) countLoading = 0
-            if (lastLOL != null) sqlData.loadMatches(listOf(lastLOL), countLoading, false)
+        R2DBC.runTransaction {
+            sqlData.loadMatches(sqlData.dataSavedLOL.get(), 50, true)
+            if (!sqlData.isNeedUpdateDatas) {
+                val lastLOL = R2DBC.getLOLone(first = false)
+                var countLoading = 95 - sqlData.dataSavedLOL.get().size
+                if (countLoading < 0) countLoading = 0
+                if (lastLOL != null) sqlData.loadMatches(listOf(lastLOL), countLoading, false)
+            }
         }
     }.join()
 

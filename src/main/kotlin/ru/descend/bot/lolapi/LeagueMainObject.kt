@@ -19,23 +19,24 @@ import kotlin.time.Duration.Companion.seconds
 object LeagueMainObject {
 
     private val leagueApi = LeagueApi(catchToken()[1], LeagueApi.RU)
-    private val dragonService = leagueApi.dragonService
+    val dragonService = leagueApi.dragonService
     val leagueService = leagueApi.leagueService
 
-    private var heroObjects = ArrayList<Any>()
+    var heroObjects = ArrayList<InterfaceChampionBase>()
+    var heroRuNames = ArrayList<String>()
 
     var LOL_VERSION = ""
 
     fun catchHeroForId(id: Int?) : InterfaceChampionBase? {
         heroObjects.forEach {
-            if (it is InterfaceChampionBase && it.key.lowercase() == id.toString().lowercase()) return it
+            if (it.key.lowercase() == id.toString().lowercase()) return it
         }
         return null
     }
 
     fun catchHeroForName(name: String) : InterfaceChampionBase? {
         heroObjects.forEach {
-            if (it is InterfaceChampionBase && it.id.lowercase() == name.lowercase()) return it
+            if (it.id.lowercase() == name.lowercase()) return it
         }
         return null
     }
@@ -58,21 +59,21 @@ object LeagueMainObject {
             }
         }
 
-        val namesAllHero = ArrayList<String>()
+        heroRuNames.clear()
         heroObjects.clear()
         champions.data::class.java.declaredFields.forEach {
             it.isAccessible = true
             val curData = it.get(champions.data) as InterfaceChampionBase
             heroObjects.add(curData)
             val nameField = curData.name
-            namesAllHero.add(nameField)
+            heroRuNames.add(nameField)
         }
 
         LOL_VERSION = champions.version
 
-        printLog("Version Data: ${champions.version} Heroes: ${namesAllHero.size}")
+        printLog("Version Data: ${champions.version} Heroes: ${heroRuNames.size}")
 
-        return namesAllHero
+        return heroRuNames
     }
 
     suspend fun catchMatchID(puuid: String, summonerName: String, start: Int, count: Int, agained: Boolean = false) : List<String> {

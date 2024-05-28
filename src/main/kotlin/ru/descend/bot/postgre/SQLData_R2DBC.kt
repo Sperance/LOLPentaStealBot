@@ -115,7 +115,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     suspend fun addMatch(match: MatchDTO, mainOrder: Boolean) {
         val newMatch = Calc_AddMatch(this, match, getKORDLOL())
         newMatch.calculate(mainOrder)
-
         if (mainOrder) {
             val checkMatches = ArrayList<String>()
             val othersLOLS = newMatch.arrayOtherLOLs
@@ -133,8 +132,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 }
             }
         }
-
-//        Calc_PentaSteal(this, match, newMatch).calculte()
     }
 
     suspend fun getWinStreak() : HashMap<Int, Int> {

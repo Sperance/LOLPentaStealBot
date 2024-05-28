@@ -189,4 +189,8 @@ open class InterfaceChampionBase (
     fun getIconURL() : String {
         return "https://ddragon.leagueoflegends.com/cdn/$LOL_VERSION/img/champion/$id.png"
     }
+
+    override fun toString(): String {
+        return "InterfaceChampionBase(id='$id', key='$key', name='$name', tags=$tags)"
+    }
 }

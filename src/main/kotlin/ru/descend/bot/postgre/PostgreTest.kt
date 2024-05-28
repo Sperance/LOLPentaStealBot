@@ -2,6 +2,7 @@ package ru.descend.bot.postgre
 
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -12,10 +13,12 @@ import okhttp3.RequestBody
 import org.junit.Test
 import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.datas.DataStatRate
+import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.datas.create
+import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
@@ -26,6 +29,9 @@ import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participant
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
+import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.lolapi.dto.InterfaceChampionBase
+import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.to1Digits
@@ -67,9 +73,44 @@ class PostgreTest {
     }
 
     @Test
-    fun test_format_double() {
-        val data = (646.5 / 226.0).toFormat(2)
-        printLog(data)
+    fun reset_heroes_table() {
+        runBlocking {
+            val versions = when (val res = safeApiCall { LeagueMainObject.dragonService.getVersions() }){
+                is Result.Success -> res.data
+                is Result.Error -> {
+                    printLog("[reset_heroes_table] error: ${res.message}")
+                    listOf()
+                }
+            }
+
+            val champions = when (val res = safeApiCall { LeagueMainObject.dragonService.getChampions(versions.first(), "ru_RU") }){
+                is Result.Success -> res.data
+                is Result.Error -> {
+                    printLog("[reset_heroes_table] error: ${res.message}")
+                    throw IllegalAccessException("[reset_heroes_table] error: ${res.message}")
+                }
+            }
+
+            champions.data::class.java.declaredFields.forEach {
+                it.isAccessible = true
+                val curData = it.get(champions.data) as InterfaceChampionBase
+                val hero = Heroes(
+                    nameEN = curData.id,
+                    nameRU = curData.name,
+                    key = curData.key,
+                    tags = curData.tags.joinToString(", ")
+                )
+                hero.create(Heroes::key)
+            }
+        }
+    }
+
+    @Test
+    fun testHeroNames() {
+        runBlocking {
+            val list = R2DBC.getHeroes().map { it.nameEN }
+            list.forEach(::println)
+        }
     }
 
     @Test
@@ -237,6 +278,25 @@ class PostgreTest {
         runBlocking {
             val lolobj = R2DBC.getLOLone(declaration = {tbl_lols.LOL_summonerLevel greaterEq 1000}, first = false)
             println("lol id: ${lolobj?.id} level: ${lolobj?.LOL_summonerLevel}")
+        }
+    }
+
+    @Test
+    fun test_in_transact() {
+        runBlocking {
+            R2DBC.runTransaction {
+                val heros = R2DBC.getHeroes()
+
+                heros.forEach {
+                    it.otherNames = R2DBC.getMatchOne({ tbl_matches.id eq it.key.toInt() })?.matchId?:"null"
+                    it.update()
+                }
+
+                heros.forEach {
+                    it.otherNames = "312355775"
+                    it.update()
+                }
+            }
         }
     }
 

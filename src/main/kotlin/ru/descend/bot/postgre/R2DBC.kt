@@ -9,8 +9,11 @@ import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.QueryScope
 import org.komapper.core.dsl.query.firstOrNull
 import org.komapper.r2dbc.R2dbcDatabase
+import org.komapper.tx.core.CoroutineTransactionOperator
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
+import ru.descend.bot.postgre.r2dbc.model.Heroes
+import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -41,6 +44,8 @@ object R2DBC {
 
     private val db = R2dbcDatabase(connectionFactory)
 
+    suspend fun runTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction { body.invoke(it) }
+
     suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
     suspend fun <T> runQuery(block: QueryScope.() -> Query<T>) =
         db.withTransaction {
@@ -57,6 +62,7 @@ object R2DBC {
             db.runQuery { QueryDsl.create(tbl_matches) }
             db.runQuery { QueryDsl.create(tbl_mmrs) }
             db.runQuery { QueryDsl.create(tbl_participants) }
+            db.runQuery { QueryDsl.create(tbl_heroes) }
         }
     }
 
@@ -150,6 +156,18 @@ object R2DBC {
                 res.forEach { printLog("[Batch_Participants::save] $it") }
             }
         }
+    }
+
+    suspend fun getHeroesone(declaration: WhereDeclaration = { tbl_heroes.id greaterEq 0}, first: Boolean = true) : Heroes? {
+        val sortExpr = if (first) tbl_heroes.id else tbl_heroes.id.desc()
+        val query = QueryDsl.from(tbl_heroes)
+            .where(declaration)
+            .orderBy(sortExpr)
+            .firstOrNull()
+        return db.withTransaction { db.runQuery { query } }
+    }
+    suspend fun getHeroes(declaration: WhereDeclaration? = null) : List<Heroes> {
+        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_heroes) else QueryDsl.from(tbl_heroes).where(declaration) } }
     }
 
     suspend fun getLOLone(declaration: WhereDeclaration = { tbl_lols.id greaterEq 0}, first: Boolean = true) : LOLs? {

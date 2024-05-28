@@ -79,10 +79,11 @@ data class Calc_AddMatch (
         }
 
         val savedLOL = sqlData.dataSavedLOL.get()
+        val curLOLs = R2DBC.getLOLs { tbl_lols.LOL_puuid.inList(arrayHeroName.map { it.puuid }) }
         var isNeedCalcMMR = false
         val arrayNewParts = ArrayList<Participants>()
         match.info.participants.forEach {part ->
-            var curLOL = R2DBC.getLOLone({ tbl_lols.LOL_puuid eq part.puuid})
+            var curLOL = curLOLs.find { it.LOL_puuid == part.puuid }
             if (!isNeedCalcMMR && savedLOL.find { lol -> lol.LOL_puuid == part.puuid } != null) {
                 isNeedCalcMMR = true
             }
@@ -103,7 +104,7 @@ data class Calc_AddMatch (
             }
 
             //Создаем нового игрока в БД
-            if (curLOL == null) {
+            if (curLOL == null || curLOL.id == 0) {
                 curLOL = LOLs(LOL_puuid = part.puuid,
                     LOL_summonerId = part.summonerId,
                     LOL_riotIdName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName,
@@ -115,7 +116,7 @@ data class Calc_AddMatch (
                 if (curLOL.LOL_summonerLevel <= part.summonerLevel && (curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon)) {
                     curLOL.LOL_riotIdTagline = part.riotIdTagline
                     curLOL.LOL_summonerId = part.summonerId
-                    curLOL.LOL_riotIdName = part.riotIdGameName
+                    curLOL.LOL_riotIdName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName
                     curLOL.LOL_summonerLevel = part.summonerLevel
                     curLOL.profile_icon = part.profileIcon
                     curLOL = curLOL.update()

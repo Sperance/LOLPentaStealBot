@@ -23,11 +23,11 @@ class BattleObject(private val person1: Person, private val person2: Person) {
         tickerFlow(periodBattle).collect {
             timerFlow1 += periodBattle
             timerFlow2 += periodBattle
-            if (timerFlow1 >= person1.stats.attackSpeed.battleStat.get()) {
+            if (timerFlow1 >= person1.stats.attackSpeed.get()) {
                 attackedObject(person1, person2)
                 timerFlow1 = 0.0
             }
-            if (timerFlow2 >= person2.stats.attackSpeed.battleStat.get()) {
+            if (timerFlow2 >= person2.stats.attackSpeed.get()) {
                 attackedObject(person2, person1)
                 timerFlow2 = 0.0
             }
