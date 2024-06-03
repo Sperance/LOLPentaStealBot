@@ -197,11 +197,7 @@ suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
 
 suspend fun loadingRowMatches(lols: Collection<LOLs>, sqlData: SQLData_R2DBC, limitCounters: Int) {
     val limitCounter = 95 - limitCounters - lols.size
-    var counter = 0
-    lols.forEach {
-        counter += sqlData.loadMatches(listOf(it), 9, false)
-        if (counter >= limitCounter) return@forEach
-    }
+    sqlData.loadMatches(lols, 9, false, limitCounter)
 }
 
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
@@ -217,7 +213,6 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     launch {
-        delay(1000)
         //Таблица Главная - ID никнейм серияпобед
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
             editMessageMainDataContent(it, sqlData, false)

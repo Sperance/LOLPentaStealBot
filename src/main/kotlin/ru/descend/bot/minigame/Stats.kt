@@ -7,7 +7,7 @@ interface IntStatBattle {
 /**
  * Здоровье персонажа
  */
-class Health(val person: Person) : Property("Здоровье"), IntStatBattle {
+class Health(val person: Person) : Property(EnumPropName.HEALTH), IntStatBattle {
     init {
         onChangeListeners.addListener {
             if (get() <= minimumValue) {
@@ -26,7 +26,7 @@ class Health(val person: Person) : Property("Здоровье"), IntStatBattle {
 /**
  * Атака персонажа
  */
-class Attack(val person: Person) : Property("Урон"), IntStatBattle {
+class Attack(val person: Person) : Property(EnumPropName.ATTACK), IntStatBattle {
     override fun initForBattle() {
 
     }
@@ -35,7 +35,7 @@ class Attack(val person: Person) : Property("Урон"), IntStatBattle {
 /**
  * Скорость атаки персонажа
  */
-class AttackSpeed(val person: Person) : Property("Скорость атаки"), IntStatBattle {
+class AttackSpeed(val person: Person) : Property(EnumPropName.ATTACK_SPEED), IntStatBattle {
     override fun change(newValue: Number) {
         var settingValue = newValue.toDouble()
         if (!person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.maxAttackSpeed.value) {
@@ -60,6 +60,15 @@ data class PersonStats (
     val attack: Attack = Attack(person),
     val attackSpeed: AttackSpeed = AttackSpeed(person)
 ) {
+    fun addForItems(stat: BaseProperty) {
+        PersonStats::class.java.declaredFields.forEach {
+            it.isAccessible = true
+            val itField = it.get(this)
+            if (itField is Property && itField.name == stat.name) {
+                itField.addForItem(stat)
+            }
+        }
+    }
     fun initForBattle() {
         health.initForBattle()
         attack.initForBattle()

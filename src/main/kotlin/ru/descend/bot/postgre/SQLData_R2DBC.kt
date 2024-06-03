@@ -159,7 +159,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
      * @param count кол-во прогружаемых матчей по каждому объекту LOLs
      * @param mainOrder прогружать ли в базу так же матчи по игрокам из предыдущего матча (рекурсия 1го уровня)
      */
-    suspend fun loadMatches(lols: List<LOLs>, count: Int, mainOrder: Boolean) : Int {
+    suspend fun loadMatches(lols: Collection<LOLs>, count: Int, mainOrder: Boolean, maxLimit: Int? = null) {
         val checkMatches = ArrayList<String>()
         var countNewMatches = 0
         lols.forEach {
@@ -171,6 +171,11 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         R2DBC.runTransaction {
             val listChecked = getNewMatches(checkMatches)
             listChecked.sortBy { it }
+            if (maxLimit != null && listChecked.size > maxLimit) {
+                for (i in 1..maxLimit - listChecked.size) {
+                    listChecked.removeFirst()
+                }
+            }
             listChecked.forEach { newMatch ->
                 LeagueMainObject.catchMatch(newMatch)?.let { match ->
                     addMatch(match, mainOrder)
@@ -178,7 +183,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 }
             }
         }
-        return countNewMatches
     }
 
     suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {

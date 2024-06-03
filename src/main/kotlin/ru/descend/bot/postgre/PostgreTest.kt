@@ -36,6 +36,7 @@ import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participant
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
+import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
 import ru.descend.bot.postgre.r2dbc.model.Heroes
@@ -44,6 +45,7 @@ import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormat
+import ru.gildor.coroutines.okhttp.await
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -319,6 +321,47 @@ class PostgreTest {
                     resultAra.removeAll(data!!.toSet())
                     println("RES: ${resultAra.joinToString()}")
                 }
+    }
+
+    @Test
+    fun test_free_api() {
+        runBlocking {
+
+            val requestText = "Напиши очень длинное и оригинальное поздравление ко Дню Рождения"
+
+//            val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
+//            val url = "http://localhost:3040/v1/chat/completions"
+            val url = "https://api.pawan.krd/v1/chat/completions"
+            val JSON = "application/json; charset=utf-8".toMediaType()
+            val body = RequestBody.create(JSON, "{\n" +
+                    "        \"model\": \"gpt-3.5-turbo\",\n" +
+//                    "        \"model\": \"gpt-3.5-turbo-1106\",\n" +
+                    "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
+                    "    }")
+            val request = Request.Builder()
+                .addHeader("Authorization", "Bearer sk-LT7VD2dmZoQtR0VXftSq4YpXnkS8xcxW")
+                .url(url)
+                .post(body)
+                .build()
+
+            val response = OkHttpClient().newCall(request).await()
+
+            println("code: ${response.code}")
+            println("message: ${response.message}")
+
+            val resultString = response.body?.string()
+            println("result: $resultString")
+            val forecast = GsonBuilder().create().fromJson(resultString, AIResponse::class.java)
+            println(forecast.choices.first().message.content)
+        }
+    }
+
+    @Test
+    fun test_AI_context() {
+        runBlocking {
+            val message = generateAIText("напиши необычное и оригинальное и длинное поздравление игрока Атлант с Пентакиллом за чемпиона Анивия в игре League of Legends от имени Discord сервера АрамоЛолево")
+            printLog(message)
+        }
     }
 
     @Test

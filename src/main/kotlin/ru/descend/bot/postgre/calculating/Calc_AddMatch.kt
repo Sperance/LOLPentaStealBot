@@ -95,8 +95,8 @@ data class Calc_AddMatch (
                         if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
                             val championName = LeagueMainObject.findHeroForKey(part.championId.toString())
                             val textPentasCount = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                            val generatedText = generateAIText("В очень необычном и смешном стиле напиши поздравление пользователю ${it.asUser(sqlData.guild, sqlData).lowDescriptor()} за то что он сделал Пентакилл в игре League of Legends за чемпиона $championName убив ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}")
-                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n$generatedText"
+                            val generatedText = generateAIText("Напиши необычное и оригинальное и длинное поздравление пользователю ${it.asUser(sqlData.guild, sqlData).lowDescriptor()} за то что он сделал Пентакилл в игре League of Legends за чемпиона $championName от имени Discord сервера АрамоЛолево")
+                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n\n$generatedText"
 
                             if (pMatch.matchMode == "CLASSIC") {
                                 it.mmrAramSaved += 5.0

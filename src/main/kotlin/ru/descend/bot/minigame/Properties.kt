@@ -11,16 +11,29 @@ open class BlobProperty(
 }
 
 open class BaseProperty(
-    val name: String,
-    var value: Double
+    val name: EnumPropName = EnumPropName.UNDEFINED,
+    var value: Double,
+    var innerName: String? = null,
+    var stockPercent: Double = 0.0,
+    var itemPercent: Double = 0.0
 ) {
-    open fun get() = value
+    open fun get() = value.addPercent(itemPercent)
+    override fun toString(): String {
+        return "BaseProperty(name=$name, value=$value, stockPercent=$stockPercent, itemPercent=$itemPercent, asItem:${value.addPercent(itemPercent)}, asPerson:${value.addPercent(stockPercent)})"
+    }
+}
+
+enum class EnumPropName(val nameProperty: String) {
+    UNDEFINED(""),
+    HEALTH("Здоровье"),
+    ATTACK("Атака"),
+    ATTACK_SPEED("Скорость атаки"),
 }
 
 data class AdditionalValue(val code: String, var value: Double, var percent: Double = 0.0)
 
 open class Property (
-    name: String
+    name: EnumPropName
 ) : BaseProperty(name, 0.0) {
 
     val onChangeListeners = BaseListener<Property>()
@@ -39,7 +52,7 @@ open class Property (
             result += it.value
             sumPercent += it.percent
         }
-        return result.addPercent(sumPercent)
+        return result.addPercent(stockPercent + sumPercent)
     }
 
     private fun checkMinMax() {
@@ -75,6 +88,11 @@ open class Property (
         arrayAdditionals.removeIf { it.code == effectCode }
     }
 
+    fun addForItem(prop: BaseProperty) {
+        this.value += prop.get()
+        this.stockPercent += prop.stockPercent
+    }
+
     open fun setStock(obj: Number, invokingListeners: Boolean = true) {
         change(obj.toDouble())
         if (!invokingListeners) return
@@ -99,7 +117,7 @@ open class Property (
     }
 
     override fun toString(): String {
-        return "Property(name=$name, value=$value minimumValue=$minimumValue, maximumValue=$maximumValue, additionals=$arrayAdditionals)"
+        return "Property(name=$name, value=$value minimumValue=$minimumValue, maximumValue=$maximumValue, percent=$stockPercent, additionals=$arrayAdditionals)"
     }
 }
 

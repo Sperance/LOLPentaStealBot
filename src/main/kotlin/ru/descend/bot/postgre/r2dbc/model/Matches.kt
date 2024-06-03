@@ -7,6 +7,7 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
+import ru.descend.bot.toFormatDate
 import java.time.LocalDateTime
 
 @KomapperEntity
@@ -39,6 +40,6 @@ data class Matches(
     fun getRegionValue() = matchId.substringBefore("_")
 
     override fun toString(): String {
-        return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode')"
+        return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode', date='${matchDateEnd.toFormatDate()}')"
     }
 }

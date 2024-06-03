@@ -31,7 +31,7 @@
 | setBirthdayDate     | user, date                          | Ввести дату рождения пользователя (в формате ddmmyyyy, например 03091990) |
 | userCreate          | User, Region, SummonerName, TagLine | Создание учетной записи Лиги легенд и пользователя Discord                |
 | userDelete          | User                                | Удалить учётную запись из базы данных бота                                |
-| userDeleteFromID    | id                                  | Удалить учётную запись из базы данных бота по ID                          |
+| userDeleteFromID    | id                                  | Удалить учётную запись из базы данных бота по show ID                     |
 
 ## Utility
 | Commands | Arguments | Description                   |

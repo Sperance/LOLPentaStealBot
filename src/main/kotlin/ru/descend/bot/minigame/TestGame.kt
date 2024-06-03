@@ -10,7 +10,13 @@ class TestGame {
         val pers1 = Person("Hero")
         pers1.stats.attackSpeed.setStock(1500)
         pers1.stats.health.setStock(1000)
+        pers1.stats.health.stockPercent = 10.0
         pers1.stats.attack.setStock(33)
+
+        val item = EquipItem("Меч героя")
+        item.isEquipped = true
+        item.stats.add(BaseProperty(EnumPropName.HEALTH, 200.0, itemPercent = 50.0, stockPercent = 10.0))
+        pers1.items.add(item)
 
         val newEffectHeal = BaseApplyEffect("Новый эф", listOf(
             EffectHeal(10.0, EnumPersonLifects.ON_TAKE_DAMAGE),
