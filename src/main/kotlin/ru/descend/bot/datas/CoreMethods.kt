@@ -21,7 +21,7 @@ fun <T> calculateUpdate(before: T?, after: T?) : String {
         val fieldbefore = it.get(before)
         val fieldafter = it.get(after)
         if (fieldbefore != fieldafter && it.name != "updatedAt") {
-            result += "${it.name} '${fieldbefore}' -> '${fieldafter}'; "
+            result += "${it.name}:'${fieldbefore}'->'${fieldafter}' "
         }
     }
     return result

@@ -3,6 +3,7 @@ package ru.descend.bot.postgre
 import dev.kord.core.entity.Guild
 import io.r2dbc.spi.ConnectionFactoryOptions
 import org.komapper.core.dsl.QueryDsl
+import org.komapper.core.dsl.expression.SortExpression
 import org.komapper.core.dsl.expression.WhereDeclaration
 import org.komapper.core.dsl.operator.desc
 import org.komapper.core.dsl.query.Query
@@ -178,8 +179,15 @@ object R2DBC {
             .firstOrNull()
         return db.withTransaction { db.runQuery { query } }
     }
-    suspend fun getLOLs(declaration: WhereDeclaration? = null) : List<LOLs> {
-        return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_lols) else QueryDsl.from(tbl_lols).where(declaration) } }
+    suspend fun getLOLs(declaration: WhereDeclaration) : List<LOLs> {
+        return getLOLs(declaration, tbl_lols.id, null)
+    }
+    suspend fun getLOLs(declaration: WhereDeclaration = { tbl_lols.id greaterEq 0}, sortExpression: SortExpression = tbl_lols.id, limit: Int? = null) : List<LOLs> {
+        return db.withTransaction {
+            db.runQuery {
+                if (limit == null) QueryDsl.from(tbl_lols).orderBy(sortExpression).where(declaration) else QueryDsl.from(tbl_lols).orderBy(sortExpression).where(declaration).limit(limit)
+            }
+        }
     }
     suspend fun addBatchLOLs(list: List<LOLs>, batchSize: Int = 100) {
         db.withTransaction {

@@ -35,13 +35,11 @@ data class Calc_PentaSteal (
 
             val firstPart = R2DBC.getParticipants {
                 tbl_participants.match_id eq mch.id
-                tbl_participants.guild_id eq mch.guild_id
                 tbl_participants.LOLperson_id eq pair.first?.id
             }.firstOrNull()
 
             val secondPart = R2DBC.getParticipants {
                 tbl_participants.match_id eq mch.id
-                tbl_participants.guild_id eq mch.guild_id
                 tbl_participants.LOLperson_id eq pair.second?.id
             }.firstOrNull()
 

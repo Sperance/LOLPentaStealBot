@@ -6,13 +6,16 @@ import kotlinx.coroutines.flow.flow
 class BattleObject(private val person1: Person, private val person2: Person) {
 
     private var isFighting = false
-    private var periodBattle = 100.0
+    private var periodBattle = 100L
+    private var timeBattle = 0L
+    private var countAttack1 = 0L
+    private var countAttack2 = 0L
 
     private fun initForBattle() {
         person1.initForBattle()
-        person1.listeners.onStartBattle.invokeEach(person1, person2)
+        person1.listeners.onStartBattle.invokeEach(person2, this)
         person2.initForBattle()
-        person2.listeners.onStartBattle.invokeEach(person2, person1)
+        person2.listeners.onStartBattle.invokeEach(person1, this)
     }
 
     suspend fun doBattle() {
@@ -23,30 +26,55 @@ class BattleObject(private val person1: Person, private val person2: Person) {
         tickerFlow(periodBattle).collect {
             timerFlow1 += periodBattle
             timerFlow2 += periodBattle
+
             if (timerFlow1 >= person1.stats.attackSpeed.get()) {
-                attackedObject(person1, person2)
+                if (onAttacking(person1, person2)) countAttack1++
                 timerFlow1 = 0.0
             }
             if (timerFlow2 >= person2.stats.attackSpeed.get()) {
-                attackedObject(person2, person1)
+                if (onAttacking(person2, person1)) countAttack2++
                 timerFlow2 = 0.0
             }
+
+            if (!person1.personBlobs.isAlive.get()) {
+                println("${person1.name} is DIED")
+                isFighting = false
+            }
+            if (!person2.personBlobs.isAlive.get()) {
+                println("${person2.name} is DIED")
+                isFighting = false
+            }
+            timeBattle += periodBattle
         }
     }
 
-    private fun attackedObject(from: Person, to: Person) {
-        from.onAttacking(to)
-        if (!to.personBlobs.isAlive.get()) {
-            println("person ${to.name} is DIED")
-            isFighting = false
-        }
+    private fun onAttacking(current: Person, enemy: Person) : Boolean {
+        if (!current.personBlobs.isAccessAttack.get()) return false
+        current.listeners.onBeforeDamage.invokeEach(enemy, this)
+        val fromAttack = current.stats.attack.get()
+        enemy.stats.health.remStock(fromAttack)
+        println("${current.name} атаковал ${enemy.name} на $fromAttack со скоростью ${current.stats.attackSpeed.get()}. Осталось жизней у ${enemy.name} : ${enemy.stats.health.get()}")
+        println("atk: ${current.stats.attack}\n\n")
+        current.listeners.onDealDamage.invokeEach(enemy, this)
+        enemy.listeners.onTakeDamage.invokeEach(current, this)
+        return true
     }
 
-    private fun tickerFlow(period: Double) = flow {
+    private fun tickerFlow(period: Long) = flow {
         while (true) {
             if (!isFighting) return@flow
             emit(Unit)
-            delay(period.toLong())
+            delay(period)
         }
+    }
+
+    /**************************************/
+
+    fun calculateTimeBattle() = timeBattle
+
+    fun calculateCountAttack(person: Person) : Long {
+        if (person1.name == person.name) return countAttack1
+        else if (person2.name == person.name) return countAttack2
+        return -1
     }
 }

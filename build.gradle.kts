@@ -28,7 +28,7 @@ dependencies {
         ksp(it)
     }
     implementation("org.komapper:komapper-tx-core:$komapperVersion")
-//    implementation("org.komapper:komapper-template:$komapperVersion")
+    implementation("org.komapper:komapper-template:$komapperVersion")
     implementation("org.komapper:komapper-starter-r2dbc:$komapperVersion")
     implementation("org.komapper:komapper-dialect-postgresql-r2dbc")
     ksp("org.komapper:komapper-processor")

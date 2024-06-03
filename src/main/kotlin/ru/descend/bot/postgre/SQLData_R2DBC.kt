@@ -1,8 +1,10 @@
 package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
+import kotlinx.coroutines.delay
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
+import org.komapper.core.dsl.query.get
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
 import ru.descend.bot.asyncLaunch
@@ -120,7 +122,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             val othersLOLS = newMatch.arrayOtherLOLs
             othersLOLS.forEach {
                 if (it.LOL_puuid == "") return@forEach
-                LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 5).forEach ff@{ matchId ->
+                LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 7).forEach ff@{ matchId ->
                     if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
                 }
             }
@@ -157,52 +159,40 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
      * @param count кол-во прогружаемых матчей по каждому объекту LOLs
      * @param mainOrder прогружать ли в базу так же матчи по игрокам из предыдущего матча (рекурсия 1го уровня)
      */
-    suspend fun loadMatches(lols: List<LOLs>, count: Int, mainOrder: Boolean) {
+    suspend fun loadMatches(lols: List<LOLs>, count: Int, mainOrder: Boolean) : Int {
         val checkMatches = ArrayList<String>()
+        var countNewMatches = 0
         lols.forEach {
             if (it.LOL_puuid == "") return@forEach
             LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, count).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
-        val listChecked = getNewMatches(checkMatches)
-        listChecked.sortBy { it }
-        listChecked.forEach {newMatch ->
-            LeagueMainObject.catchMatch(newMatch)?.let { match ->
-                addMatch(match, mainOrder)
-            }
-        }
-//        asyncLoadMatches(listChecked, mainOrder)
-    }
-
-    private suspend fun asyncLoadMatches(listChecked: ArrayList<String>, mainOrder: Boolean) {
-        launch {
-            if (listChecked.size > 2) {
-                val list1 = listChecked.subList(0, listChecked.size / 2).toList()
-                loadArray(list1, mainOrder)
-                val list2 = listChecked.subList(listChecked.size / 2, listChecked.size).toList()
-                loadArray(list2, mainOrder)
-            } else {
-                loadArray(listChecked, mainOrder)
-            }
-        }.join()
-    }
-
-    private suspend fun loadArray(listChecked: Collection<String>, mainOrder: Boolean) {
-        asyncLaunch {
-            listChecked.forEach {newMatch ->
+        R2DBC.runTransaction {
+            val listChecked = getNewMatches(checkMatches)
+            listChecked.sortBy { it }
+            listChecked.forEach { newMatch ->
                 LeagueMainObject.catchMatch(newMatch)?.let { match ->
                     addMatch(match, mainOrder)
+                    countNewMatches++
                 }
             }
         }
+        return countNewMatches
     }
 
     suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
-        list.removeAll(R2DBC.runQuery {
-            QueryDsl.from(tbl_matches).where { tbl_matches.guild_id eq guildSQL.id }.select(tbl_matches.matchId)
-        }.toSet())
-        return list
+        var resultAra = list
+        val dataAra = resultAra.joinToString(prefix = "{", postfix = "}")
+        val sql = "SELECT remove_matches('$dataAra'::character varying[])"
+        R2DBC.runQuery {
+            QueryDsl.fromTemplate(sql).select {
+                val data = it.get<Array<String>>(0)
+                if (data == null) resultAra.clear()
+                else resultAra.removeAll(data.toSet())
+            }
+        }
+        return resultAra
     }
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
     override fun equals(other: Any?): Boolean {
@@ -214,6 +204,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         if (guild != other.guild) return false
         if (guildSQL != other.guildSQL) return false
         if (isNeedUpdateDatas != other.isNeedUpdateDatas) return false
+        if (isNeedUpdateDays != other.isNeedUpdateDays) return false
         if (dataKORDLOL != other.dataKORDLOL) return false
         if (dataKORD != other.dataKORD) return false
         if (dataMMR != other.dataMMR) return false
@@ -227,6 +218,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         var result = guild.hashCode()
         result = 31 * result + guildSQL.hashCode()
         result = 31 * result + isNeedUpdateDatas.hashCode()
+        result = 31 * result + isNeedUpdateDays.hashCode()
         result = 31 * result + dataKORDLOL.hashCode()
         result = 31 * result + dataKORD.hashCode()
         result = 31 * result + dataMMR.hashCode()

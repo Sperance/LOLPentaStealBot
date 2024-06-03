@@ -83,7 +83,7 @@ fun arguments() = commands("Arguments") {
                 R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id }
             val arrayMatches = R2DBC.getMatches {
                 Matches.tbl_matches.matchDateStart greaterEq modifiedDate; Matches.tbl_matches.id.inList(
-                savedParticipantsMatches.map { it.match_id }); Matches.tbl_matches.guild_id eq 1; Matches.tbl_matches.surrender eq false; Matches.tbl_matches.bots eq false
+                savedParticipantsMatches.map { it.match_id }); Matches.tbl_matches.surrender eq false; Matches.tbl_matches.bots eq false
             }
             val lastParticipants = R2DBC.getParticipants {
                 Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id; Participants.tbl_participants.match_id.inList(
@@ -177,7 +177,7 @@ fun arguments() = commands("Arguments") {
             val savedParticipantsMatches =
                 R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id }
             val arrayMatches =
-                R2DBC.getMatches { Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }); Matches.tbl_matches.guild_id eq guilds.id; Matches.tbl_matches.surrender eq false; Matches.tbl_matches.bots eq false }
+                R2DBC.getMatches { Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }); Matches.tbl_matches.surrender eq false; Matches.tbl_matches.bots eq false }
             val lastParticipants = R2DBC.getParticipants {
                 Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }); Participants.tbl_participants.LOLperson_id.inList(
                 allKORDLOLS.map { it.LOL_id })
@@ -558,18 +558,16 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash("userDeleteFromID", "Удалить учётную запись из базы данных бота по ID", Permissions(Permission.Administrator)) {
-        execute(IntegerArg("id", "id пользователя Discord")) {
+    slash("userDeleteFromID", "Удалить учётную запись из базы данных бота по show ID", Permissions(Permission.Administrator)) {
+        execute(IntegerArg("id", "show id пользователя Discord")) {
             val (id) = args
-            val textCommand =
-                "[Start command] '$name' from ${author.fullName} with params: 'id=$id'"
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'id=$id'"
             printLog(textCommand)
 
             val guilds = R2DBC.getGuild(guild)
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataKORD =
-                R2DBC.getKORDLOLs { tbl_kordlols.showCode eq id; tbl_kordlols.guild_id eq guilds.id }
+            val dataKORD = R2DBC.getKORDLOLs { tbl_kordlols.showCode eq id; tbl_kordlols.guild_id eq guilds.id }
 
             if (dataKORD.isEmpty()) {
                 respond("Пользователя с id $id в базе не найдено. Операция отменена. Обратитесь к Администратору")

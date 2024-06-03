@@ -228,19 +228,6 @@ fun String?.toMaxSymbols(symbols: Int, addIfCatched: String = "") : String {
 
 fun User.toStringUID() = id.value.toString()
 
-//suspend fun reloadMatch(sqlData: SQLData_R2DBC, puuid: String, startIndex: Int) {
-//    val checkMatches = ArrayList<String>()
-//    LeagueMainObject.catchMatchID(sqlData, puuid, startIndex,100).forEach ff@ { matchId ->
-//        checkMatches.add(matchId)
-//    }
-//    sqlData.getNewMatches(checkMatches).forEach {newMatch ->
-//        LeagueMainObject.catchMatch(sqlData, newMatch)?.let { match ->
-//            sqlData.addMatch(match)
-//        }
-//    }
-//    checkMatches.clear()
-//}
-
 suspend fun User.checkRoleForName(guild: Guild, name: String): Boolean {
     var result = false
     asMember(guild.id).roles.collect {
@@ -268,4 +255,16 @@ fun printMemoryUsage(addText: String = "") {
     val memValue = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / mb
     val heapSize = Runtime.getRuntime().totalMemory() / mb
     printLog("[Memory Usage::$memValue MB Size::$heapSize MB All::${heapSize + memValue} MB (pid ${ProcessHandle.current().pid()})] $addText")
+}
+
+fun Double.getPercent(value: Double) : Double {
+    return ((this / 100.0) * value).to1Digits()
+}
+
+fun Double.addPercent(value: Double) : Double {
+    return (this + getPercent(value)).to1Digits()
+}
+
+fun Double.removePercent(value: Double) : Double {
+    return (this - getPercent(value)).to1Digits()
 }

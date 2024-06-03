@@ -1,5 +1,7 @@
 package ru.descend.bot.minigame
 
+import ru.descend.bot.addPercent
+
 open class BlobProperty(
     val name: String,
     var value: Boolean
@@ -15,6 +17,8 @@ open class BaseProperty(
     open fun get() = value
 }
 
+data class AdditionalValue(val code: String, var value: Double, var percent: Double = 0.0)
+
 open class Property (
     name: String
 ) : BaseProperty(name, 0.0) {
@@ -25,15 +29,50 @@ open class Property (
 
     var minimumValue: Double = 0.0
     var maximumValue: Double? = null
-    var additionalValue: Double = 0.0
+
+    private val arrayAdditionals = ArrayList<AdditionalValue>()
 
     override fun get(): Double {
-        return value + additionalValue
+        var result = value
+        var sumPercent = 0.0
+        arrayAdditionals.forEach {
+            result += it.value
+            sumPercent += it.percent
+        }
+        return result.addPercent(sumPercent)
     }
 
     private fun checkMinMax() {
         if (value < minimumValue) value = minimumValue
         if (maximumValue != null && value > maximumValue!!) value = maximumValue!!
+    }
+
+    fun setEffectValue(obj: AdditionalValue) {
+        var isSetted = false
+        arrayAdditionals.forEach {
+            if (it.code == obj.code) {
+                it.value = obj.value
+                it.percent = obj.percent
+                isSetted = true
+                return@forEach
+            }
+        }
+        if (!isSetted) arrayAdditionals.add(obj)
+    }
+    fun addEffectValue(obj: AdditionalValue) {
+        var isSetted = false
+        arrayAdditionals.forEach {
+            if (it.code == obj.code) {
+                it.value += obj.value
+                it.percent += obj.percent
+                isSetted = true
+                return@forEach
+            }
+        }
+        if (!isSetted) arrayAdditionals.add(obj)
+    }
+    fun removeEffectValue(effectCode: String) {
+        arrayAdditionals.removeIf { it.code == effectCode }
     }
 
     open fun setStock(obj: Number, invokingListeners: Boolean = true) {
@@ -60,7 +99,7 @@ open class Property (
     }
 
     override fun toString(): String {
-        return "Property(name=$name, value=$value minimumValue=$minimumValue, maximumValue=$maximumValue, additionalValue=$additionalValue)"
+        return "Property(name=$name, value=$value minimumValue=$minimumValue, maximumValue=$maximumValue, additionals=$arrayAdditionals)"
     }
 }
 
@@ -71,15 +110,5 @@ class BaseListener <T> {
     }
     fun invokeEach(obj: T) {
         arrayListeners.forEach { it.invoke(obj) }
-    }
-}
-
-class PersonListener (val name: String, val category: EnumPersonLifects) {
-    private val arrayListeners = ArrayList<(Person, Person?) -> Unit>()
-    fun addListener(body: (Person, Person?) -> Unit) {
-        arrayListeners.add(body)
-    }
-    fun invokeEach(cur: Person, enemy: Person?) {
-        arrayListeners.forEach { it.invoke(cur, enemy) }
     }
 }

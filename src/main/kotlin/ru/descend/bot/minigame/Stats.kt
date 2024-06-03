@@ -12,7 +12,7 @@ class Health(val person: Person) : Property("Здоровье"), IntStatBattle {
         onChangeListeners.addListener {
             if (get() <= minimumValue) {
                 person.personBlobs.isAlive.set(false)
-                person.listeners.onDie.invokeEach(person, null)
+                person.listeners.onDie.invokeEach(null, null)
             }
         }
     }
@@ -67,19 +67,28 @@ data class PersonStats (
     }
 }
 
-enum class EnumPersonLifects {
-    UNDEFINED,
-    ON_START_BATTLE,
-    ON_DEAL_DAMAGE,
-    ON_TAKE_DAMAGE,
-    ON_DIE
+enum class EnumPersonLifects(val categoryName: String) {
+    ON_START_BATTLE("Начало боя"),
+    ON_BEFORE_DAMAGE("Перед нанесением урона"),
+    ON_DEAL_DAMAGE("При нанесении урона"),
+    ON_TAKE_DAMAGE("При получении урона"),
+    ON_DIE("При смерти")
 }
 
-data class PersonListeners (
-    val person: Person,
+open class PersonListeners(val person: Person) {
+    val onStartBattle: PersonListener = PersonListener(EnumPersonLifects.ON_START_BATTLE)
+    val onBeforeDamage: PersonListener = PersonListener(EnumPersonLifects.ON_BEFORE_DAMAGE)
+    val onDealDamage: PersonListener = PersonListener(EnumPersonLifects.ON_DEAL_DAMAGE)
+    val onTakeDamage: PersonListener = PersonListener(EnumPersonLifects.ON_TAKE_DAMAGE)
+    val onDie: PersonListener = PersonListener(EnumPersonLifects.ON_DIE)
 
-    val onStartBattle: PersonListener = PersonListener("Начало боя", EnumPersonLifects.ON_START_BATTLE),
-    val onDealDamage: PersonListener = PersonListener("Атаковал", EnumPersonLifects.ON_DEAL_DAMAGE),
-    val onTakeDamage: PersonListener = PersonListener("Получил урон", EnumPersonLifects.ON_TAKE_DAMAGE),
-    val onDie: PersonListener = PersonListener("Умер", EnumPersonLifects.ON_DIE)
-)
+    inner class PersonListener(val category: EnumPersonLifects) {
+        private val arrayListeners = ArrayList<(Person, Person?, BattleObject?) -> Unit>()
+        fun addListener(body: (Person, Person?, BattleObject?) -> Unit) {
+            arrayListeners.add(body)
+        }
+        fun invokeEach(enemy: Person?, battleObj: BattleObject?) {
+            arrayListeners.forEach { it.invoke(person, enemy, battleObj) }
+        }
+    }
+}

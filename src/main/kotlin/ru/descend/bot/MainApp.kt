@@ -19,6 +19,7 @@ import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
+import org.komapper.core.dsl.operator.desc
 import ru.descend.bot.datas.LolActiveGame
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
@@ -32,10 +33,12 @@ import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.datas.update
 import ru.descend.bot.datas.isCurrentDay
+import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(PrivilegedIntent::class)
 @KordPreview
@@ -77,7 +80,7 @@ fun main() {
                 removeMessage(it)
 
                 timerRequestReset((2).minutes)
-                timerMainInformation(it, (3).minutes)
+                timerMainInformation(it, (130).seconds)
 //                timerRealtimeInformation(it, (5).minutes, skipFirst = true)
             }
         }
@@ -138,7 +141,7 @@ suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
         val gameInfo = LeagueMainObject.catchActiveGame(it.LOL_puuid)
         if (gameInfo != null) {
             gameInfo.participants.forEach { part ->
-                val tmpLol = R2DBC.getLOLs { tbl_lols.LOL_puuid eq part.puuid }.firstOrNull()
+                val tmpLol = R2DBC.getLOLs ( declaration = {tbl_lols.LOL_puuid eq part.puuid} ).firstOrNull()
                 if (tmpLol != null) {
                     val tmpKordLOL = sqlData.getKORDLOL().find { kl -> kl.LOL_id == tmpLol.id }
                     arrayActives.add(LolActiveGame(
@@ -192,27 +195,29 @@ suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
     }
 }
 
+suspend fun loadingRowMatches(lols: Collection<LOLs>, sqlData: SQLData_R2DBC, limitCounters: Int) {
+    val limitCounter = 95 - limitCounters - lols.size
+    var counter = 0
+    lols.forEach {
+        counter += sqlData.loadMatches(listOf(it), 9, false)
+        if (counter >= limitCounter) return@forEach
+    }
+}
+
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.onCalculateTimer()
 
-//    launch {
-//        showRealtimeHistory(sqlData)
-//    }.join()
-
     launch {
-        R2DBC.runTransaction {
-            sqlData.loadMatches(sqlData.dataSavedLOL.get(), 50, true)
-            if (!sqlData.isNeedUpdateDatas) {
-                val lastLOL = R2DBC.getLOLone(first = false)
-                var countLoading = 95 - sqlData.dataSavedLOL.get().size
-                if (countLoading < 0) countLoading = 0
-                if (lastLOL != null) sqlData.loadMatches(listOf(lastLOL), countLoading, false)
-            }
+        val arraySaveds = sqlData.dataSavedLOL.get()
+        sqlData.loadMatches(arraySaveds, 50, true)
+        if (!sqlData.isNeedUpdateDatas) {
+            loadingRowMatches(R2DBC.getLOLs(declaration = { tbl_lols.LOL_region.eq("RU") }, sortExpression = tbl_lols.id.desc(), limit = 8), sqlData, arraySaveds.size)
         }
     }.join()
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     launch {
+        delay(1000)
         //Таблица Главная - ID никнейм серияпобед
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, {
             editMessageMainDataContent(it, sqlData, false)
@@ -449,7 +454,7 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
-    contentText += "* Матчей: ${R2DBC.getMatchOne({ tbl_matches.guild_id eq sqlData.guildSQL.id }, false)?.id}\n"
+    contentText += "* Матчей: ${R2DBC.getMatchOne(first = false)?.id}\n"
     contentText += "* Игроков: ${R2DBC.getLOLone(first = false)?.id}\n"
     builder.content = contentText
 

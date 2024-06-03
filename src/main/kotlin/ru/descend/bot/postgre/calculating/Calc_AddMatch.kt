@@ -43,7 +43,7 @@ data class Calc_AddMatch (
 
         val alreadyMatch = R2DBC.getMatchOne({tbl_matches.matchId eq match.metadata.matchId})
         if (alreadyMatch != null) {
-            printLog("Match ${alreadyMatch.matchId} already saved")
+            if (mainOrder) printLog("Match ${alreadyMatch.id} ${alreadyMatch.matchId} already exists")
             return alreadyMatch
         }
 
@@ -63,13 +63,14 @@ data class Calc_AddMatch (
             matchDuration = match.info.gameDuration,
             matchMode = match.info.gameMode,
             matchGameVersion = match.info.gameVersion,
-            guild_id = sqlData.guildSQL.id,
             bots = isBots,
+            region = match.metadata.matchId.substringBefore("_"),
             surrender = isSurrender
         ).create(Matches::matchId)
+
         sqlData.isNeedUpdateDatas = true
 
-        if (pMatch.id % 1000 == 0){
+        if (pMatch.id % 5000 == 0){
             R2DBC.executeProcedure("call \"GetAVGs\"()")
         }
 
@@ -96,6 +97,12 @@ data class Calc_AddMatch (
                             val textPentasCount = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
                             val generatedText = generateAIText("В очень необычном и смешном стиле напиши поздравление пользователю ${it.asUser(sqlData.guild, sqlData).lowDescriptor()} за то что он сделал Пентакилл в игре League of Legends за чемпиона $championName убив ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}")
                             val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n$generatedText"
+
+                            if (pMatch.matchMode == "CLASSIC") {
+                                it.mmrAramSaved += 5.0
+                                it.update()
+                            }
+
                             sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, resultText)
                             writeLog(resultText)
                         }
@@ -110,11 +117,13 @@ data class Calc_AddMatch (
                     LOL_riotIdName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName,
                     LOL_riotIdTagline = part.riotIdTagline,
                     LOL_summonerLevel = part.summonerLevel,
+                    LOL_region = pMatch.getRegionValue(),
                     profile_icon = part.profileIcon).create(LOLs::LOL_puuid)
             } else if (!curLOL.isBot()) {
                 //Вдруг что изменится в профиле игрока
-                if (curLOL.LOL_summonerLevel <= part.summonerLevel && (curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon)) {
+                if (curLOL.LOL_summonerLevel < part.summonerLevel || (curLOL.LOL_summonerLevel == part.summonerLevel && (curLOL.LOL_region != pMatch.getRegionValue() || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon))) {
                     curLOL.LOL_riotIdTagline = part.riotIdTagline
+                    curLOL.LOL_region = pMatch.getRegionValue()
                     curLOL.LOL_summonerId = part.summonerId
                     curLOL.LOL_riotIdName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName
                     curLOL.LOL_summonerLevel = part.summonerLevel
@@ -146,7 +155,7 @@ data class Calc_AddMatch (
     private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
         var users = ""
         val arrayKORDmmr = ArrayList<Triple<KORDLOLs?, Participants, Double>>()
-        R2DBC.getParticipants { tbl_participants.match_id eq pMatch.id ; tbl_participants.guild_id eq sqlData.guildSQL.id }.forEach { par ->
+        R2DBC.getParticipants { tbl_participants.match_id eq pMatch.id }.forEach { par ->
             val dataText = if (pMatch.matchMode == "ARAM") {
                 val data = Calc_MMR(sqlData, par, pMatch, kordLol, sqlData.getMMRforChampion(par.championName))
                 data.init()
