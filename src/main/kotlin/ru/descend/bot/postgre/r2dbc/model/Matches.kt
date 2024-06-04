@@ -7,6 +7,9 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
+import org.komapper.core.dsl.QueryDsl
+import org.komapper.core.dsl.query.bind
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.toFormatDate
 import java.time.LocalDateTime
 
@@ -25,12 +28,7 @@ data class Matches(
     var matchGameVersion: String = "",
     var region: String = "",
     var bots: Boolean = false,
-    var surrender: Boolean = false,
-
-    @KomapperCreatedAt
-    var createdAt: LocalDateTime = LocalDateTime.MIN,
-    @KomapperUpdatedAt
-    var updatedAt: LocalDateTime = LocalDateTime.MIN
+    var surrender: Boolean = false
 ) {
 
     companion object {
@@ -38,6 +36,10 @@ data class Matches(
     }
 
     fun getRegionValue() = matchId.substringBefore("_")
+
+    suspend fun getParticipants() = R2DBC.runQuery {
+        QueryDsl.fromTemplate("SELECT * FROM tbl_participants where match_id = /*matchid*/'test'").bind("matchid", id).selectAsEntity(Participants.tbl_participants)
+    }
 
     override fun toString(): String {
         return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode', date='${matchDateEnd.toFormatDate()}')"

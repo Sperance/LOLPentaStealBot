@@ -52,12 +52,7 @@ data class Guilds(
      * Таблица ТОПА сервера
      */
     var messageIdTop: String = "",
-    var messageIdTopUpdated: Long = 0,
-
-    @KomapperCreatedAt
-    var createdAt: LocalDateTime = LocalDateTime.MIN,
-    @KomapperUpdatedAt
-    var updatedAt: LocalDateTime = LocalDateTime.MIN
+    var messageIdTopUpdated: Long = 0
 ) {
 
     companion object {
@@ -74,51 +69,5 @@ data class Guilds(
 
     override fun toString(): String {
         return "Guilds(id=$id, idGuild='$idGuild', name='$name', botChannedId='$botChannelId')"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Guilds
-
-        if (id != other.id) return false
-        if (idGuild != other.idGuild) return false
-        if (name != other.name) return false
-        if (description != other.description) return false
-        if (botChannelId != other.botChannelId) return false
-        if (messageIdStatus != other.messageIdStatus) return false
-        if (messageIdMain != other.messageIdMain) return false
-        if (messageIdDebug != other.messageIdDebug) return false
-        if (messageIdGlobalStatisticData != other.messageIdGlobalStatisticData) return false
-        if (messageIdArammmr != other.messageIdArammmr) return false
-        if (messageIdMasteries != other.messageIdMasteries) return false
-        if (messageIdMasteriesUpdated != other.messageIdMasteriesUpdated) return false
-        if (messageIdTop != other.messageIdTop) return false
-        if (messageIdTopUpdated != other.messageIdTopUpdated) return false
-        if (createdAt != other.createdAt) return false
-        if (updatedAt != other.updatedAt) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id
-        result = 31 * result + idGuild.hashCode()
-        result = 31 * result + name.hashCode()
-        result = 31 * result + description.hashCode()
-        result = 31 * result + botChannelId.hashCode()
-        result = 31 * result + messageIdStatus.hashCode()
-        result = 31 * result + messageIdMain.hashCode()
-        result = 31 * result + messageIdDebug.hashCode()
-        result = 31 * result + messageIdGlobalStatisticData.hashCode()
-        result = 31 * result + messageIdArammmr.hashCode()
-        result = 31 * result + messageIdMasteries.hashCode()
-        result = 31 * result + messageIdMasteriesUpdated.hashCode()
-        result = 31 * result + messageIdTop.hashCode()
-        result = 31 * result + messageIdTopUpdated.hashCode()
-        result = 31 * result + createdAt.hashCode()
-        result = 31 * result + updatedAt.hashCode()
-        return result
     }
 }

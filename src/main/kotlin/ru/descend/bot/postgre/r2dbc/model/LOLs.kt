@@ -29,12 +29,7 @@ data class LOLs(
     var LOL_riotIdTagline: String? = "",
     var LOL_region: String? = "",
     var LOL_summonerLevel: Int = 1,
-    var profile_icon: Int = 0,
-
-    @KomapperCreatedAt
-    var createdAt: LocalDateTime = LocalDateTime.MIN,
-    @KomapperUpdatedAt
-    var updatedAt: LocalDateTime = LocalDateTime.MIN
+    var profile_icon: Int = 0
 ) {
 
     companion object {
@@ -77,39 +72,5 @@ data class LOLs(
 
     override fun toString(): String {
         return "LOLs(id=$id, puuid='$LOL_puuid', riotIdName=$LOL_riotIdName)"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as LOLs
-
-        if (id != other.id) return false
-        if (LOL_puuid != other.LOL_puuid) return false
-        if (LOL_summonerId != other.LOL_summonerId) return false
-        if (LOL_riotIdName != other.LOL_riotIdName) return false
-        if (LOL_riotIdTagline != other.LOL_riotIdTagline) return false
-        if (LOL_region != other.LOL_region) return false
-        if (LOL_summonerLevel != other.LOL_summonerLevel) return false
-        if (profile_icon != other.profile_icon) return false
-        if (createdAt != other.createdAt) return false
-        if (updatedAt != other.updatedAt) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id
-        result = 31 * result + LOL_puuid.hashCode()
-        result = 31 * result + LOL_summonerId.hashCode()
-        result = 31 * result + (LOL_riotIdName?.hashCode() ?: 0)
-        result = 31 * result + (LOL_riotIdTagline?.hashCode() ?: 0)
-        result = 31 * result + (LOL_region?.hashCode() ?: 0)
-        result = 31 * result + LOL_summonerLevel
-        result = 31 * result + profile_icon
-        result = 31 * result + createdAt.hashCode()
-        result = 31 * result + updatedAt.hashCode()
-        return result
     }
 }

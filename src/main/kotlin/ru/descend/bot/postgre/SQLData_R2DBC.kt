@@ -1,19 +1,17 @@
 package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
-import kotlinx.coroutines.delay
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.get
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
-import ru.descend.bot.asyncLaunch
+import ru.descend.bot.datas.TextDicrordLimit
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.datas.WorkData
-import ru.descend.bot.launch
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
@@ -22,7 +20,7 @@ import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
-import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
+import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 
@@ -33,6 +31,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     var isNeedUpdateDatas = false
     var isNeedUpdateDays = false
+    var textNewMatches = TextDicrordLimit()
 
     val dataKORDLOL = WorkData<KORDLOLs>("KORDLOL")
     val dataKORD = WorkData<KORDs>("KORD")
@@ -63,12 +62,13 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
     suspend fun getKORDLOL(id: Int?) = getKORDLOL().find { it.id == id }
-    suspend fun getLOL(id: Int?) = R2DBC.getLOLs { tbl_lols.id eq id }.firstOrNull()
+    suspend fun getLOL(id: Int?) = R2DBC.getLOLone({ tbl_lols.id eq id})
     suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
     suspend fun getKORD(id: Int?) = getKORD().find { it.id == id }
 
+    private val arraySavedParticipants = ArrayList<statMainTemp_r2>()
     suspend fun getSavedParticipants() : ArrayList<statMainTemp_r2> {
-        val arraySavedParticipants = ArrayList<statMainTemp_r2>()
+        arraySavedParticipants.clear()
         R2DBC.runQuery {
             QueryDsl.fromTemplate("SELECT * FROM get_player_stats_param(${guildSQL.id})").select {
                 val id = it.int("id")?:0
@@ -88,8 +88,9 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return arraySavedParticipants
     }
 
+    private val arrayAramMMRData = ArrayList<statAramDataTemp_r2>()
     suspend fun getArrayAramMMRData() : ArrayList<statAramDataTemp_r2> {
-        val arrayAramMMRData = ArrayList<statAramDataTemp_r2>()
+        arrayAramMMRData.clear()
         R2DBC.runQuery {
             QueryDsl.fromTemplate("SELECT * FROM get_aram_data_param(${guildSQL.id})").select { row ->
                 val id = row.int("id")
@@ -114,7 +115,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         Calc_Birthday(this, dataKORD.get()).calculate()
     }
 
-    suspend fun addMatch(match: MatchDTO, mainOrder: Boolean) {
+    private suspend fun addMatch(match: MatchDTO, mainOrder: Boolean) {
         val newMatch = Calc_AddMatch(this, match, getKORDLOL())
         newMatch.calculate(mainOrder)
         if (mainOrder) {
@@ -122,7 +123,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             val othersLOLS = newMatch.arrayOtherLOLs
             othersLOLS.forEach {
                 if (it.LOL_puuid == "") return@forEach
-                LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 7).forEach ff@{ matchId ->
+                LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 6).forEach ff@{ matchId ->
                     if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
                 }
             }
@@ -136,8 +137,9 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }
     }
 
+    private val mapWinStreak = HashMap<Int, Int>()
     suspend fun getWinStreak() : HashMap<Int, Int> {
-        val mapWinStreak = HashMap<Int, Int>()
+        mapWinStreak.clear()
         R2DBC.runQuery {
             QueryDsl.fromTemplate("SELECT * FROM get_streak_results_param(${guildSQL.id})").select { row ->
                 val pers = row.int("PERS")?:-1
@@ -153,21 +155,21 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return mapWinStreak
     }
 
-    /**
-     * Прогрузка матчей в базу
-     * @param lols список объектов LOLs
-     * @param count кол-во прогружаемых матчей по каждому объекту LOLs
-     * @param mainOrder прогружать ли в базу так же матчи по игрокам из предыдущего матча (рекурсия 1го уровня)
-     */
-    suspend fun loadMatches(lols: Collection<LOLs>, count: Int, mainOrder: Boolean, maxLimit: Int? = null) {
+    suspend fun loadMatches(lols: Collection<LOLs>, count: Int, mainOrder: Boolean, maxLimit: Int? = null) : Int {
         val checkMatches = ArrayList<String>()
-        var countNewMatches = 0
+        var newMatchesCount = 0
         lols.forEach {
             if (it.LOL_puuid == "") return@forEach
             LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, count).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
+        newMatchesCount += loadArrayMatches(checkMatches, mainOrder, maxLimit)
+        return newMatchesCount
+    }
+
+    suspend fun loadArrayMatches(checkMatches: ArrayList<String>, mainOrder: Boolean, maxLimit: Int? = null) : Int {
+        var counter = 0
         R2DBC.runTransaction {
             val listChecked = getNewMatches(checkMatches)
             listChecked.sortBy { it }
@@ -179,10 +181,11 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             listChecked.forEach { newMatch ->
                 LeagueMainObject.catchMatch(newMatch)?.let { match ->
                     addMatch(match, mainOrder)
-                    countNewMatches++
+                    counter++
                 }
             }
         }
+        return counter
     }
 
     suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
@@ -199,35 +202,4 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return resultAra
     }
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as SQLData_R2DBC
-
-        if (guild != other.guild) return false
-        if (guildSQL != other.guildSQL) return false
-        if (isNeedUpdateDatas != other.isNeedUpdateDatas) return false
-        if (isNeedUpdateDays != other.isNeedUpdateDays) return false
-        if (dataKORDLOL != other.dataKORDLOL) return false
-        if (dataKORD != other.dataKORD) return false
-        if (dataMMR != other.dataMMR) return false
-        if (dataSavedLOL != other.dataSavedLOL) return false
-        if (dataSavedParticipants != other.dataSavedParticipants) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = guild.hashCode()
-        result = 31 * result + guildSQL.hashCode()
-        result = 31 * result + isNeedUpdateDatas.hashCode()
-        result = 31 * result + isNeedUpdateDays.hashCode()
-        result = 31 * result + dataKORDLOL.hashCode()
-        result = 31 * result + dataKORD.hashCode()
-        result = 31 * result + dataMMR.hashCode()
-        result = 31 * result + dataSavedLOL.hashCode()
-        result = 31 * result + dataSavedParticipants.hashCode()
-        return result
-    }
 }

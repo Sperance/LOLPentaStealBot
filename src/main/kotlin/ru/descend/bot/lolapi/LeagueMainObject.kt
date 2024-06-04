@@ -41,7 +41,7 @@ object LeagueMainObject {
         return null
     }
 
-    suspend fun catchHeroNames(): ArrayList<String> {
+    suspend fun catchHeroNames() {
 
         val versions = when (val res = safeApiCall { dragonService.getVersions() }){
             is Result.Success -> res.data
@@ -72,8 +72,6 @@ object LeagueMainObject {
         LOL_VERSION = champions.version
 
         printLog("Version Data: ${champions.version} Heroes: ${heroRuNames.size}")
-
-        return heroRuNames
     }
 
     suspend fun catchMatchID(puuid: String, summonerName: String, start: Int, count: Int, agained: Boolean = false) : List<String> {
@@ -139,7 +137,6 @@ object LeagueMainObject {
             is Result.Error -> {
                 val messageError = "catchMatch failure: ${res.message} with matchId: $matchId"
                 printLog(messageError)
-                writeLog(messageError)
 
                 if (res.errorCode == 404 || agained) null
                 else {

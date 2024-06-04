@@ -257,6 +257,11 @@ fun printMemoryUsage(addText: String = "") {
     printLog("[Memory Usage::$memValue MB Size::$heapSize MB All::${heapSize + memValue} MB (pid ${ProcessHandle.current().pid()})] $addText")
 }
 
+fun garbaceCollect() {
+    Runtime.getRuntime().gc()
+    Runtime.getRuntime().runFinalization()
+}
+
 fun Double.getPercent(value: Double) : Double {
     return ((this / 100.0) * value).to1Digits()
 }

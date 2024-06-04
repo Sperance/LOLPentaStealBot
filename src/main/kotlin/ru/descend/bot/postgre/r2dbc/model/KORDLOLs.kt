@@ -34,12 +34,7 @@ data class KORDLOLs(
     var showCode: Int = 0,
     var mmrAram: Double = 0.0,
     var mmrAramSaved: Double = 0.0,
-    var realtime_match_message: String = "",
-
-    @KomapperCreatedAt
-    var createdAt: LocalDateTime = LocalDateTime.MIN,
-    @KomapperUpdatedAt
-    var updatedAt: LocalDateTime = LocalDateTime.MIN
+    var realtime_match_message: String = ""
 ) {
 
     companion object {
@@ -66,39 +61,5 @@ data class KORDLOLs(
 
     override fun toString(): String {
         return "KORDLOLs(id=$id, showCode=$showCode, mmrAram=$mmrAram, mmrAramSaved=$mmrAramSaved, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as KORDLOLs
-
-        if (id != other.id) return false
-        if (KORD_id != other.KORD_id) return false
-        if (LOL_id != other.LOL_id) return false
-        if (guild_id != other.guild_id) return false
-        if (showCode != other.showCode) return false
-        if (mmrAram != other.mmrAram) return false
-        if (mmrAramSaved != other.mmrAramSaved) return false
-        if (createdAt != other.createdAt) return false
-        if (updatedAt != other.updatedAt) return false
-        if (realtime_match_message != other.realtime_match_message) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id
-        result = 31 * result + KORD_id
-        result = 31 * result + LOL_id
-        result = 31 * result + guild_id
-        result = 31 * result + showCode
-        result = 31 * result + mmrAram.hashCode()
-        result = 31 * result + mmrAramSaved.hashCode()
-        result = 31 * result + createdAt.hashCode()
-        result = 31 * result + updatedAt.hashCode()
-        result = 31 * result + realtime_match_message.hashCode()
-        return result
     }
 }

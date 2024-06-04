@@ -19,8 +19,6 @@ data class Participants(
 
     var match_id: Int = -1,
     var LOLperson_id: Int = -1,
-    var dataKey: String = "",
-
     var championId: Int = -1,
     var championName: String = "",
     var kills5: Int = 0,
@@ -50,7 +48,6 @@ data class Participants(
     var team: Int = -1,
     var profileIcon: Int = -1,
     var win: Boolean = false,
-    var mvpLvpInfo: String = "",
 
     var snowballsHit: Int = 0, //snowballs_hit
     var skillshotsHit: Int = 0, //skillshots_hit
@@ -66,7 +63,10 @@ data class Participants(
     var totalTimeCCDealt: Int = 0, //total_time_c_c_dealt
     var tookLargeDamageSurvived: Int = 0, //took_large_damage_survived
     var longestTimeSpentLiving: Int = 0, //longest_time_spent_living
-    var totalTimeSpentDead: Int = 0 //total_time_spent_dead
+    var totalTimeSpentDead: Int = 0, //total_time_spent_dead
+
+    var mvpLvpInfo: String = "",
+    var dataKey: String = "",
 ) {
 
     constructor(participant: Participant, match: Matches, LOLperson: LOLs) : this() {
@@ -130,120 +130,7 @@ data class Participants(
 
     suspend fun LOLpersonObj() = R2DBC.getLOLs { tbl_lols.id eq LOLperson_id }.firstOrNull()
 
-
     override fun toString(): String {
         return "Participants(id=$id, match_id=$match_id, LOLperson_id=$LOLperson_id, championName='$championName')"
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Participants
-
-        if (id != other.id) return false
-        if (match_id != other.match_id) return false
-        if (LOLperson_id != other.LOLperson_id) return false
-        if (dataKey != other.dataKey) return false
-        if (championId != other.championId) return false
-        if (championName != other.championName) return false
-        if (kills5 != other.kills5) return false
-        if (kills4 != other.kills4) return false
-        if (kills3 != other.kills3) return false
-        if (kills2 != other.kills2) return false
-        if (kills != other.kills) return false
-        if (assists != other.assists) return false
-        if (deaths != other.deaths) return false
-        if (goldEarned != other.goldEarned) return false
-        if (skillsCast != other.skillsCast) return false
-        if (totalDmgToChampions != other.totalDmgToChampions) return false
-        if (totalDamageShieldedOnTeammates != other.totalDamageShieldedOnTeammates) return false
-        if (totalHealsOnTeammates != other.totalHealsOnTeammates) return false
-        if (totalDamageTaken != other.totalDamageTaken) return false
-        if (damageDealtToBuildings != other.damageDealtToBuildings) return false
-        if (timeCCingOthers != other.timeCCingOthers) return false
-        if (skillshotsDodged != other.skillshotsDodged) return false
-        if (enemyChampionImmobilizations != other.enemyChampionImmobilizations) return false
-        if (damageTakenOnTeamPercentage != other.damageTakenOnTeamPercentage) return false
-        if (teamDamagePercentage != other.teamDamagePercentage) return false
-        if (damagePerMinute != other.damagePerMinute) return false
-        if (kda != other.kda) return false
-        if (mmr != other.mmr) return false
-        if (minionsKills != other.minionsKills) return false
-        if (inhibitorKills != other.inhibitorKills) return false
-        if (team != other.team) return false
-        if (profileIcon != other.profileIcon) return false
-        if (win != other.win) return false
-        if (mvpLvpInfo != other.mvpLvpInfo) return false
-        if (snowballsHit != other.snowballsHit) return false
-        if (skillshotsHit != other.skillshotsHit) return false
-        if (soloKills != other.soloKills) return false
-        if (survivedSingleDigitHpCount != other.survivedSingleDigitHpCount) return false
-        if (magicDamageDealtToChampions != other.magicDamageDealtToChampions) return false
-        if (physicalDamageDealtToChampions != other.physicalDamageDealtToChampions) return false
-        if (trueDamageDealtToChampions != other.trueDamageDealtToChampions) return false
-        if (effectiveHealAndShielding != other.effectiveHealAndShielding) return false
-        if (damageSelfMitigated != other.damageSelfMitigated) return false
-        if (largestCriticalStrike != other.largestCriticalStrike) return false
-        if (survivedThreeImmobilizesInFight != other.survivedThreeImmobilizesInFight) return false
-        if (totalTimeCCDealt != other.totalTimeCCDealt) return false
-        if (tookLargeDamageSurvived != other.tookLargeDamageSurvived) return false
-        if (longestTimeSpentLiving != other.longestTimeSpentLiving) return false
-        if (totalTimeSpentDead != other.totalTimeSpentDead) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id
-        result = 31 * result + match_id
-        result = 31 * result + LOLperson_id
-        result = 31 * result + dataKey.hashCode()
-        result = 31 * result + championId
-        result = 31 * result + championName.hashCode()
-        result = 31 * result + kills5
-        result = 31 * result + kills4
-        result = 31 * result + kills3
-        result = 31 * result + kills2
-        result = 31 * result + kills
-        result = 31 * result + assists
-        result = 31 * result + deaths
-        result = 31 * result + goldEarned
-        result = 31 * result + skillsCast
-        result = 31 * result + totalDmgToChampions
-        result = 31 * result + totalDamageShieldedOnTeammates
-        result = 31 * result + totalHealsOnTeammates
-        result = 31 * result + totalDamageTaken
-        result = 31 * result + damageDealtToBuildings
-        result = 31 * result + timeCCingOthers
-        result = 31 * result + skillshotsDodged
-        result = 31 * result + enemyChampionImmobilizations
-        result = 31 * result + damageTakenOnTeamPercentage.hashCode()
-        result = 31 * result + teamDamagePercentage.hashCode()
-        result = 31 * result + damagePerMinute.hashCode()
-        result = 31 * result + kda.hashCode()
-        result = 31 * result + mmr.hashCode()
-        result = 31 * result + minionsKills
-        result = 31 * result + inhibitorKills
-        result = 31 * result + team
-        result = 31 * result + profileIcon
-        result = 31 * result + win.hashCode()
-        result = 31 * result + mvpLvpInfo.hashCode()
-        result = 31 * result + snowballsHit
-        result = 31 * result + skillshotsHit
-        result = 31 * result + soloKills
-        result = 31 * result + survivedSingleDigitHpCount
-        result = 31 * result + magicDamageDealtToChampions
-        result = 31 * result + physicalDamageDealtToChampions
-        result = 31 * result + trueDamageDealtToChampions
-        result = 31 * result + effectiveHealAndShielding.hashCode()
-        result = 31 * result + damageSelfMitigated
-        result = 31 * result + largestCriticalStrike
-        result = 31 * result + survivedThreeImmobilizesInFight
-        result = 31 * result + totalTimeCCDealt
-        result = 31 * result + tookLargeDamageSurvived
-        result = 31 * result + longestTimeSpentLiving
-        result = 31 * result + totalTimeSpentDead
-        return result
     }
 }

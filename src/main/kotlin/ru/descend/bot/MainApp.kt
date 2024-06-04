@@ -19,6 +19,7 @@ import dev.kord.x.emoji.Emojis
 import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
+import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.operator.desc
 import ru.descend.bot.datas.LolActiveGame
 import ru.descend.bot.datas.Toppartisipants
@@ -102,6 +103,7 @@ fun timerMainInformation(guild: Guild, duration: Duration, skipFirst: Boolean = 
         if (mapMainData[guild]!!.guildSQL.botChannelId.isNotEmpty()) {
             if (!skipped) {
                 showLeagueHistory(mapMainData[guild]!!)
+                garbaceCollect()
                 printMemoryUsage()
             } else {
                 skipped = true
@@ -195,9 +197,19 @@ suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
     }
 }
 
-suspend fun loadingRowMatches(lols: Collection<LOLs>, sqlData: SQLData_R2DBC, limitCounters: Int) {
-    val limitCounter = 95 - limitCounters - lols.size
-    sqlData.loadMatches(lols, 9, false, limitCounter)
+suspend fun loadingRowMatches(lols: Collection<LOLs>, sqlData: SQLData_R2DBC, limitCounters: Int) : Int {
+    val limitCounter = 97 - limitCounters - lols.size
+    return limitCounter - sqlData.loadMatches(lols, 9, false, limitCounter)
+}
+
+suspend fun loadingLastMatches(sqlData: SQLData_R2DBC, accessCount: Int) {
+    val lastMatchCode = sqlData.textNewMatches.getLastMatchCode()
+    val arrayMatches = ArrayList<String>()
+    val code = lastMatchCode.substringAfter("_").toLong() - 5000
+    for (i in 1..accessCount) {
+        arrayMatches.add("RU_${code + i}")
+    }
+    sqlData.loadArrayMatches(arrayMatches, false)
 }
 
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
@@ -207,8 +219,14 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         val arraySaveds = sqlData.dataSavedLOL.get()
         sqlData.loadMatches(arraySaveds, 50, true)
         if (!sqlData.isNeedUpdateDatas) {
-            loadingRowMatches(R2DBC.getLOLs(declaration = { tbl_lols.LOL_region.eq("RU") }, sortExpression = tbl_lols.id.desc(), limit = 8), sqlData, arraySaveds.size)
+            val accessNewMatches = loadingRowMatches(R2DBC.getLOLs(declaration = { tbl_lols.LOL_region.eq("RU") }, sortExpression = tbl_lols.id.desc(), limit = 7), sqlData, arraySaveds.size)
+            loadingLastMatches(sqlData, accessNewMatches)
         }
+
+        sqlData.textNewMatches.getAllText().forEach {str ->
+            sqlData.sendMessage(sqlData.guildSQL.messageIdDebug, str)
+        }
+        sqlData.textNewMatches.clear()
     }.join()
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
@@ -238,11 +256,11 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
             createMessageMasteries(channelText, sqlData)
         }
         //Таблица по ТОП чемпионам сервера
-//        editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, {
-//            editMessageTopContent(it, sqlData, false)
-//        }) {
-//            createMessageTop(channelText, sqlData)
-//        }
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, {
+            editMessageTopContent(it, sqlData, false)
+        }) {
+            createMessageTop(channelText, sqlData)
+        }
     }.join()
 
     if (sqlData.isNeedUpdateDatas) {
@@ -353,11 +371,16 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
 
     builder.content = "**ТОП сервера по параметрам (за матч)**\nОбновлено: ${TimeStamp.now()}\n"
 
+    val query = QueryDsl
+        .from(tbl_participants)
+        .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
+        .innerJoin(KORDLOLs.tbl_kordlols) { KORDLOLs.tbl_kordlols.LOL_id eq tbl_participants.LOLperson_id }
+        .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false }
+        .selectAsEntity(tbl_participants)
+
     val statClass = Toppartisipants()
-    val savedKORDLOLS = R2DBC.getKORDLOLs { KORDLOLs.tbl_kordlols.guild_id eq sqlData.guildSQL.id }
-    val normalMatches = R2DBC.getMatches { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false }
-    val savedparticipants = R2DBC.getParticipants { tbl_participants.match_id.inList(normalMatches.map { it.id }) ; tbl_participants.LOLperson_id.inList(savedKORDLOLS.map { it.LOL_id }) }
-    savedparticipants.forEach {
+    val result = R2DBC.runQuery { query }
+    result.forEach {
         statClass.calculateField(it, "Убийств", it.kills.toDouble())
         statClass.calculateField(it, "Смертей", it.deaths.toDouble())
         statClass.calculateField(it, "Ассистов", it.assists.toDouble())
@@ -449,7 +472,7 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC, afterCreating: Boolean) {
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
-    contentText += "* Матчей: ${R2DBC.getMatchOne(first = false)?.id}\n"
+    contentText += "* Матчей: ${sqlData.textNewMatches.getLastMatchId()}\n"
     contentText += "* Игроков: ${R2DBC.getLOLone(first = false)?.id}\n"
     builder.content = contentText
 

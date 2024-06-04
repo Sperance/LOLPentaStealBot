@@ -31,7 +31,7 @@ import kotlin.time.toDuration
 data class Calc_AddMatch (
     val sqlData: SQLData_R2DBC,
     val match: MatchDTO,
-    val kordLol: ArrayList<KORDLOLs>? = null
+    val kordLol: ArrayList<KORDLOLs>
 ) {
 
     val arrayOtherLOLs = ArrayList<LOLs>()
@@ -41,11 +41,11 @@ data class Calc_AddMatch (
         var isBots = false
         var isSurrender = false
 
-        val alreadyMatch = R2DBC.getMatchOne({tbl_matches.matchId eq match.metadata.matchId})
-        if (alreadyMatch != null) {
-            if (mainOrder) printLog("Match ${alreadyMatch.id} ${alreadyMatch.matchId} already exists")
-            return alreadyMatch
-        }
+//        val alreadyMatch = R2DBC.getMatchOne({tbl_matches.matchId eq match.metadata.matchId})
+//        if (alreadyMatch != null) {
+//            if (mainOrder) printLog("Match ${alreadyMatch.id} ${alreadyMatch.matchId} already exists")
+//            return alreadyMatch
+//        }
 
         match.info.participants.forEach {
             if (it.summonerId == "BOT" || it.puuid == "BOT") {
@@ -68,10 +68,9 @@ data class Calc_AddMatch (
             surrender = isSurrender
         ).create(Matches::matchId)
 
-        sqlData.isNeedUpdateDatas = true
-
         if (pMatch.id % 5000 == 0){
             R2DBC.executeProcedure("call \"GetAVGs\"()")
+            LeagueMainObject.catchHeroNames()
         }
 
         val arrayHeroName = ArrayList<Participant>()
@@ -89,7 +88,7 @@ data class Calc_AddMatch (
                 isNeedCalcMMR = true
             }
 
-            if (kordLol != null && curLOL != null && !isBots && !isSurrender){
+            if (curLOL != null && !isBots && !isSurrender){
                 kordLol.find { it.LOL_id == curLOL?.id }?.let {
                     asyncLaunch {
                         if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
@@ -141,12 +140,12 @@ data class Calc_AddMatch (
         arrayOtherLOLs.removeIf { savedLOL.find { finded -> finded.id == it.id } != null }
         R2DBC.addBatchParticipants(arrayNewParts)
 
-        if (isNeedCalcMMR && kordLol != null) {
+        if (isNeedCalcMMR) {
+            sqlData.isNeedUpdateDatas = true
             calculateMMR(pMatch, isSurrender, isBots, kordLol)
         }
         if (!mainOrder) {
-            sqlData.sendMessage(sqlData.guildSQL.messageIdDebug,
-                "${pMatch.matchId} ID: ${pMatch.id} Mode: ${pMatch.matchMode} Date: ${pMatch.matchDateEnd.toFormatDate()} V: ${pMatch.matchGameVersion}")
+            sqlData.textNewMatches.appendLine("${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n", pMatch.id.toString(), pMatch.matchId)
         }
 
         return pMatch
@@ -155,7 +154,7 @@ data class Calc_AddMatch (
     private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
         var users = ""
         val arrayKORDmmr = ArrayList<Triple<KORDLOLs?, Participants, Double>>()
-        R2DBC.getParticipants { tbl_participants.match_id eq pMatch.id }.forEach { par ->
+        pMatch.getParticipants().forEach { par ->
             val dataText = if (pMatch.matchMode == "ARAM") {
                 val data = Calc_MMR(sqlData, par, pMatch, kordLol, sqlData.getMMRforChampion(par.championName))
                 data.init()
@@ -164,8 +163,7 @@ data class Calc_AddMatch (
             } else {
                 ""
             }
-            val lolObj = sqlData.getLOL(par.LOLperson_id)
-            users += "* __" + lolObj?.getCorrectName() + "__ ${LeagueMainObject.findHeroForKey(par.championId.toString())} size: ${R2DBC.getParticipants { tbl_participants.LOLperson_id eq par.LOLperson_id }.size} win:${par.win} $dataText\n"
+            users += "* __" + sqlData.getLOL(par.LOLperson_id)?.getCorrectName() + "__ ${LeagueMainObject.findHeroForKey(par.championId.toString())} win:${par.win} $dataText\n"
         }
 
         //Обработка MVP

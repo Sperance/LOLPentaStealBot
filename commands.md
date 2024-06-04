@@ -22,7 +22,6 @@
 | clearStatusChannel  |                                     | Очистка канала для сообщений бота                                         |
 | genText             | request                             | Получить ответ от ChatGPT на запрос                                       |
 | genTextAdmin        | request                             |                                                                           |
-| getAlliesWinrate    |                                     | Просмотр Винрейта каждого игрока сервера (в боте) по отношению к себе     |
 | getChampionsWinrate |                                     | Просмотр Винрейта по всем своим сыгранным чемпионам за последние 30 дней  |
 | initDebugChannel    | channel                             | Канал для системных сообщений                                             |
 | initMainChannel     | channel                             | Основной канал для бота                                                   |
