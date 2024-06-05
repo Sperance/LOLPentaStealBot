@@ -5,20 +5,15 @@ import dev.kord.common.entity.Permissions
 import dev.kord.core.entity.channel.TextChannel
 import me.jakejmattson.discordkt.arguments.AnyArg
 import me.jakejmattson.discordkt.arguments.AutocompleteArg
-import me.jakejmattson.discordkt.arguments.AutocompleteData
 import me.jakejmattson.discordkt.arguments.ChannelArg
 import me.jakejmattson.discordkt.arguments.ChoiceArg
 import me.jakejmattson.discordkt.arguments.DoubleArg
 import me.jakejmattson.discordkt.arguments.IntegerArg
-import me.jakejmattson.discordkt.arguments.PrimitiveArgument
-import me.jakejmattson.discordkt.arguments.StringArgument
 import me.jakejmattson.discordkt.arguments.UserArg
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.util.fullName
 import ru.descend.bot.asyncLaunch
-import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.generateAIText
-import ru.descend.bot.lolapi.LeagueMainObject.catchHeroForName
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.mapMainData
 import ru.descend.bot.postgre.PostgreTest
@@ -36,7 +31,6 @@ import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
-import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
@@ -47,85 +41,85 @@ import java.util.GregorianCalendar
 
 fun arguments() = commands("Arguments") {
 
-    slash(
-        "getChampionsWinrate",
-        "Просмотр Винрейта по всем своим сыгранным чемпионам за последние 30 дней"
-    ) {
-        execute {
-
-            val textCommand = "[Start command] '$name' from ${author.fullName}"
-            printLog(textCommand)
-
-            respond("Генерация ответа...")
-
-            R2DBC.runTransaction {
-                val guilds = R2DBC.getGuild(guild)
-                guild.sendMessage(guilds.messageIdDebug, textCommand)
-
-                val KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq author.toStringUID(); tbl_kords.guild_id eq guilds.id }.firstOrNull()
-                if (KORD == null) {
-                    respond("Вы ${author.lowDescriptor()} не зарегистрированы в боте. Обратитесь к Администратору")
-                    return@runTransaction
-                }
-                val KORDLOL = R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id }.firstOrNull()
-                if (KORDLOL == null) {
-                    respond("Вы ${author.lowDescriptor()} не привязаны к аккаунту Лиги Легенд. Обратитесь к Администратору")
-                    return@runTransaction
-                }
-
-                val arrayARAM = HashMap<String, PostgreTest.DataChampionWinstreak>()
-                val arrayCLASSIC = HashMap<String, PostgreTest.DataChampionWinstreak>()
-
-                val dateCurrent = LocalDate.now()
-                val modifiedDate = dateCurrent.minusMonths(1).toDate().time
-
-                val savedParticipantsMatches = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id }
-                val arrayMatches = R2DBC.getMatches {
-                    Matches.tbl_matches.matchDateStart greaterEq modifiedDate; Matches.tbl_matches.id.inList(
-                    savedParticipantsMatches.map { it.match_id }); Matches.tbl_matches.surrender eq false; Matches.tbl_matches.bots eq false
-                }
-                val lastParticipants = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id; Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }) }
-                lastParticipants.forEach {
-                    if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "ARAM") {
-                        if (arrayARAM[it.championName] == null) {
-                            arrayARAM[it.championName] = PostgreTest.DataChampionWinstreak(it.championId, 1, if (it.win) 1 else 0, it.kda)
-                        } else {
-                            val curData = arrayARAM[it.championName]!!
-                            curData.championGames++
-                            curData.championWins += if (it.win) 1 else 0
-                            curData.championKDA += it.kda
-                            arrayARAM[it.championName] = curData
-                        }
-                    } else if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "CLASSIC") {
-                        if (arrayCLASSIC[it.championName] == null) {
-                            arrayCLASSIC[it.championName] = PostgreTest.DataChampionWinstreak(it.championId, 1, if (it.win) 1 else 0, it.kda)
-                        } else {
-                            val curData = arrayCLASSIC[it.championName]!!
-                            curData.championGames++
-                            curData.championWins += if (it.win) 1 else 0
-                            curData.championKDA += it.kda
-                            arrayCLASSIC[it.championName] = curData
-                        }
-                    }
-                }
-
-                val savedPartsARAM = arrayARAM.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap().filter { it.value.championGames >= 5 }
-                var textResult = if (savedPartsARAM.isNotEmpty()) "**ARAM**\n" else ""
-                savedPartsARAM.forEach { (i, pairs) ->
-                    textResult += "* ${if (catchHeroForName(i) == null) i else catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to1Digits()}% KDA: ${(pairs.championKDA / pairs.championGames).to1Digits()}\n"
-                    if (textResult.length > 1000) return@forEach
-                }
-                val savedPartsCLASSIC = arrayCLASSIC.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap().filter { it.value.championGames >= 10 }
-                textResult += if (savedPartsCLASSIC.isNotEmpty()) "\n**CLASSIC**\n" else ""
-
-                savedPartsCLASSIC.forEach { (i, pairs) ->
-                    textResult += "* ${catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to1Digits()}% KDA: ${(pairs.championKDA / pairs.championGames).to1Digits()}\n"
-                    if (textResult.length > 1900) return@forEach
-                }
-                this@execute.channel.createMessage(textResult)
-            }
-        }
-    }
+//    slash(
+//        "getChampionsWinrate",
+//        "Просмотр Винрейта по всем своим сыгранным чемпионам за последние 30 дней"
+//    ) {
+//        execute {
+//
+//            val textCommand = "[Start command] '$name' from ${author.fullName}"
+//            printLog(textCommand)
+//
+//            respond("Генерация ответа...")
+//
+//            R2DBC.runTransaction {
+//                val guilds = R2DBC.getGuild(guild)
+//                guild.sendMessage(guilds.messageIdDebug, textCommand)
+//
+//                val KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq author.toStringUID(); tbl_kords.guild_id eq guilds.id }.firstOrNull()
+//                if (KORD == null) {
+//                    respond("Вы ${author.lowDescriptor()} не зарегистрированы в боте. Обратитесь к Администратору")
+//                    return@runTransaction
+//                }
+//                val KORDLOL = R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id }.firstOrNull()
+//                if (KORDLOL == null) {
+//                    respond("Вы ${author.lowDescriptor()} не привязаны к аккаунту Лиги Легенд. Обратитесь к Администратору")
+//                    return@runTransaction
+//                }
+//
+//                val arrayARAM = HashMap<String, PostgreTest.DataChampionWinstreak>()
+//                val arrayCLASSIC = HashMap<String, PostgreTest.DataChampionWinstreak>()
+//
+//                val dateCurrent = LocalDate.now()
+//                val modifiedDate = dateCurrent.minusMonths(1).toDate().time
+//
+//                val savedParticipantsMatches = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id }
+//                val arrayMatches = R2DBC.getMatches {
+//                    Matches.tbl_matches.matchDateStart greaterEq modifiedDate; Matches.tbl_matches.id.inList(
+//                    savedParticipantsMatches.map { it.match_id }); Matches.tbl_matches.surrender eq false; Matches.tbl_matches.bots eq false
+//                }
+//                val lastParticipants = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq KORDLOL.LOL_id; Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }) }
+//                lastParticipants.forEach {
+//                    if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "ARAM") {
+//                        if (arrayARAM[it.championName] == null) {
+//                            arrayARAM[it.championName] = PostgreTest.DataChampionWinstreak(it.championId, 1, if (it.win) 1 else 0, it.kda)
+//                        } else {
+//                            val curData = arrayARAM[it.championName]!!
+//                            curData.championGames++
+//                            curData.championWins += if (it.win) 1 else 0
+//                            curData.championKDA += it.kda
+//                            arrayARAM[it.championName] = curData
+//                        }
+//                    } else if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "CLASSIC") {
+//                        if (arrayCLASSIC[it.championName] == null) {
+//                            arrayCLASSIC[it.championName] = PostgreTest.DataChampionWinstreak(it.championId, 1, if (it.win) 1 else 0, it.kda)
+//                        } else {
+//                            val curData = arrayCLASSIC[it.championName]!!
+//                            curData.championGames++
+//                            curData.championWins += if (it.win) 1 else 0
+//                            curData.championKDA += it.kda
+//                            arrayCLASSIC[it.championName] = curData
+//                        }
+//                    }
+//                }
+//
+//                val savedPartsARAM = arrayARAM.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap().filter { it.value.championGames >= 5 }
+//                var textResult = if (savedPartsARAM.isNotEmpty()) "**ARAM**\n" else ""
+//                savedPartsARAM.forEach { (i, pairs) ->
+//                    textResult += "* ${if (catchHeroForName(i) == null) i else catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to1Digits()}% KDA: ${(pairs.championKDA / pairs.championGames).to1Digits()}\n"
+//                    if (textResult.length > 1000) return@forEach
+//                }
+//                val savedPartsCLASSIC = arrayCLASSIC.map { it.key to it.value }.sortedByDescending { it.second.championGames }.toMap().filter { it.value.championGames >= 10 }
+//                textResult += if (savedPartsCLASSIC.isNotEmpty()) "\n**CLASSIC**\n" else ""
+//
+//                savedPartsCLASSIC.forEach { (i, pairs) ->
+//                    textResult += "* ${catchHeroForName(i)?.name} Games: ${pairs.championGames} WinRate: ${((pairs.championWins.toDouble() / pairs.championGames) * 100.0).to1Digits()}% KDA: ${(pairs.championKDA / pairs.championGames).to1Digits()}\n"
+//                    if (textResult.length > 1900) return@forEach
+//                }
+//                this@execute.channel.createMessage(textResult)
+//            }
+//        }
+//    }
 
 //    slash("getAlliesWinrate", "Просмотр Винрейта каждого игрока сервера (в боте) по отношению к себе") {
 //        execute {
@@ -409,7 +403,7 @@ fun arguments() = commands("Arguments") {
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
             var KORD = KORDs(guilds, user)
-            KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }.firstOrNull() ?: KORD.create(KORDs::KORD_id)
+            KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }.firstOrNull() ?: KORD.create(KORDs::KORD_id).result
 
             //Создаем LOL сразу со связью с аккаунтом Лиги Легенд
             var LOL = LOLs().connectLOL(region, summonerName, tagLine)
@@ -419,7 +413,7 @@ fun arguments() = commands("Arguments") {
             }
 
             //Если аккаунт есть в базе - ок, если нет - создаём в базе
-            LOL = R2DBC.getLOLs { tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }.firstOrNull() ?: LOL.create(LOLs::LOL_puuid)
+            LOL = R2DBC.getLOLs { tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }.firstOrNull() ?: LOL.create(LOLs::LOL_puuid).result
 
             //Проверка что к пользователю уже привязан какой-либо аккаунт лиги
             val alreadyKORDLOL =
@@ -437,7 +431,7 @@ fun arguments() = commands("Arguments") {
                     guild_id = guilds.id
                 )
 
-                val resultData = KORDLOL.create(KORDLOLs::KORD_id)
+                val resultData = KORDLOL.create(KORDLOLs::KORD_id).result
                 val arrayData = ArrayList<KORDLOLs>()
                 arrayData.addAll(R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guilds.id })
                 arrayData.sortBy { data -> data.showCode }
@@ -466,39 +460,39 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash("addHeroName", "Добавить наименование чемпиона", Permissions(Permission.UseApplicationCommands)) {
-        execute(AutocompleteArg("hero", description = "Чемпион Лиги Легенд", type = AnyArg(), autocomplete = {R2DBC.getHeroes().map { it.nameRU }}), AnyArg("newNames", description = "Новое имя чемпиона (несколько через ',')")) {
-            val (hero, newNames) = args
-            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'hero'=$hero, 'newNames'=$newNames"
-            printLog(textCommand)
-
-            val findObj = R2DBC.getHeroesone({tbl_heroes.nameRU eq hero})
-            val retText = if (findObj == null) {
-                "Чемпион $hero не найден. Обратитесь к Администратору"
-            } else {
-                val curNames = findObj.otherNames.split(",")
-                val arrayNewNames = ArrayList<String>()
-                arrayNewNames.addAll(curNames)
-                var appendText = ""
-                newNames.split(",").forEach { str ->
-                    val cStr = str.lowercase().trim().trim(',')
-                    if (!arrayNewNames.contains(cStr)) {
-                        val fObj = R2DBC.getHeroes().find { f -> f.otherNames.contains(cStr) }
-                        if (fObj == null) {
-                            arrayNewNames.add(cStr)
-                        } else {
-                            appendText += "\nимя $cStr не было сохранено, т.к. содержится у Героя ${fObj.nameRU}\n"
-                        }
-                    }
-                }
-                findObj.otherNames = arrayNewNames.joinToString(separator = ",")
-                findObj.update()
-                "Успешно. $appendText Текущий список имен (${findObj.nameRU}): ${arrayNewNames.joinToString(separator = ",")}"
-            }
-
-            respond(retText)
-        }
-    }
+//    slash("addHeroName", "Добавить наименование чемпиона", Permissions(Permission.UseApplicationCommands)) {
+//        execute(AutocompleteArg("hero", description = "Чемпион Лиги Легенд", type = AnyArg(), autocomplete = {R2DBC.stockHEROES.get().map { it.nameRU }), AnyArg("newNames", description = "Новое имя чемпиона (несколько через ',')")) {
+//            val (hero, newNames) = args
+//            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'hero'=$hero, 'newNames'=$newNames"
+//            printLog(textCommand)
+//
+//            val findObj = R2DBC.getHeroesone({tbl_heroes.nameRU eq hero})
+//            val retText = if (findObj == null) {
+//                "Чемпион $hero не найден. Обратитесь к Администратору"
+//            } else {
+//                val curNames = findObj.otherNames.split(",")
+//                val arrayNewNames = ArrayList<String>()
+//                arrayNewNames.addAll(curNames)
+//                var appendText = ""
+//                newNames.split(",").forEach { str ->
+//                    val cStr = str.lowercase().trim().trim(',')
+//                    if (!arrayNewNames.contains(cStr)) {
+//                        val fObj = R2DBC.getHeroes().find { f -> f.otherNames.contains(cStr) }
+//                        if (fObj == null) {
+//                            arrayNewNames.add(cStr)
+//                        } else {
+//                            appendText += "\nимя $cStr не было сохранено, т.к. содержится у Героя ${fObj.nameRU}\n"
+//                        }
+//                    }
+//                }
+//                findObj.otherNames = arrayNewNames.joinToString(separator = ",")
+//                findObj.update()
+//                "Успешно. $appendText Текущий список имен (${findObj.nameRU}): ${arrayNewNames.joinToString(separator = ",")}"
+//            }
+//
+//            respond(retText)
+//        }
+//    }
 
     slash("genTextAdmin", "", Permissions(Permission.Administrator)) {
         execute(AnyArg("request")) {

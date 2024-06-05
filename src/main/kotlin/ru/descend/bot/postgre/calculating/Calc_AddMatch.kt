@@ -56,7 +56,7 @@ data class Calc_AddMatch (
             }
         }
 
-        val pMatch = Matches(
+        val pMatchResult = Matches(
             matchId = match.metadata.matchId,
             matchDateStart = match.info.gameStartTimestamp,
             matchDateEnd = match.info.gameEndTimestamp,
@@ -68,8 +68,12 @@ data class Calc_AddMatch (
             surrender = isSurrender
         ).create(Matches::matchId)
 
+        if (!pMatchResult.bit) return pMatchResult.result
+        val pMatch = pMatchResult.result
+
         if (pMatch.id % 5000 == 0){
             R2DBC.executeProcedure("call \"GetAVGs\"()")
+            sqlData.dataMMR.clear()
             LeagueMainObject.catchHeroNames()
         }
 
@@ -79,6 +83,7 @@ data class Calc_AddMatch (
         }
 
         val savedLOL = sqlData.dataSavedLOL.get()
+        val heroesArray = R2DBC.stockHEROES.get()
         val curLOLs = R2DBC.getLOLs { tbl_lols.LOL_puuid.inList(arrayHeroName.map { it.puuid }) }
         var isNeedCalcMMR = false
         val arrayNewParts = ArrayList<Participants>()
@@ -92,10 +97,10 @@ data class Calc_AddMatch (
                 kordLol.find { it.LOL_id == curLOL?.id }?.let {
                     asyncLaunch {
                         if (part.pentaKills > 0 && (match.info.gameCreation.toDate().isCurrentDay() || match.info.gameEndTimestamp.toDate().isCurrentDay())) {
-                            val championName = LeagueMainObject.findHeroForKey(part.championId.toString())
+                            val championName = R2DBC.getHeroFromKey(part.championId.toString())?.nameRU?:""
                             val textPentasCount = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
                             val generatedText = generateAIText("Напиши необычное и оригинальное и длинное поздравление пользователю ${it.asUser(sqlData.guild, sqlData).lowDescriptor()} за то что он сделал Пентакилл в игре League of Legends за чемпиона $championName от имени Discord сервера АрамоЛолево")
-                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { LeagueMainObject.findHeroForKey(it.championId.toString()) }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n\n$generatedText"
+                            val resultText = "Поздравляем!!!\n${it.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName убив: ${arrayHeroName.filter { it.teamId != part.teamId }.joinToString { heroesArray.find { hero -> hero.key == it.championId.toString() }?.nameRU?:"null" }}\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n\n$generatedText"
 
                             if (pMatch.matchMode == "CLASSIC") {
                                 it.mmrAramSaved += 5.0
@@ -117,7 +122,7 @@ data class Calc_AddMatch (
                     LOL_riotIdTagline = part.riotIdTagline,
                     LOL_summonerLevel = part.summonerLevel,
                     LOL_region = pMatch.getRegionValue(),
-                    profile_icon = part.profileIcon).create(LOLs::LOL_puuid)
+                    profile_icon = part.profileIcon).create(LOLs::LOL_puuid).result
             } else if (!curLOL.isBot()) {
                 //Вдруг что изменится в профиле игрока
                 if (curLOL.LOL_summonerLevel < part.summonerLevel || (curLOL.LOL_summonerLevel == part.summonerLevel && (curLOL.LOL_region != pMatch.getRegionValue() || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon))) {
@@ -163,7 +168,7 @@ data class Calc_AddMatch (
             } else {
                 ""
             }
-            users += "* __" + sqlData.getLOL(par.LOLperson_id)?.getCorrectName() + "__ ${LeagueMainObject.findHeroForKey(par.championId.toString())} win:${par.win} $dataText\n"
+            users += "* __" + sqlData.getLOL(par.LOLperson_id)?.getCorrectName() + "__ ${R2DBC.getHeroFromKey(par.championId.toString())?.nameRU?:"null"} win:${par.win} $dataText\n"
         }
 
         //Обработка MVP

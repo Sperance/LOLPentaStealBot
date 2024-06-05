@@ -114,7 +114,6 @@ fun timerMainInformation(guild: Guild, duration: Duration, skipFirst: Boolean = 
 }
 
 private suspend fun firstInitialize() {
-    LeagueMainObject.catchHeroNames()
     R2DBC.initialize()
 }
 
@@ -161,10 +160,10 @@ suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
             }
 
             val mainDataList1 = (arrayActives.map { dat ->
-                if (dat.kordlol != null) "**" + dat.part.riotId + " / " + LeagueMainObject.catchHeroForId(dat.part.championId)?.name + " / " + dat.part.teamId + "**"
-                else dat.part.riotId + " / " + LeagueMainObject.catchHeroForId(dat.part.championId)?.name + " / " + dat.part.teamId
+                if (dat.kordlol != null) "**" + dat.part.riotId + " / " + R2DBC.getHeroFromKey(dat.part.championId.toString())?.nameRU + " / " + dat.part.teamId + "**"
+                else dat.part.riotId + " / " + R2DBC.getHeroFromKey(dat.part.championId.toString())?.nameRU + " / " + dat.part.teamId
             })
-            val mainDataList2 = (arrayActives.map { dat -> gameInfo.gameMode })
+            val mainDataList2 = (arrayActives.map { gameInfo.gameMode })
 
             val message = channel.createMessage {
                 content = "Match game ID: ${gameInfo.gameId}"
@@ -205,7 +204,7 @@ suspend fun loadingRowMatches(lols: Collection<LOLs>, sqlData: SQLData_R2DBC, li
 suspend fun loadingLastMatches(sqlData: SQLData_R2DBC, accessCount: Int) {
     val lastMatchCode = sqlData.textNewMatches.getLastMatchCode()
     val arrayMatches = ArrayList<String>()
-    val code = lastMatchCode.substringAfter("_").toLong() - 5000
+    val code = lastMatchCode.substringAfter("_").toLong() - 10000
     for (i in 1..accessCount) {
         arrayMatches.add("RU_${code + i}")
     }
@@ -268,7 +267,6 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         sqlData.dataKORD.reset()
         sqlData.dataSavedLOL.reset()
         sqlData.dataSavedParticipants.clear()
-        sqlData.dataMMR.clear()
     }
 
     sqlData.isNeedUpdateDatas = false
@@ -376,6 +374,7 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
         .innerJoin(KORDLOLs.tbl_kordlols) { KORDLOLs.tbl_kordlols.LOL_id eq tbl_participants.LOLperson_id }
         .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false }
+        .orderBy(tbl_participants.id)
         .selectAsEntity(tbl_participants)
 
     val statClass = Toppartisipants()
@@ -448,7 +447,7 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
     val savedParts = savedPartsHash.map { it.key to it.value }.sortedBy { it.first.showCode }.toMap()
 
     val charStr = " / "
-    val mainDataList1 = (savedParts.map { formatInt(it.key.showCode, 2) + "| " + LeagueMainObject.catchHeroForId(it.value[0].championId)?.name.toMaxSymbols(8, "..") + charStr + LeagueMainObject.catchHeroForId(it.value[1].championId)?.name.toMaxSymbols(8, "..") + charStr + LeagueMainObject.catchHeroForId(it.value[2].championId)?.name.toMaxSymbols(8, "..") })
+    val mainDataList1 = (savedParts.map { formatInt(it.key.showCode, 2) + "| " + R2DBC.getHeroFromKey(it.value[0].championId.toString())?.nameRU.toMaxSymbols(8, "..") + charStr + R2DBC.getHeroFromKey(it.value[1].championId.toString())?.nameRU.toMaxSymbols(8, "..") + charStr + R2DBC.getHeroFromKey(it.value[2].championId.toString())?.nameRU.toMaxSymbols(8, "..") })
     val mainDataList2 = (savedParts.map { it.value[0].championPoints.toFormatK() + charStr + it.value[1].championPoints.toFormatK() + charStr + it.value[2].championPoints.toFormatK() })
 
     builder.embed {
@@ -487,7 +486,7 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
     val wStreak = sqlData.getWinStreak()
 
     val mainDataList1 = (data.map { formatInt(it.showCode, 2) + charStr + it.asUser(sqlData.guild, sqlData).lowDescriptor() })
-    val mainDataList2 = (data.map { sqlData.getLOL(it.LOL_id)?.getCorrectName() })
+    val mainDataList2 = (data.map { sqlData.getLOL(it.LOL_id)?.getCorrectNameWithTag()?.toMaxSymbols(18, "..") })
     val mainDataList3 = (data.map { wStreak[it.LOL_id] })
     builder.embed {
         field {
@@ -532,8 +531,8 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
         else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + (it.mmr_aram / it.games).toFormat(2)
     })
     val mainDataList3 = (aramData.map {
-        if (it.match_id == it.last_match_id) "**" + LeagueMainObject.catchHeroForId(it.champion_id)?.name + charStr + it.mmr + " " + it.mvp_lvp_info + "**"
-        else LeagueMainObject.catchHeroForId(it.champion_id)?.name + charStr + it.mmr + " " + it.mvp_lvp_info
+        if (it.match_id == it.last_match_id) "**" + R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info + "**"
+        else R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info
     })
 
 

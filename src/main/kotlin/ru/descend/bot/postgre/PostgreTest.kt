@@ -131,14 +131,6 @@ class PostgreTest {
     }
 
     @Test
-    fun testHeroNames() {
-        runBlocking {
-            val list = R2DBC.getHeroes().map { it.nameEN }
-            list.forEach(::println)
-        }
-    }
-
-    @Test
     fun test_digits_double() {
         printLog((523.523).to1Digits())
         printLog((523.53).to1Digits())
@@ -168,25 +160,6 @@ class PostgreTest {
         runBlocking {
             val lolobj = R2DBC.getLOLone(declaration = {tbl_lols.LOL_summonerLevel greaterEq 1000}, first = false)
             println("lol id: ${lolobj?.id} level: ${lolobj?.LOL_summonerLevel}")
-        }
-    }
-
-    @Test
-    fun test_in_transact() {
-        runBlocking {
-            R2DBC.runTransaction {
-                val heros = R2DBC.getHeroes()
-
-                heros.forEach {
-                    it.otherNames = R2DBC.getMatchOne({ tbl_matches.id eq it.key.toInt() })?.matchId?:"null"
-                    it.update()
-                }
-
-                heros.forEach {
-                    it.otherNames = "312355775"
-                    it.update()
-                }
-            }
         }
     }
 
@@ -264,23 +237,28 @@ class PostgreTest {
     @Test
     fun test_parts() {
         runBlocking {
+            val query = QueryDsl
+                .from(tbl_participants)
+                .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
+                .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false }
+                .orderBy(tbl_participants.id)
+                .selectAsEntity(tbl_participants)
+
             val statClass = Toppartisipants()
-            val savedKORDLOLS = R2DBC.getKORDLOLs(null)
-            val normalMatches = R2DBC.getMatches { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false }
-            normalMatches.forEach {
-                println(it.id)
-            }
-            val savedparticipants = R2DBC.getParticipants { tbl_participants.match_id.inList(normalMatches.map { it.id }) ; tbl_participants.LOLperson_id.inList(savedKORDLOLS.map { it.LOL_id }) }
-            savedparticipants.forEach {
+            val result = R2DBC.runQuery { query }
+            println("Data Size: ${result.size}")
+            result.forEach {
                 statClass.calculateField(it, "Убийств", it.kills.toDouble())
                 statClass.calculateField(it, "Смертей", it.deaths.toDouble())
                 statClass.calculateField(it, "Ассистов", it.assists.toDouble())
                 statClass.calculateField(it, "KDA", it.kda)
                 statClass.calculateField(it, "Урон в минуту", it.damagePerMinute)
+//        statClass.calculateField(it, "Эффектных щитов/хилов", it.effectiveHealAndShielding)
                 statClass.calculateField(it, "Урона строениям", it.damageDealtToBuildings.toDouble())
                 statClass.calculateField(it, "Урона поглощено", it.damageSelfMitigated.toDouble())
                 statClass.calculateField(it, "Секунд контроля врагам", it.enemyChampionImmobilizations.toDouble())
                 statClass.calculateField(it, "Получено золота", it.goldEarned.toDouble())
+//        statClass.calculateField(it, "Уничтожено ингибиторов", it.inhibitorKills.toDouble())
                 statClass.calculateField(it, "Критический удар", it.largestCriticalStrike.toDouble())
                 statClass.calculateField(it, "Магического урона чемпионам", it.magicDamageDealtToChampions.toDouble())
                 statClass.calculateField(it, "Физического урона чемпионам", it.physicalDamageDealtToChampions.toDouble())
@@ -290,10 +268,19 @@ class PostgreTest {
                 statClass.calculateField(it, "Уклонений от заклинаний", it.skillshotsDodged.toDouble())
                 statClass.calculateField(it, "Попаданий заклинаниями", it.skillshotsHit.toDouble())
                 statClass.calculateField(it, "Попаданий снежками", it.snowballsHit.toDouble())
+//        statClass.calculateField(it, "Соло-убийств", it.soloKills.toDouble())
+//        statClass.calculateField(it, "Провёл в контроле (сек)", it.timeCCingOthers.toDouble())
                 statClass.calculateField(it, "Наложено щитов союзникам", it.totalDamageShieldedOnTeammates.toDouble())
                 statClass.calculateField(it, "Получено урона", it.totalDamageTaken.toDouble())
                 statClass.calculateField(it, "Нанесено урона чемпионам", it.totalDmgToChampions.toDouble())
                 statClass.calculateField(it, "Лечение союзников", it.totalHealsOnTeammates.toDouble())
+//        statClass.calculateField(it, "Контроль врагов (сек)", it.totalTimeCCDealt.toDouble())
+            }
+
+            var resultText = ""
+            statClass.getResults().forEach {
+                resultText += "* $it\n"
+                println("* $it\n")
             }
         }
     }

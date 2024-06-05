@@ -11,6 +11,8 @@ import org.komapper.core.dsl.query.QueryScope
 import org.komapper.core.dsl.query.firstOrNull
 import org.komapper.r2dbc.R2dbcDatabase
 import org.komapper.tx.core.CoroutineTransactionOperator
+import ru.descend.bot.datas.WorkData
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.Heroes
@@ -43,7 +45,9 @@ object R2DBC {
         .option(ConnectionFactoryOptions.DATABASE, "postgres2")
         .build()
 
-    private val db = R2dbcDatabase(connectionFactory)
+    val db = R2dbcDatabase(connectionFactory)
+
+    val stockHEROES = WorkData<Heroes>("HEROES")
 
     suspend fun runTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction { body.invoke(it) }
 
@@ -65,6 +69,9 @@ object R2DBC {
             db.runQuery { QueryDsl.create(tbl_participants) }
             db.runQuery { QueryDsl.create(tbl_heroes) }
         }
+        if (stockHEROES.bodyReset == null) stockHEROES.bodyReset = { getHeroes() }
+
+        LeagueMainObject.catchHeroNames()
     }
 
     suspend fun executeProcedure(command: String) {
@@ -167,7 +174,7 @@ object R2DBC {
             .firstOrNull()
         return db.withTransaction { db.runQuery { query } }
     }
-    suspend fun getHeroes(declaration: WhereDeclaration? = null) : List<Heroes> {
+    private suspend fun getHeroes(declaration: WhereDeclaration? = null) : List<Heroes> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_heroes) else QueryDsl.from(tbl_heroes).where(declaration) } }
     }
 
@@ -256,6 +263,9 @@ object R2DBC {
             }
         }
     }
+
+    suspend fun getHeroFromNameEN(nameEN: String) = getHeroesone({ tbl_heroes.nameEN eq nameEN})
+    suspend fun getHeroFromKey(key: String) = getHeroesone({ tbl_heroes.key eq key})
 
     suspend fun getKORDLOLs_forKORD(guilds: Guilds, kord: String) : KORDLOLs? {
         return db.withTransaction {

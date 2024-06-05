@@ -1,13 +1,13 @@
 package ru.descend.bot.postgre.calculating
 
 import ru.descend.bot.enums.EnumMMRRank
-import ru.descend.bot.lolapi.LeagueMainObject.catchHeroForId
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.datas.update
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.printLog
 import ru.descend.bot.to1Digits
 import kotlin.reflect.KMutableProperty1
@@ -33,7 +33,8 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 
             var isFighterTank = false
             var isMageSupport = false
-            catchHeroForId(participant.championId)?.let {
+
+            R2DBC.getHeroFromKey(participant.championId.toString())?.let {
                 if (it.tags.contains("Fighter") || it.tags.contains("Tank")) isFighterTank = true
                 if (it.tags.contains("Mage") || it.tags.contains("Support")) isMageSupport = true
             }

@@ -1,13 +1,16 @@
 package ru.descend.bot.minigame
 
-abstract class StockEffect(
-    var name: String,
-    val category: EnumPersonLifects
-) {
-    abstract fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?)
-    abstract fun removeEffect(current: Person, enemy: Person?, battleObj: BattleObject?)
+import kotlinx.serialization.Serializable
+
+@Serializable
+sealed class StockEffect {
+    abstract var name: String
+    abstract val category: EnumPersonLifects
+    open fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {}
+    open fun removeEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {}
 }
 
+@Serializable
 open class BaseApplyEffect(var name: String, val listEffects: Collection<StockEffect>) {
     fun invokeCategory(current: Person, enemy: Person?, battleObj: BattleObject?, category: EnumPersonLifects) {
         listEffects.filter { it.category == category }.forEach{ it.applyEffect(current, enemy, battleObj) }
@@ -15,8 +18,12 @@ open class BaseApplyEffect(var name: String, val listEffects: Collection<StockEf
 }
 
 /********************************/
-
-class EffectAdditionalDamage(var value: Double, category: EnumPersonLifects) : StockEffect("Бонусный урон", category) {
+@Serializable
+class EffectAdditionalDamage(
+    var value: Double,
+    override val category: EnumPersonLifects,
+    override var name: String = "Бонусный урон"
+) : StockEffect() {
     override fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {
         current.stats.attack.addEffectValue(AdditionalValue(hashCode().toString(), value))
     }
@@ -25,7 +32,12 @@ class EffectAdditionalDamage(var value: Double, category: EnumPersonLifects) : S
         current.stats.attack.removeEffectValue(hashCode().toString())
     }
 }
-class EffectAttackSpeedUP(var value: Double, category: EnumPersonLifects) : StockEffect("Увеличение скорости атаки", category) {
+@Serializable
+class EffectAttackSpeedUP(
+    var value: Double,
+    override val category: EnumPersonLifects,
+    override var name: String = "Увеличение скорости атаки"
+) : StockEffect() {
     override fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {
         current.stats.attackSpeed.setEffectValue(AdditionalValue(hashCode().toString(), -value))
     }
@@ -34,14 +46,24 @@ class EffectAttackSpeedUP(var value: Double, category: EnumPersonLifects) : Stoc
         current.stats.attackSpeed.removeEffectValue(hashCode().toString())
     }
 }
-class EffectHeal(var value: Double, category: EnumPersonLifects) : StockEffect("Восстановление здоровья", category) {
+@Serializable
+class EffectHeal(
+    var value: Double,
+    override val category: EnumPersonLifects,
+    override var name: String = "Восстановление здоровья"
+) : StockEffect() {
     override fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {
         current.stats.health.setEffectValue(AdditionalValue(hashCode().toString(), value))
     }
 
     override fun removeEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {}
 }
-class EffectDoubleDamageEveryAttack(var everyNAttack: Int, category: EnumPersonLifects = EnumPersonLifects.ON_BEFORE_DAMAGE) : StockEffect("Двойной удар", category) {
+@Serializable
+class EffectDoubleDamageEveryAttack(
+    var everyNAttack: Int,
+    override val category: EnumPersonLifects = EnumPersonLifects.ON_BEFORE_DAMAGE,
+    override var name: String = "Двойной удар"
+) : StockEffect() {
     private var counterAttack = 0
     private var isApplyed = false
     override fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {
@@ -62,16 +84,15 @@ class EffectDoubleDamageEveryAttack(var everyNAttack: Int, category: EnumPersonL
 
 /********************************/
 
-data class PersonEffects (
-    val person: Person
-) {
+@Serializable
+class PersonEffects {
     private val arrayEffects = ArrayList<BaseApplyEffect>()
 
     fun addEffect(effect: BaseApplyEffect) {
         arrayEffects.add(effect)
     }
 
-    fun initForBattle() {
+    fun initForBattle(person: Person) {
         person.listeners.onStartBattle.addListener { person1, person2, battleObj ->
             arrayEffects.forEach { it.invokeCategory(person1, person2, battleObj, EnumPersonLifects.ON_START_BATTLE) }
         }

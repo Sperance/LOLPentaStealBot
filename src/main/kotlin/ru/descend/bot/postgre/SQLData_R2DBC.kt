@@ -13,6 +13,7 @@ import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.datas.WorkData
 import ru.descend.bot.postgre.r2dbc.model.Guilds
+import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -41,6 +42,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     val dataSavedParticipants = WorkData<Participants>("SavedParticipants")
 
     fun initialize() {
+
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guildSQL.id } }
         if (dataKORD.bodyReset == null) dataKORD.bodyReset = { R2DBC.getKORDs { tbl_kords.guild_id eq guildSQL.id } }
         if (dataMMR.bodyReset == null) dataMMR.bodyReset = { R2DBC.getMMRs(null) }

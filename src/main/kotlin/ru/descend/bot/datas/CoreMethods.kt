@@ -56,8 +56,14 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.update() : 
     return result as TYPE
 }
 
+data class CoreResult <T> (
+    val message: String = "",
+    val bit: Boolean,
+    val result: T
+)
+
 @Suppress("UNCHECKED_CAST")
-suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kProperty1: KMutableProperty1<TYPE, *>): TYPE {
+suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kProperty1: KMutableProperty1<TYPE, *>): CoreResult<TYPE> {
     val metaTable = getInstanceClassForTbl(this) as META
 
     val metaProperty = metaTable.properties().find { it.name == kProperty1.name } as PropertyMetamodel<Any, Any, META>
@@ -68,13 +74,13 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kPro
     }.firstOrNull()
 
     if (already != null) {
-        printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this - already having in SQL")
-        return already as TYPE
+//        printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this - already having in SQL")
+        return CoreResult(bit = false, result = already as TYPE)
     }
 
     val result = R2DBC.runQuery { QueryDsl.insert(metaTable).single(this@create) }
     printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $result")
-    return result as TYPE
+    return CoreResult(bit = true, result = result as TYPE)
 }
 
 @Suppress("UNCHECKED_CAST")

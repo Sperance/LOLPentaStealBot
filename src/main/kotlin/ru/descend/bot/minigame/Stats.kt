@@ -1,64 +1,64 @@
 package ru.descend.bot.minigame
 
-interface IntStatBattle {
-    fun initForBattle()
-}
+import kotlinx.serialization.Serializable
 
 /**
  * Здоровье персонажа
  */
-class Health(val person: Person) : Property(EnumPropName.HEALTH), IntStatBattle {
-    init {
-        onChangeListeners.addListener {
-            if (get() <= minimumValue) {
-                person.personBlobs.isAlive.set(false)
-                person.listeners.onDie.invokeEach(null, null)
-            }
-        }
-    }
-
-    override fun initForBattle() {
+@Serializable
+class Health : Property(EnumPropName.HEALTH) {
+    override fun initForBattle(person: Person) {
         maximumValue = get()
         setStock(maximumValue!!)
+
+        onChangeListeners.addListener {
+            println("hero: ${person.name} value: ${it.get()}")
+            if (it.get() == it.minimumValue) {
+                person.personBlobs.isAlive.set(false)
+            }
+        }
     }
 }
 
 /**
  * Атака персонажа
  */
-class Attack(val person: Person) : Property(EnumPropName.ATTACK), IntStatBattle {
-    override fun initForBattle() {
-
+@Serializable
+class Attack : Property(EnumPropName.ATTACK) {
+    override fun initForBattle(person: Person) {
+        maximumValue = get()
+        setStock(maximumValue!!)
     }
 }
 
 /**
  * Скорость атаки персонажа
  */
-class AttackSpeed(val person: Person) : Property(EnumPropName.ATTACK_SPEED), IntStatBattle {
-    override fun change(newValue: Number) {
-        var settingValue = newValue.toDouble()
-        if (!person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.maxAttackSpeed.value) {
-            settingValue = person.personValues.maxAttackSpeed.value
-            maximumValue = settingValue
-        }
-        if (person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.CONSTmaxAttackSpeed.value) {
-            settingValue = person.personValues.CONSTmaxAttackSpeed.value
-            maximumValue = settingValue
-        }
-        super.change(settingValue)
-    }
-    override fun initForBattle() {
+@Serializable
+class AttackSpeed : Property(EnumPropName.ATTACK_SPEED) {
+//    override fun change(newValue: Number) {
+//        var settingValue = newValue.toDouble()
+//        if (!person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.maxAttackSpeed.value) {
+//            settingValue = person.personValues.maxAttackSpeed.value
+//            maximumValue = settingValue
+//        }
+//        if (person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.CONSTmaxAttackSpeed.value) {
+//            settingValue = person.personValues.CONSTmaxAttackSpeed.value
+//            maximumValue = settingValue
+//        }
+//        super.change(settingValue)
+//    }
+    override fun initForBattle(person: Person) {
         maximumValue = get()
         setStock(maximumValue!!)
     }
 }
 
+@Serializable
 data class PersonStats (
-    val person: Person,
-    val health: Health = Health(person),
-    val attack: Attack = Attack(person),
-    val attackSpeed: AttackSpeed = AttackSpeed(person)
+    val health: Health = Health(),
+    val attack: Attack = Attack(),
+    val attackSpeed: AttackSpeed = AttackSpeed()
 ) {
     fun addForItems(stat: BaseProperty) {
         PersonStats::class.java.declaredFields.forEach {
@@ -69,10 +69,10 @@ data class PersonStats (
             }
         }
     }
-    fun initForBattle() {
-        health.initForBattle()
-        attack.initForBattle()
-        attackSpeed.initForBattle()
+    fun initForBattle(person: Person) {
+        health.initForBattle(person)
+        attack.initForBattle(person)
+        attackSpeed.initForBattle(person)
     }
 }
 

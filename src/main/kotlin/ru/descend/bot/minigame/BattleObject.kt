@@ -54,8 +54,6 @@ class BattleObject(private val person1: Person, private val person2: Person) {
         val fromAttack = current.stats.attack.get()
         enemy.stats.health.remStock(fromAttack)
         println("${current.name} атаковал ${enemy.name} на $fromAttack со скоростью ${current.stats.attackSpeed.get()}. Текущее ХП: ${current.stats.health.get()} Осталось жизней у ${enemy.name} : ${enemy.stats.health.get()}")
-        println("person: ${current.stats.health}")
-        println("item: ${(current.items.first() as EquipItem).stats}\n")
         current.listeners.onDealDamage.invokeEach(enemy, this)
         enemy.listeners.onTakeDamage.invokeEach(current, this)
         return true

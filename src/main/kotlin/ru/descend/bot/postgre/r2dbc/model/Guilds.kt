@@ -64,7 +64,7 @@ data class Guilds(
         curGuild.idGuild = value.id.value.toString()
         curGuild.name = value.name
         curGuild.description = value.description ?: ""
-        return curGuild.create(Guilds::idGuild)
+        return curGuild.create(Guilds::idGuild).result
     }
 
     override fun toString(): String {

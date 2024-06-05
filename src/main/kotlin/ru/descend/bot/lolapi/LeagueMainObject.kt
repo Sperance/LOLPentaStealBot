@@ -3,6 +3,7 @@ package ru.descend.bot.lolapi
 import kotlinx.coroutines.delay
 import ru.descend.bot.catchToken
 import ru.descend.bot.datas.Result
+import ru.descend.bot.datas.create
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
@@ -10,6 +11,9 @@ import ru.descend.bot.lolapi.dto.MatchTimelineDTO
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.lolapi.dto.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
+import ru.descend.bot.postgre.R2DBC
+import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.writeLog
@@ -22,24 +26,24 @@ object LeagueMainObject {
     val dragonService = leagueApi.dragonService
     val leagueService = leagueApi.leagueService
 
-    var heroObjects = ArrayList<InterfaceChampionBase>()
-    var heroRuNames = ArrayList<String>()
+//    var heroObjects = ArrayList<InterfaceChampionBase>()
+//    var heroRuNames = ArrayList<String>()
 
     var LOL_VERSION = ""
 
-    fun catchHeroForId(id: Int?) : InterfaceChampionBase? {
-        heroObjects.forEach {
-            if (it.key.lowercase() == id.toString().lowercase()) return it
-        }
-        return null
-    }
-
-    fun catchHeroForName(name: String) : InterfaceChampionBase? {
-        heroObjects.forEach {
-            if (it.id.lowercase() == name.lowercase()) return it
-        }
-        return null
-    }
+//    fun catchHeroForId(id: Int?) : InterfaceChampionBase? {
+//        heroObjects.forEach {
+//            if (it.key.lowercase() == id.toString().lowercase()) return it
+//        }
+//        return null
+//    }
+//
+//    fun catchHeroForName(name: String) : InterfaceChampionBase? {
+//        heroObjects.forEach {
+//            if (it.id.lowercase() == name.lowercase()) return it
+//        }
+//        return null
+//    }
 
     suspend fun catchHeroNames() {
 
@@ -59,19 +63,24 @@ object LeagueMainObject {
             }
         }
 
-        heroRuNames.clear()
-        heroObjects.clear()
+//        heroRuNames.clear()
+//        heroObjects.clear()
+        val heroes = R2DBC.stockHEROES.get()
         champions.data::class.java.declaredFields.forEach {
             it.isAccessible = true
             val curData = it.get(champions.data) as InterfaceChampionBase
-            heroObjects.add(curData)
-            val nameField = curData.name
-            heroRuNames.add(nameField)
+//            heroObjects.add(curData)
+//            val nameField = curData.name
+//            heroRuNames.add(nameField)
+
+            if (heroes.find { hero -> hero.key == curData.key } == null) {
+                Heroes(nameEN = curData.id, nameRU = curData.name, tags = curData.tags.joinToString(), key = curData.key).create(Heroes::key)
+            }
         }
 
         LOL_VERSION = champions.version
 
-        printLog("Version Data: ${champions.version} Heroes: ${heroRuNames.size}")
+        printLog("Version Data: ${champions.version} Heroes: ${heroes.size}")
     }
 
     suspend fun catchMatchID(puuid: String, summonerName: String, start: Int, count: Int, agained: Boolean = false) : List<String> {
@@ -188,8 +197,8 @@ object LeagueMainObject {
         }
     }
 
-    fun findHeroForKey(key: String) : String {
-        val returnObj = heroObjects.find { (it as InterfaceChampionBase).key == key } as InterfaceChampionBase?
-        return returnObj?.name ?: "<Not Find>"
-    }
+//    fun findHeroForKey(key: String) : String {
+//        val returnObj = heroObjects.find { (it as InterfaceChampionBase).key == key } as InterfaceChampionBase?
+//        return returnObj?.name ?: "<Not Find>"
+//    }
 }
