@@ -69,12 +69,15 @@ open class Property (
             result += it.value
             sumPercent += it.percent
         }
-        return result.addPercent(stockPercent + sumPercent)
+        val finalResult = result.addPercent(stockPercent + sumPercent)
+//        println("res: $finalResult")
+        return checkMinMax(finalResult)
     }
 
-    private fun checkMinMax() {
-        if (value <= minimumValue) value = minimumValue
-        if (maximumValue != null && value > maximumValue!!) value = maximumValue!!
+    private fun checkMinMax(obj: Double) : Double {
+        if (obj <= minimumValue) return minimumValue
+        if (maximumValue != null && obj > maximumValue!!) return maximumValue!!
+        return value
     }
 
     fun setEffectValue(obj: AdditionalValue) {
@@ -110,24 +113,23 @@ open class Property (
         this.stockPercent += prop.stockPercent
     }
 
-    open fun setStock(obj: Number) {
-        change(obj.toDouble())
+    open fun setStock(obj: Number, invokeListener: Boolean = true) {
+        change(obj.toDouble(), invokeListener)
     }
-    open fun addStock(obj: Number) {
-        change(value + obj.toDouble())
+    open fun addStock(obj: Number, invokeListener: Boolean = true) {
+        change(value + obj.toDouble(), invokeListener)
     }
-    open fun remStock(obj: Number) {
-        change(value - obj.toDouble())
+    open fun remStock(obj: Number, invokeListener: Boolean = true) {
+        change(value - obj.toDouble(), invokeListener)
     }
 
-    open fun change(newValue: Number) {
+    open fun change(newValue: Number, invokeListener: Boolean = true) {
         value = newValue.toDouble()
-        checkMinMax()
-        onChangeListeners.invokeEach(this)
+        if (invokeListener) onChangeListeners.invokeEach(this)
     }
 
     override fun toString(): String {
-        return "Property(name=$name, value=$value minimumValue=$minimumValue, maximumValue=$maximumValue, percent=$stockPercent, additionals=$arrayAdditionals)"
+        return "Property(name=$name, get=${get()} value=$value minimumValue=$minimumValue, maximumValue=$maximumValue, percent=$stockPercent, additionals=$arrayAdditionals)"
     }
 }
 

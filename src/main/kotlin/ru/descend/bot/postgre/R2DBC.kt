@@ -45,7 +45,7 @@ object R2DBC {
         .option(ConnectionFactoryOptions.DATABASE, "postgres2")
         .build()
 
-    val db = R2dbcDatabase(connectionFactory)
+    private val db = R2dbcDatabase(connectionFactory)
 
     val stockHEROES = WorkData<Heroes>("HEROES")
 
@@ -178,11 +178,11 @@ object R2DBC {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_heroes) else QueryDsl.from(tbl_heroes).where(declaration) } }
     }
 
-    suspend fun getLOLone(declaration: WhereDeclaration = { tbl_lols.id greaterEq 0}, first: Boolean = true) : LOLs? {
-        val sortExpr = if (first) tbl_lols.id else tbl_lols.id.desc()
+    suspend fun getLOLone(declaration: WhereDeclaration = { tbl_lols.id greaterEq 0}, sortExpression: SortExpression = tbl_lols.id) : LOLs? {
         val query = QueryDsl.from(tbl_lols)
             .where(declaration)
-            .orderBy(sortExpr)
+            .orderBy(sortExpression)
+            .limit(1)
             .firstOrNull()
         return db.withTransaction { db.runQuery { query } }
     }
@@ -235,11 +235,11 @@ object R2DBC {
         }
     }
 
-    suspend fun getMatchOne(declaration: WhereDeclaration = { tbl_matches.id greaterEq 0}, first: Boolean = true) : Matches? {
-        val sortExpr = if (first) tbl_matches.id else tbl_matches.id.desc()
+    suspend fun getMatchOne(declaration: WhereDeclaration = { tbl_matches.id greaterEq 0}, sortExpression: SortExpression = tbl_matches.id) : Matches? {
         val query = QueryDsl.from(tbl_matches)
             .where(declaration)
-            .orderBy(sortExpr)
+            .orderBy(sortExpression)
+            .limit(1)
             .firstOrNull()
         return db.withTransaction { db.runQuery { query } }
     }

@@ -38,8 +38,12 @@ class EffectAttackSpeedUP(
     override val category: EnumPersonLifects,
     override var name: String = "Увеличение скорости атаки"
 ) : StockEffect() {
+
+    private var stackEffect = 0.0
+
     override fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {
-        current.stats.attackSpeed.setEffectValue(AdditionalValue(hashCode().toString(), -value))
+        stackEffect -= value
+        current.stats.attackSpeed.setEffectValue(AdditionalValue(hashCode().toString(), stackEffect))
     }
 
     override fun removeEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {

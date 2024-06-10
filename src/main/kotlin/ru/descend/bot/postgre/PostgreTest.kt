@@ -12,6 +12,7 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import org.junit.Test
 import org.komapper.core.dsl.QueryDsl
+import org.komapper.core.dsl.operator.desc
 import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.bind
 import org.komapper.core.dsl.query.double
@@ -156,10 +157,12 @@ class PostgreTest {
     )
 
     @Test
-    fun test_get_last() {
+    fun test_sort_expressions() {
         runBlocking {
-            val lolobj = R2DBC.getLOLone(declaration = {tbl_lols.LOL_summonerLevel greaterEq 1000}, first = false)
-            println("lol id: ${lolobj?.id} level: ${lolobj?.LOL_summonerLevel}")
+            val user = R2DBC.getLOLone(declaration = { tbl_lols.last_loaded.eq(0) ; tbl_lols.LOL_region.eq("RU") }, sortExpression = tbl_lols.id.desc())
+            println("user id: ${user?.id}")
+            val user2 = R2DBC.getLOLone(declaration = { tbl_lols.last_loaded.eq(0) ; tbl_lols.LOL_region.eq("RU") }, sortExpression = tbl_lols.id.desc())
+            println("user2 id: ${user2?.id}")
         }
     }
 

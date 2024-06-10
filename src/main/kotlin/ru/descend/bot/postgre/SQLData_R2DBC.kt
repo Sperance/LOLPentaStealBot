@@ -24,6 +24,7 @@ import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
+import ru.descend.bot.printLog
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
 data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
@@ -157,7 +158,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return mapWinStreak
     }
 
-    suspend fun loadMatches(lols: Collection<LOLs>, count: Int, mainOrder: Boolean, maxLimit: Int? = null) : Int {
+    suspend fun loadMatches(lols: Collection<LOLs>, count: Int, mainOrder: Boolean) : Int {
         val checkMatches = ArrayList<String>()
         var newMatchesCount = 0
         lols.forEach {
@@ -166,20 +167,16 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
-        newMatchesCount += loadArrayMatches(checkMatches, mainOrder, maxLimit)
+        newMatchesCount += loadArrayMatches(checkMatches, mainOrder)
         return newMatchesCount
     }
 
-    suspend fun loadArrayMatches(checkMatches: ArrayList<String>, mainOrder: Boolean, maxLimit: Int? = null) : Int {
+    suspend fun loadArrayMatches(checkMatches: ArrayList<String>, mainOrder: Boolean) : Int {
         var counter = 0
         R2DBC.runTransaction {
             val listChecked = getNewMatches(checkMatches)
+            printLog("loading size: ${listChecked.size}")
             listChecked.sortBy { it }
-            if (maxLimit != null && listChecked.size > maxLimit) {
-                for (i in 1..maxLimit - listChecked.size) {
-                    listChecked.removeFirst()
-                }
-            }
             listChecked.forEach { newMatch ->
                 LeagueMainObject.catchMatch(newMatch)?.let { match ->
                     addMatch(match, mainOrder)

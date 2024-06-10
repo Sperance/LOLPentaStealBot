@@ -226,6 +226,16 @@ fun String?.toMaxSymbols(symbols: Int, addIfCatched: String = "") : String {
     return this.substring(0, symbols) + addIfCatched
 }
 
+inline fun <reified T> Any.listFields() : ArrayList<T> {
+    val array = ArrayList<T>()
+    this::class.java.declaredFields.forEach {
+        it.isAccessible = true
+        val itField = it.get(this)
+        if (itField is T) array.add(itField as T)
+    }
+    return array
+}
+
 fun User.toStringUID() = id.value.toString()
 
 suspend fun User.checkRoleForName(guild: Guild, name: String): Boolean {

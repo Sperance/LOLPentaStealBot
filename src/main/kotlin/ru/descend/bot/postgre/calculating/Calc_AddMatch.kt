@@ -150,7 +150,7 @@ data class Calc_AddMatch (
             calculateMMR(pMatch, isSurrender, isBots, kordLol)
         }
         if (!mainOrder) {
-            sqlData.textNewMatches.appendLine("${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n", pMatch.id.toString(), pMatch.matchId)
+            sqlData.textNewMatches.appendLine("${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n", pMatch.id.toString())
         }
 
         return pMatch

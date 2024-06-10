@@ -29,7 +29,8 @@ data class LOLs(
     var LOL_riotIdTagline: String? = "",
     var LOL_region: String? = "",
     var LOL_summonerLevel: Int = 1,
-    var profile_icon: Int = 0
+    var profile_icon: Int = 0,
+    var last_loaded: Long = 0,
 ) {
 
     companion object {

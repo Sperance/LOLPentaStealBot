@@ -1,6 +1,7 @@
 package ru.descend.bot.minigame
 
 import kotlinx.serialization.Serializable
+import ru.descend.bot.listFields
 
 /**
  * Здоровье персонажа
@@ -12,7 +13,6 @@ class Health : Property(EnumPropName.HEALTH) {
         setStock(maximumValue!!)
 
         onChangeListeners.addListener {
-            println("hero: ${person.name} value: ${it.get()}")
             if (it.get() == it.minimumValue) {
                 person.personBlobs.isAlive.set(false)
             }
@@ -49,8 +49,21 @@ class AttackSpeed : Property(EnumPropName.ATTACK_SPEED) {
 //        super.change(settingValue)
 //    }
     override fun initForBattle(person: Person) {
+        minimumValue = person.personValues.CONSTmaxAttackSpeed.value
         maximumValue = get()
         setStock(maximumValue!!)
+        println("init stock $maximumValue")
+
+        onChangeListeners.addListener {
+            var settingValue = it.get()
+            if (!person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.maxAttackSpeed.value) {
+                settingValue = person.personValues.maxAttackSpeed.value
+                maximumValue = settingValue
+                println("limited 1 set $settingValue")
+            }
+            setStock(settingValue, false)
+            println("set stock $settingValue")
+        }
     }
 }
 
@@ -61,18 +74,16 @@ data class PersonStats (
     val attackSpeed: AttackSpeed = AttackSpeed()
 ) {
     fun addForItems(stat: BaseProperty) {
-        PersonStats::class.java.declaredFields.forEach {
-            it.isAccessible = true
-            val itField = it.get(this)
+        listFields<BaseProperty>().forEach {itField ->
             if (itField is Property && itField.name == stat.name) {
                 itField.addForItem(stat)
             }
         }
     }
     fun initForBattle(person: Person) {
-        health.initForBattle(person)
-        attack.initForBattle(person)
-        attackSpeed.initForBattle(person)
+        listFields<Property>().forEach {
+            it.initForBattle(person)
+        }
     }
 }
 
