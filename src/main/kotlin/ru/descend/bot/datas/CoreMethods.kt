@@ -63,23 +63,24 @@ data class CoreResult <T> (
 )
 
 @Suppress("UNCHECKED_CAST")
-suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kProperty1: KMutableProperty1<TYPE, *>): CoreResult<TYPE> {
+suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kProperty1: KMutableProperty1<TYPE, *>?, appendText: String = ""): CoreResult<TYPE> {
     val metaTable = getInstanceClassForTbl(this) as META
 
-    val metaProperty = metaTable.properties().find { it.name == kProperty1.name } as PropertyMetamodel<Any, Any, META>
-    val already = R2DBC.runQuery {
-        QueryDsl.from(metaTable)
-            .where { metaProperty eq kProperty1.get(this@create) }
-            .limit(1)
-    }.firstOrNull()
+    if (kProperty1 != null) {
+        val metaProperty = metaTable.properties().find { it.name == kProperty1.name } as PropertyMetamodel<Any, Any, META>
+        val already = R2DBC.runQuery {
+            QueryDsl.from(metaTable)
+                .where { metaProperty eq kProperty1.get(this@create) }
+                .limit(1)
+        }.firstOrNull()
 
-    if (already != null) {
-//        printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this - already having in SQL")
-        return CoreResult(bit = false, result = already as TYPE)
+        if (already != null) {
+            return CoreResult(bit = false, result = already as TYPE)
+        }
     }
 
     val result = R2DBC.runQuery { QueryDsl.insert(metaTable).single(this@create) }
-    printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $result")
+    printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}]$appendText $result")
     return CoreResult(bit = true, result = result as TYPE)
 }
 

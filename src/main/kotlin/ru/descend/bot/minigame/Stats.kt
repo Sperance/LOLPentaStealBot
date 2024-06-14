@@ -3,9 +3,6 @@ package ru.descend.bot.minigame
 import kotlinx.serialization.Serializable
 import ru.descend.bot.listFields
 
-/**
- * Здоровье персонажа
- */
 @Serializable
 class Health : Property(EnumPropName.HEALTH) {
     override fun initForBattle(person: Person) {
@@ -20,9 +17,6 @@ class Health : Property(EnumPropName.HEALTH) {
     }
 }
 
-/**
- * Атака персонажа
- */
 @Serializable
 class Attack : Property(EnumPropName.ATTACK) {
     override fun initForBattle(person: Person) {
@@ -31,39 +25,25 @@ class Attack : Property(EnumPropName.ATTACK) {
     }
 }
 
-/**
- * Скорость атаки персонажа
- */
 @Serializable
 class AttackSpeed : Property(EnumPropName.ATTACK_SPEED) {
-//    override fun change(newValue: Number) {
-//        var settingValue = newValue.toDouble()
-//        if (!person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.maxAttackSpeed.value) {
-//            settingValue = person.personValues.maxAttackSpeed.value
-//            maximumValue = settingValue
-//        }
-//        if (person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.CONSTmaxAttackSpeed.value) {
-//            settingValue = person.personValues.CONSTmaxAttackSpeed.value
-//            maximumValue = settingValue
-//        }
-//        super.change(settingValue)
-//    }
     override fun initForBattle(person: Person) {
-        minimumValue = person.personValues.CONSTmaxAttackSpeed.value
+        maximumValue = 5.0
+    }
+}
+@Serializable
+class Energy : Property(EnumPropName.ENERGY) {
+    override fun initForBattle(person: Person) {
         maximumValue = get()
         setStock(maximumValue!!)
-        println("init stock $maximumValue")
+    }
+}
 
-        onChangeListeners.addListener {
-            var settingValue = it.get()
-            if (!person.personBlobs.enableCONSTmaxAttackSpeed.get() && settingValue < person.personValues.maxAttackSpeed.value) {
-                settingValue = person.personValues.maxAttackSpeed.value
-                maximumValue = settingValue
-                println("limited 1 set $settingValue")
-            }
-            setStock(settingValue, false)
-            println("set stock $settingValue")
-        }
+@Serializable
+class Mana : Property(EnumPropName.MANA) {
+    override fun initForBattle(person: Person) {
+        maximumValue = get()
+        setStock(maximumValue!!)
     }
 }
 
@@ -71,7 +51,9 @@ class AttackSpeed : Property(EnumPropName.ATTACK_SPEED) {
 data class PersonStats (
     val health: Health = Health(),
     val attack: Attack = Attack(),
-    val attackSpeed: AttackSpeed = AttackSpeed()
+    val attackSpeed: AttackSpeed = AttackSpeed(),
+    val energy: Energy = Energy(),
+    val mana: Mana = Mana(),
 ) {
     fun addForItems(stat: BaseProperty) {
         listFields<BaseProperty>().forEach {itField ->

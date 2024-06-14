@@ -416,11 +416,9 @@ fun arguments() = commands("Arguments") {
             LOL = R2DBC.getLOLs { tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }.firstOrNull() ?: LOL.create(LOLs::LOL_puuid).result
 
             //Проверка что к пользователю уже привязан какой-либо аккаунт лиги
-            val alreadyKORDLOL =
-                R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id }
-                    .firstOrNull()
+            val alreadyKORDLOL = R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id; tbl_kordlols.LOL_id eq LOL.id }.firstOrNull()
             if (alreadyKORDLOL != null) {
-                respond("Призыватель $summonerName#$tagLine уже связан с аккаунтом лиги легенд (KORDLOL: ${alreadyKORDLOL.id}). Для внесения изменений - сначала удалите из базы пользователя ${user.lowDescriptor()}")
+                respond("Призыватель уже связан с аккаунтом лиги легенд (KORDLOL: ${alreadyKORDLOL.id}). Для внесения изменений - сначала удалите из базы пользователя ${user.lowDescriptor()}")
                 return@execute
             }
 
@@ -431,14 +429,13 @@ fun arguments() = commands("Arguments") {
                     guild_id = guilds.id
                 )
 
-                val resultData = KORDLOL.create(KORDLOLs::KORD_id).result
+                val resultData = KORDLOL.create(null).result
                 val arrayData = ArrayList<KORDLOLs>()
                 arrayData.addAll(R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guilds.id })
                 arrayData.sortBy { data -> data.showCode }
                 resultData.showCode = arrayData.last().showCode + 1
                 resultData.update()
             }
-            mapMainData[guild]!!.isNeedUpdateDatas = true
             mapMainData[guild]!!.isNeedUpdateDays = true
             respond("Пользователь ${user.lowDescriptor()} успешно связан с учётной записью ${LOL.getCorrectName()}")
         }

@@ -155,13 +155,13 @@ object R2DBC {
                 miniList.add(value)
                 if (miniList.size == batchSize) {
                     val res = db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
-                    res.forEach { printLog("[Batch_Participants::save] $it") }
+                    res.forEach { printLog("\t[Batch_Participants::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
                 val res = db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
-                res.forEach { printLog("[Batch_Participants::save] $it") }
+                res.forEach { printLog("\t[Batch_Participants::save] $it") }
             }
         }
     }
@@ -184,6 +184,13 @@ object R2DBC {
             .orderBy(sortExpression)
             .limit(1)
             .firstOrNull()
+        return db.withTransaction { db.runQuery { query } }
+    }
+    suspend fun getLOLmany(declaration: WhereDeclaration = { tbl_lols.id greaterEq 0}, sortExpression: SortExpression = tbl_lols.id, limit: Int) : List<LOLs> {
+        val query = QueryDsl.from(tbl_lols)
+            .where(declaration)
+            .orderBy(sortExpression)
+            .limit(limit)
         return db.withTransaction { db.runQuery { query } }
     }
     suspend fun getLOLs(declaration: WhereDeclaration) : List<LOLs> {

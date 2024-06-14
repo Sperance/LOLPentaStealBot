@@ -1,5 +1,6 @@
 package ru.descend.bot.postgre
 
+import co.touchlab.stately.concurrency.AtomicInt
 import dev.kord.core.entity.Guild
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
@@ -12,6 +13,8 @@ import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.datas.WorkData
+import ru.descend.bot.datas.toDate
+import ru.descend.bot.datas.toLocalDate
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
@@ -25,15 +28,20 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.printLog
+import java.util.Date
+import java.util.concurrent.atomic.AtomicInteger
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
 data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
-    var isNeedUpdateDatas = false
     var isNeedUpdateDays = false
+    var updatesBeforeLoadUsersMatch = 0
     var textNewMatches = TextDicrordLimit()
+    var olderDateLong = Date().time.toLocalDate().minusDays(60).toDate().time
+    var currentDateLong = Date().time
+    val atomicIntLoaded = AtomicInteger()
 
     val dataKORDLOL = WorkData<KORDLOLs>("KORDLOL")
     val dataKORD = WorkData<KORDs>("KORD")
@@ -43,7 +51,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     val dataSavedParticipants = WorkData<Participants>("SavedParticipants")
 
     fun initialize() {
-
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guildSQL.id } }
         if (dataKORD.bodyReset == null) dataKORD.bodyReset = { R2DBC.getKORDs { tbl_kords.guild_id eq guildSQL.id } }
         if (dataMMR.bodyReset == null) dataMMR.bodyReset = { R2DBC.getMMRs(null) }
@@ -61,6 +68,13 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 R2DBC.runQuery(QueryDsl.from(tbl_participants).where { tbl_participants.LOLperson_id.inList(kordLol_lol_id) })
             }
         }
+    }
+
+    fun clearTempData() {
+        textNewMatches.clear()
+        atomicIntLoaded.set(0)
+        olderDateLong = Date().time.toLocalDate().minusDays(60).toDate().time
+        currentDateLong = Date().time
     }
 
     suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
@@ -122,21 +136,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         val newMatch = Calc_AddMatch(this, match, getKORDLOL())
         newMatch.calculate(mainOrder)
         if (mainOrder) {
-            val checkMatches = ArrayList<String>()
             val othersLOLS = newMatch.arrayOtherLOLs
-            othersLOLS.forEach {
-                if (it.LOL_puuid == "") return@forEach
-                LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, 6).forEach ff@{ matchId ->
-                    if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
-                }
-            }
-            val listChecked = getNewMatches(checkMatches)
-            listChecked.sortBy { it }
-            listChecked.forEach { newMatchs ->
-                LeagueMainObject.catchMatch(newMatchs)?.let { match ->
-                    addMatch(match, false)
-                }
-            }
+            loadMatches(othersLOLS, 5, false)
         }
     }
 
@@ -158,33 +159,31 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return mapWinStreak
     }
 
-    suspend fun loadMatches(lols: Collection<LOLs>, count: Int, mainOrder: Boolean) : Int {
+    suspend fun loadMatches(lols: Collection<LOLs>, count: Int, mainOrder: Boolean) {
         val checkMatches = ArrayList<String>()
-        var newMatchesCount = 0
         lols.forEach {
             if (it.LOL_puuid == "") return@forEach
+            atomicIntLoaded.incrementAndGet()
+//            printLog("\t[loadMatches] atom: ${atomicIntLoaded.incrementAndGet()}")
             LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, count).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
-        newMatchesCount += loadArrayMatches(checkMatches, mainOrder)
-        return newMatchesCount
+        loadArrayMatches(checkMatches, mainOrder)
     }
 
-    suspend fun loadArrayMatches(checkMatches: ArrayList<String>, mainOrder: Boolean) : Int {
-        var counter = 0
+    suspend fun loadArrayMatches(checkMatches: ArrayList<String>, mainOrder: Boolean) {
         R2DBC.runTransaction {
             val listChecked = getNewMatches(checkMatches)
-            printLog("loading size: ${listChecked.size}")
             listChecked.sortBy { it }
             listChecked.forEach { newMatch ->
+                atomicIntLoaded.incrementAndGet()
+//                printLog("\t[loadArrayMatches] atom: ${atomicIntLoaded.incrementAndGet()}")
                 LeagueMainObject.catchMatch(newMatch)?.let { match ->
                     addMatch(match, mainOrder)
-                    counter++
                 }
             }
         }
-        return counter
     }
 
     suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {

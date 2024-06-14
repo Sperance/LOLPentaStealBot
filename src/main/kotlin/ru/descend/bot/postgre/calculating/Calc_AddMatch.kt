@@ -66,7 +66,7 @@ data class Calc_AddMatch (
             bots = isBots,
             region = match.metadata.matchId.substringBefore("_"),
             surrender = isSurrender
-        ).create(Matches::matchId)
+        ).create(Matches::matchId, "[atom:${sqlData.atomicIntLoaded.get()}]")
 
         if (!pMatchResult.bit) return pMatchResult.result
         val pMatch = pMatchResult.result
@@ -129,7 +129,8 @@ data class Calc_AddMatch (
                     curLOL.LOL_riotIdTagline = part.riotIdTagline
                     curLOL.LOL_region = pMatch.getRegionValue()
                     curLOL.LOL_summonerId = part.summonerId
-                    curLOL.LOL_riotIdName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName
+                    val newName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName
+                    if (newName != "null") curLOL.LOL_riotIdName = newName
                     curLOL.LOL_summonerLevel = part.summonerLevel
                     curLOL.profile_icon = part.profileIcon
                     curLOL = curLOL.update()
@@ -146,7 +147,6 @@ data class Calc_AddMatch (
         R2DBC.addBatchParticipants(arrayNewParts)
 
         if (isNeedCalcMMR) {
-            sqlData.isNeedUpdateDatas = true
             calculateMMR(pMatch, isSurrender, isBots, kordLol)
         }
         if (!mainOrder) {

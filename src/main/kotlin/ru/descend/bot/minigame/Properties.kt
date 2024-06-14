@@ -40,6 +40,8 @@ open class StockProperty (
 enum class EnumPropName(val nameProperty: String) {
     UNDEFINED(""),
     HEALTH("Здоровье"),
+    MANA("Мана"),
+    ENERGY("Энергия"),
     ATTACK("Атака"),
     ATTACK_SPEED("Скорость атаки"),
 }
@@ -57,8 +59,8 @@ open class Property (
 
     @Transient private val arrayAdditionals = ArrayList<AdditionalValue>()
 
-    @Transient var minimumValue: Double = 0.0
     @Transient var maximumValue: Double? = null
+    @Transient var minimumValue: Double = 0.0
     @Transient val onChangeListeners = BaseListener<Property>()
     open fun initForBattle(person: Person) {}
 
@@ -70,14 +72,13 @@ open class Property (
             sumPercent += it.percent
         }
         val finalResult = result.addPercent(stockPercent + sumPercent)
-//        println("res: $finalResult")
         return checkMinMax(finalResult)
     }
 
     private fun checkMinMax(obj: Double) : Double {
         if (obj <= minimumValue) return minimumValue
         if (maximumValue != null && obj > maximumValue!!) return maximumValue!!
-        return value
+        return obj
     }
 
     fun setEffectValue(obj: AdditionalValue) {
@@ -129,7 +130,7 @@ open class Property (
     }
 
     override fun toString(): String {
-        return "Property(name=$name, get=${get()} value=$value minimumValue=$minimumValue, maximumValue=$maximumValue, percent=$stockPercent, additionals=$arrayAdditionals)"
+        return "Property(name=$name, get=${get()} value=$value, maximumValue=$maximumValue, percent=$stockPercent, additionals=$arrayAdditionals)"
     }
 }
 

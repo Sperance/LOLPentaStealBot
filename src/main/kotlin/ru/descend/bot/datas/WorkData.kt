@@ -31,7 +31,6 @@ class WorkData<T>(val nameObject: String) {
         listData.clear()
         listData.addAll(bodyReset?.invoke()?: listOf())
         val afterCounter = listData.size
-        printLog("[$nameObject::reset] $beforeCounter -> $afterCounter")
     }
 
     override fun equals(other: Any?): Boolean {

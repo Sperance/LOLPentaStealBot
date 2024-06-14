@@ -202,7 +202,7 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         }
 
         //лимит на минимальное снятие
-        val minRemoved = (1 + rank.rankValue * 0.5).to1Digits()
+        val minRemoved = (rank.rankValue * 0.5).to1Digits()
         if (value < minRemoved) {
             mmrEmailText += "[calcRemoveMMR] попытка снять меньше ММР(${value.to1Digits()} чем минимальный лимит по рангу: $minRemoved (rankValue:${rank.rankValue} * 0.5). Снимаем лимит.\n"
             value = minRemoved
@@ -242,6 +242,11 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
         if (participant.kills4 > 0) {
             mmrEmailText += "[calcAddSavedMMR] сделано Квадр: ${participant.kills4}\n"
             addSavedMMR += participant.kills4 * 2.0
+        }
+
+        if (participant.win) {
+            mmrEmailText += "[calcAddSavedMMR] из-за Победы зачисляем 0.5 ММР бонуса\n"
+            addSavedMMR += 0.5
         }
 
         if (addSavedMMR > limitMMR) {
@@ -320,17 +325,17 @@ class Calc_MMR(private var sqlData: SQLData_R2DBC, private var participant: Part
 
     private fun Double.fromDoublePerc(stock: Double): Double {
         return when ((this / stock) * 100.0) {
-            in Double.MIN_VALUE..10.0 -> 0.0
-            in 10.0..30.0 -> 0.2
-            in 30.0..50.0 -> 0.4
-            in 50.0..70.0 -> 0.6
-            in 70.0..90.0 -> 0.8
-            in 90.0..110.0 -> 1.0
-            in 110.0..140.0 -> 1.2
-            in 140.0..180.0 -> 1.4
-            in 180.0..220.0 -> 1.6
-            in 220.0..260.0 -> 1.8
-            in 260.0..Double.MAX_VALUE -> 2.0
+            in Double.MIN_VALUE..10.0 -> 0.1
+            in 10.0..30.0 -> 0.3
+            in 30.0..50.0 -> 0.6
+            in 50.0..70.0 -> 0.8
+            in 70.0..90.0 -> 1.0
+            in 90.0..110.0 -> 1.2
+            in 110.0..140.0 -> 1.4
+            in 140.0..180.0 -> 1.6
+            in 180.0..220.0 -> 1.8
+            in 220.0..260.0 -> 2.0
+            in 260.0..Double.MAX_VALUE -> 2.5
             else -> 0.0
         }
     }

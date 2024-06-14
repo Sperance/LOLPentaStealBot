@@ -1,6 +1,7 @@
 package ru.descend.bot.minigame
 
 import kotlinx.serialization.Serializable
+import ru.descend.bot.to1Digits
 
 @Serializable
 sealed class StockEffect {
@@ -35,6 +36,7 @@ class EffectAdditionalDamage(
 @Serializable
 class EffectAttackSpeedUP(
     var value: Double,
+    var limitValue: Double,
     override val category: EnumPersonLifects,
     override var name: String = "Увеличение скорости атаки"
 ) : StockEffect() {
@@ -42,7 +44,9 @@ class EffectAttackSpeedUP(
     private var stackEffect = 0.0
 
     override fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {
-        stackEffect -= value
+        stackEffect += value
+        stackEffect = stackEffect.to1Digits()
+        if (stackEffect > limitValue) return
         current.stats.attackSpeed.setEffectValue(AdditionalValue(hashCode().toString(), stackEffect))
     }
 

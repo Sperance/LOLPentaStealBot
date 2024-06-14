@@ -20,6 +20,5 @@ class TextDicrordLimit {
 
     fun clear() {
         textArray.clear()
-        lastMatchId = ""
     }
 }

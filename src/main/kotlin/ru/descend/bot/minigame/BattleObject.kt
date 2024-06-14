@@ -27,11 +27,13 @@ class BattleObject(private val person1: Person, private val person2: Person) {
             timerFlow1 += periodBattle
             timerFlow2 += periodBattle
 
-            if (timerFlow1 >= person1.stats.attackSpeed.get()) {
+            val attackPerson1 = 1000.0 / person1.stats.attackSpeed.get()
+            if (timerFlow1 >= attackPerson1) {
                 if (onAttacking(person1, person2)) countAttack1++
                 timerFlow1 = 0.0
             }
-            if (timerFlow2 >= person2.stats.attackSpeed.get()) {
+            val attackPerson2 = 1000.0 / person2.stats.attackSpeed.get()
+            if (timerFlow2 >= attackPerson2) {
                 if (onAttacking(person2, person1)) countAttack2++
                 timerFlow2 = 0.0
             }

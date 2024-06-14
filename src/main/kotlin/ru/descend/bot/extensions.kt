@@ -17,11 +17,11 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import ru.descend.bot.postgre.SQLData_R2DBC
-import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.datas.DSC_PS
 import ru.descend.bot.datas.decrypt
 import ru.descend.bot.datas.getStrongDate
+import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.postgre.openapi.AIResponse
 import ru.gildor.coroutines.okhttp.await
 import java.io.File
 import java.math.RoundingMode
@@ -29,9 +29,11 @@ import java.nio.file.Files
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Base64
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.pow
+
 
 fun printLog(message: Any){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
@@ -115,7 +117,9 @@ fun Long.toFormatDate() : String {
 }
 
 fun Long.toDate() : Date {
-    return Date(this)
+    var calendar = Calendar.getInstance()
+    calendar.timeInMillis = this
+    return calendar.time
 }
 
 fun Double.format(digits: Int) = "%.${digits}f".format(this)

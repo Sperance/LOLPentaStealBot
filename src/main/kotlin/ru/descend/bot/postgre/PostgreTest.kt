@@ -26,6 +26,7 @@ import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.datas.create
+import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
@@ -37,6 +38,7 @@ import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participant
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
+import ru.descend.bot.datas.toLocalDate
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
@@ -45,13 +47,24 @@ import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.to1Digits
+import ru.descend.bot.toDate
 import ru.descend.bot.toFormat
+import ru.descend.bot.toFormatDate
+import ru.descend.bot.toFormatDateTime
 import ru.gildor.coroutines.okhttp.await
+import java.io.BufferedReader
 import java.io.IOException
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
+import java.time.Period
+import java.time.temporal.TemporalUnit
+import java.util.Calendar
+import java.util.Date
 import java.util.HashMap
+import kotlin.time.Duration.Companion.days
 
 class PostgreTest {
 
@@ -87,6 +100,61 @@ class PostgreTest {
 
             val result = R2DBC.runQuery { query }
             println("res size: ${result.size}")
+        }
+    }
+
+    @Test
+    fun test_day_diff() {
+
+        val curTimeMinus60 = Date().time.toLocalDate().minusDays(60).toDate().time
+        val curTime = Date().time
+        println((1718371294011).toFormatDate() + " " + (1718371294011).betweenCurrent().days.toString() + " 1718371294011 - $curTime - $curTimeMinus60")
+        println((1718371311013).toFormatDate() + " " + (1718371311013).betweenCurrent().days.toString() + " 1718371311013 - $curTime - $curTimeMinus60")
+
+        runBlocking {
+            val query = QueryDsl
+                .from(tbl_lols)
+                .innerJoin(tbl_participants) { tbl_participants.LOLperson_id eq tbl_lols.id }
+                .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
+                .where {
+                    tbl_lols.last_loaded.lessEq(Date().time.toLocalDate().minusDays(60).toDate().time)
+                    tbl_lols.LOL_region.eq("RU")
+                    tbl_lols.LOL_riotIdName.notEq("null")
+                }
+                .orderBy(listOf(tbl_matches.matchDateEnd.desc(), tbl_lols.id.desc()))
+                .limit(100)
+                .selectAsEntity(tbl_lols)
+
+            R2DBC.runQuery { query }.forEach {
+                println("${it.id} last: ${it.last_loaded.toFormatDateTime()}(${it.last_loaded}) minus60: ${curTimeMinus60.toFormatDateTime()}($curTimeMinus60")
+            }
+        }
+    }
+
+    fun Long.betweenCurrent() : Period {
+        return Period.between(this.toLocalDate(), Date().time.toLocalDate())
+    }
+
+    @Test
+    fun test_quety_lols() {
+        runBlocking {
+            val query = QueryDsl
+                .from(tbl_lols)
+                .innerJoin(tbl_participants) { tbl_participants.LOLperson_id eq tbl_lols.id }
+                .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
+                .where {
+                    tbl_lols.last_loaded.eq(0)
+                    tbl_lols.LOL_region.eq("RU")
+                    tbl_lols.LOL_riotIdName.notEq("null")
+                }
+                .orderBy(listOf(tbl_matches.matchDateEnd.desc(), tbl_lols.id.desc()))
+                .limit(20)
+                .selectAsEntity(tbl_lols)
+
+            val result = R2DBC.runQuery { query }
+            result.forEach {
+                println("IT: $it")
+            }
         }
     }
 
@@ -180,6 +248,38 @@ class PostgreTest {
     }
 
     @Test
+    fun test_api_2() {
+        val url = URL("http://127.0.0.1:1337/v1/chat/completions")
+        val connection = url.openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.setRequestProperty("Accept", "application/json")
+        connection.doOutput = true
+
+        val writer = OutputStreamWriter(connection.outputStream, "UTF-8")
+        writer.write("{model=\"gpt-3.5-turbo\",\n" +
+                "    messages=[{\"role\": \"user\", \"content\": \"Hello\"}],}")
+        writer.close()
+
+        val reader = BufferedReader(InputStreamReader(connection.inputStream, "UTF-8"))
+        var line: String?
+        var response = ""
+
+        while (reader.readLine().also { line = it } != null) {
+            response += line
+        }
+
+        reader.close()
+        connection.disconnect()
+
+        println("url: ${connection.url}")
+        println("requestMethod: ${connection.requestMethod}")
+        println("responseCode: ${connection.responseCode}")
+        println("responseMessage: ${connection.responseMessage}")
+        println(response)
+    }
+
+    @Test
     fun test_free_api() {
         runBlocking {
 
@@ -187,7 +287,8 @@ class PostgreTest {
 
 //            val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
 //            val url = "http://localhost:3040/v1/chat/completions"
-            val url = "https://api.pawan.krd/v1/chat/completions"
+//            val url = "http://localhost:8080/chat/completions"
+            val url = "http://127.0.0.1:1337/v1/chat/completions"
             val JSON = "application/json; charset=utf-8".toMediaType()
             val body = RequestBody.create(JSON, "{\n" +
                     "        \"model\": \"gpt-3.5-turbo\",\n" +
@@ -195,7 +296,7 @@ class PostgreTest {
                     "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
                     "    }")
             val request = Request.Builder()
-                .addHeader("Authorization", "Bearer sk-LT7VD2dmZoQtR0VXftSq4YpXnkS8xcxW")
+//                .addHeader("Authorization", "Bearer sk-LT7VD2dmZoQtR0VXftSq4YpXnkS8xcxW")
                 .url(url)
                 .post(body)
                 .build()
@@ -207,8 +308,8 @@ class PostgreTest {
 
             val resultString = response.body?.string()
             println("result: $resultString")
-            val forecast = GsonBuilder().create().fromJson(resultString, AIResponse::class.java)
-            println(forecast.choices.first().message.content)
+//            val forecast = GsonBuilder().create().fromJson(resultString, AIResponse::class.java)
+//            println(forecast.choices.first().message.content)
         }
     }
 
