@@ -1,5 +1,6 @@
 package ru.descend.bot.postgre.calculating
 
+import ru.descend.bot.LOAD_MMR_HEROES_MATCHES
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
@@ -41,12 +42,6 @@ data class Calc_AddMatch (
         var isBots = false
         var isSurrender = false
 
-//        val alreadyMatch = R2DBC.getMatchOne({tbl_matches.matchId eq match.metadata.matchId})
-//        if (alreadyMatch != null) {
-//            if (mainOrder) printLog("Match ${alreadyMatch.id} ${alreadyMatch.matchId} already exists")
-//            return alreadyMatch
-//        }
-
         match.info.participants.forEach {
             if (it.summonerId == "BOT" || it.puuid == "BOT") {
                 isBots = true
@@ -71,7 +66,7 @@ data class Calc_AddMatch (
         if (!pMatchResult.bit) return pMatchResult.result
         val pMatch = pMatchResult.result
 
-        if (pMatch.id % 5000 == 0){
+        if (pMatch.id % LOAD_MMR_HEROES_MATCHES == 0){
             R2DBC.executeProcedure("call \"GetAVGs\"()")
             sqlData.dataMMR.clear()
             LeagueMainObject.catchHeroNames()
@@ -147,7 +142,7 @@ data class Calc_AddMatch (
         R2DBC.addBatchParticipants(arrayNewParts)
 
         if (isNeedCalcMMR) {
-            calculateMMR(pMatch, isSurrender, isBots, kordLol)
+            calculateMMR(pMatch, kordLol)
         }
         if (!mainOrder) {
             sqlData.textNewMatches.appendLine("${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n", pMatch.id.toString())
@@ -156,7 +151,7 @@ data class Calc_AddMatch (
         return pMatch
     }
 
-    private suspend fun calculateMMR(pMatch: Matches, isSurrender: Boolean, isBots: Boolean, kordLol: List<KORDLOLs>) {
+    private suspend fun calculateMMR(pMatch: Matches, kordLol: List<KORDLOLs>) {
         var users = ""
         val arrayKORDmmr = ArrayList<Triple<KORDLOLs?, Participants, Double>>()
         pMatch.getParticipants().forEach { par ->
@@ -168,7 +163,7 @@ data class Calc_AddMatch (
             } else {
                 ""
             }
-            users += "* __" + sqlData.getLOL(par.LOLperson_id)?.getCorrectName() + "__ ${R2DBC.getHeroFromKey(par.championId.toString())?.nameRU?:"null"} win:${par.win} $dataText\n"
+            users += "* __" + sqlData.getLOL(par.LOLperson_id)?.getCorrectName() + "__ ${R2DBC.getHeroFromKey(par.championId.toString())?.nameRU?:"null"} win:${par.win} count:${R2DBC.getParticipantsSize { tbl_participants.LOLperson_id eq par.LOLperson_id }} $dataText\n"
         }
 
         //Обработка MVP
@@ -195,7 +190,7 @@ data class Calc_AddMatch (
             "**Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                     "${pMatch.matchDateStart.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
                     "Duration: $minsDuration:$secondsDuration\n" +
-                    "Mode: ${pMatch.matchMode} Surrender: $isSurrender Bots: $isBots**\n$users"
+                    "Mode: ${pMatch.matchMode} Surrender: ${pMatch.surrender} Bots: ${pMatch.bots}**\n$users"
         )
     }
 }

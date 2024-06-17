@@ -216,13 +216,11 @@ private suspend fun getLastLOLs(sqlData: SQLData_R2DBC, size: Int) : List<LOLs> 
 
     return R2DBC.runQuery { query }
 }
-
-const val LOAD_MATCHES_IN_USER = 10
 /**
  * Загружаем 10 матчей по последнему пользователю по которому еще не было загрузки матчей
  */
 suspend fun loadingLastMatches(sqlData: SQLData_R2DBC) {
-    val arrayLastLOLs = getLastLOLs(sqlData,15)
+    val arrayLastLOLs = getLastLOLs(sqlData,LAST_UNDEFINED_USERS_FOR_LOAD)
     arrayLastLOLs.forEach {lastLOLObj ->
         if (sqlData.atomicIntLoaded.get() >= (98 - LOAD_MATCHES_IN_USER)) return@forEach
         printLog("[loadingLastMatches::updated] ${lastLOLObj.getCorrectName()} before: ${lastLOLObj.last_loaded}(${lastLOLObj.last_loaded.toFormatDate()}) new: ${sqlData.currentDateLong}(${sqlData.currentDateLong.toFormatDate()}) checked: ${sqlData.olderDateLong}(${sqlData.olderDateLong.toFormatDate()})")
@@ -239,8 +237,8 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         sqlData.updatesBeforeLoadUsersMatch++
         val arraySaveds = sqlData.dataSavedLOL.get()
         if (sqlData.updatesBeforeLoadUsersMatch == 1) {
-            sqlData.loadMatches(arraySaveds, 50, true)
-        } else if (sqlData.updatesBeforeLoadUsersMatch >= 2) {
+            sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES, true)
+        } else if (sqlData.updatesBeforeLoadUsersMatch >= EVERY_N_TICK_LOAD_MATCH) {
             sqlData.updatesBeforeLoadUsersMatch = 0
         }
         printLog("[showLeagueHistory loaded: ${sqlData.atomicIntLoaded.get()}][updates: ${sqlData.updatesBeforeLoadUsersMatch}]")
@@ -488,8 +486,10 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
-    contentText += "* Матчей: ${sqlData.textNewMatches.getLastMatchId()}\n"
+    contentText += "* Матчей: ${R2DBC.getMatchOne(sortExpression = tbl_matches.id.desc())?.id} (CLASSIC:${R2DBC.getMatchesSize { tbl_matches.matchMode.eq("CLASSIC") }} ARAM:${R2DBC.getMatchesSize { tbl_matches.matchMode.eq("ARAM") }})\n"
     contentText += "* Игроков: ${R2DBC.getLOLone(sortExpression = tbl_lols.id.desc())?.id}\n"
+    contentText += "* Чемпионов: ${R2DBC.stockHEROES.get().size}\n"
+    contentText += "* Версия: ${LeagueMainObject.LOL_VERSION}\n"
     builder.content = contentText
 
     val data = sqlData.getKORDLOL()

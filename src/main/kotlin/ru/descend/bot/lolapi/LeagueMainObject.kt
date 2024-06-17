@@ -196,9 +196,4 @@ object LeagueMainObject {
             globalLOLRequests = 0
         }
     }
-
-//    fun findHeroForKey(key: String) : String {
-//        val returnObj = heroObjects.find { (it as InterfaceChampionBase).key == key } as InterfaceChampionBase?
-//        return returnObj?.name ?: "<Not Find>"
-//    }
 }

@@ -3,8 +3,10 @@ package ru.descend.bot.postgre
 import dev.kord.core.entity.Guild
 import io.r2dbc.spi.ConnectionFactoryOptions
 import org.komapper.core.dsl.QueryDsl
+import org.komapper.core.dsl.expression.ScalarExpression
 import org.komapper.core.dsl.expression.SortExpression
 import org.komapper.core.dsl.expression.WhereDeclaration
+import org.komapper.core.dsl.operator.count
 import org.komapper.core.dsl.operator.desc
 import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.QueryScope
@@ -148,6 +150,12 @@ object R2DBC {
     suspend fun getParticipants(declaration: WhereDeclaration?) : List<Participants> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_participants) else QueryDsl.from(tbl_participants).where(declaration) } }
     }
+    suspend fun getParticipantsSize(declaration: WhereDeclaration) : Long {
+        val query = QueryDsl.from(tbl_participants)
+            .where(declaration)
+            .select(count())
+        return db.withTransaction { db.runQuery { query } }?:0L
+    }
     suspend fun addBatchParticipants(list: List<Participants>, batchSize: Int = 100) {
         db.withTransaction {
             val miniList = ArrayList<Participants>()
@@ -186,12 +194,11 @@ object R2DBC {
             .firstOrNull()
         return db.withTransaction { db.runQuery { query } }
     }
-    suspend fun getLOLmany(declaration: WhereDeclaration = { tbl_lols.id greaterEq 0}, sortExpression: SortExpression = tbl_lols.id, limit: Int) : List<LOLs> {
+    suspend fun getLOLSize(declaration: WhereDeclaration) : Long {
         val query = QueryDsl.from(tbl_lols)
             .where(declaration)
-            .orderBy(sortExpression)
-            .limit(limit)
-        return db.withTransaction { db.runQuery { query } }
+            .select(count())
+        return db.withTransaction { db.runQuery { query } }?:0L
     }
     suspend fun getLOLs(declaration: WhereDeclaration) : List<LOLs> {
         return getLOLs(declaration, tbl_lols.id, null)
@@ -252,6 +259,12 @@ object R2DBC {
     }
     suspend fun getMatches(declaration: WhereDeclaration?) : List<Matches> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_matches) else QueryDsl.from(tbl_matches).where(declaration) } }
+    }
+    suspend fun getMatchesSize(declaration: WhereDeclaration) : Long {
+        val query = QueryDsl.from(tbl_matches)
+            .where(declaration)
+            .select(count())
+        return db.withTransaction { db.runQuery { query } }?:0L
     }
     suspend fun addBatchMatches(list: List<Matches>, batchSize: Int = 100) {
         db.withTransaction {

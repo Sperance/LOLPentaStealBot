@@ -7,6 +7,7 @@ import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.get
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
+import ru.descend.bot.LOAD_MATCHES_ON_SAVED_UNDEFINED
 import ru.descend.bot.datas.TextDicrordLimit
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
@@ -137,7 +138,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         newMatch.calculate(mainOrder)
         if (mainOrder) {
             val othersLOLS = newMatch.arrayOtherLOLs
-            loadMatches(othersLOLS, 5, false)
+            loadMatches(othersLOLS, LOAD_MATCHES_ON_SAVED_UNDEFINED, false)
         }
     }
 
@@ -164,7 +165,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         lols.forEach {
             if (it.LOL_puuid == "") return@forEach
             atomicIntLoaded.incrementAndGet()
-//            printLog("\t[loadMatches] atom: ${atomicIntLoaded.incrementAndGet()}")
             LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, count).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
@@ -178,7 +178,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             listChecked.sortBy { it }
             listChecked.forEach { newMatch ->
                 atomicIntLoaded.incrementAndGet()
-//                printLog("\t[loadArrayMatches] atom: ${atomicIntLoaded.incrementAndGet()}")
                 LeagueMainObject.catchMatch(newMatch)?.let { match ->
                     addMatch(match, mainOrder)
                 }
