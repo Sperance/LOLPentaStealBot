@@ -42,7 +42,6 @@ data class Participants(
     var teamDamagePercentage: Double = 0.0,
     var damagePerMinute: Double = 0.0,
     var kda: Double = 0.0,
-    var mmr: Double = 0.0,
     var minionsKills: Int = 0,
     var inhibitorKills: Int = 0,
     var team: Int = -1,
@@ -65,7 +64,6 @@ data class Participants(
     var longestTimeSpentLiving: Int = 0, //longest_time_spent_living
     var totalTimeSpentDead: Int = 0, //total_time_spent_dead
 
-    var mvpLvpInfo: String = "",
     var dataKey: String = "",
 ) {
 
@@ -131,6 +129,6 @@ data class Participants(
     suspend fun LOLpersonObj() = R2DBC.getLOLs { tbl_lols.id eq LOLperson_id }.firstOrNull()
 
     override fun toString(): String {
-        return "Participants(id=$id, match_id=$match_id, LOLperson_id=$LOLperson_id, championName='$championName')"
+        return "Participants(id=$id, LOL=$LOLperson_id, match_id=$match_id, championName='$championName')"
     }
 }

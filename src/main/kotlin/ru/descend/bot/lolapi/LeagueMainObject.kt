@@ -62,19 +62,13 @@ object LeagueMainObject {
                 throw IllegalAccessException("[catchHeroNames] error: ${res.message}")
             }
         }
-
-//        heroRuNames.clear()
-//        heroObjects.clear()
         val heroes = R2DBC.stockHEROES.get()
         champions.data::class.java.declaredFields.forEach {
             it.isAccessible = true
             val curData = it.get(champions.data) as InterfaceChampionBase
-//            heroObjects.add(curData)
-//            val nameField = curData.name
-//            heroRuNames.add(nameField)
 
             if (heroes.find { hero -> hero.key == curData.key } == null) {
-                Heroes(nameEN = curData.id, nameRU = curData.name, tags = curData.tags.joinToString(), key = curData.key).create(Heroes::key)
+                Heroes(nameEN = curData.id, nameRU = curData.name, key = curData.key).create(Heroes::key)
             }
         }
 

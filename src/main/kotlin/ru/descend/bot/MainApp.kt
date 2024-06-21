@@ -532,16 +532,13 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
     aramData.sortBy { it.kordLOL?.showCode }
 
     val mainDataList1 = (aramData.map {
-        if (it.match_id == it.last_match_id) "**" + formatInt(it.kordLOL?.showCode, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank + "**"
-        else formatInt(it.kordLOL?.showCode, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank
+        formatInt(it.kordLOL?.showCode, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank
     })
     val mainDataList2 = (aramData.map {
-        if (it.match_id == it.last_match_id) "**" + it.mmr_aram + charStr + it.mmr_aram_saved + charStr + (it.mmr_aram / it.games).toFormat(2) + "**"
-        else it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + (it.mmr_aram / it.games).toFormat(2)
+        it.mmr_aram.toString() + charStr + it.mmr_aram_saved + charStr + (it.mmr_aram / it.games).toFormat(2)
     })
     val mainDataList3 = (aramData.map {
-        if (it.match_id == it.last_match_id) "**" + R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info + "**"
-        else R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info
+        R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info
     })
 
 

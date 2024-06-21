@@ -6,6 +6,7 @@ import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.datas.update
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.sendMessage
 import ru.descend.bot.writeLog
 import java.util.Calendar
@@ -23,10 +24,13 @@ data class Calc_Birthday(private var sqlData: SQLData_R2DBC, var dataList: List<
             val newTextBirthday = currentTextBirthday.dropLast(4) + GregorianCalendar.getInstance().get(Calendar.YEAR)
             it.date_birthday = newTextBirthday
             it.update()
-            val kordlol = R2DBC.getKORDLOLs { KORDLOLs.tbl_kordlols.KORD_id eq it.id }.firstOrNull()
+            val kordlol = R2DBC.getKORDLOLone({ KORDLOLs.tbl_kordlols.KORD_id eq it.id })
             if (kordlol != null) {
-                kordlol.mmrAramSaved += 10.0
-                kordlol.update()
+                val listLols = R2DBC.getLOLs { tbl_lols.id.eq(kordlol.LOL_id) }
+                listLols.forEach { lol ->
+                    lol.mmrAramSaved += 10.0
+                    lol.update()
+                }
             }
         }
     }

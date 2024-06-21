@@ -37,10 +37,6 @@ data class Matches(
 
     fun getRegionValue() = matchId.substringBefore("_")
 
-    suspend fun getParticipants() = R2DBC.runQuery {
-        QueryDsl.fromTemplate("SELECT * FROM tbl_participants where match_id = /*matchid*/'test'").bind("matchid", id).selectAsEntity(Participants.tbl_participants)
-    }
-
     override fun toString(): String {
         return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode', date='${matchDateEnd.toFormatDate()}')"
     }

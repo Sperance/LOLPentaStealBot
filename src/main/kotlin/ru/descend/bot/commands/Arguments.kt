@@ -573,8 +573,10 @@ fun arguments() = commands("Arguments") {
             val textMessage = if (dataUser == null) {
                 "Пользователя не существует в базе"
             } else {
-                dataUser.mmrAramSaved += savedMMR.toDouble().to1Digits()
-                dataUser.update()
+                R2DBC.getLOLone({ tbl_lols.id.eq(dataUser.LOL_id) })?.let { lol ->
+                    lol.mmrAramSaved += savedMMR.toDouble().to1Digits()
+                    lol.update()
+                }
                 "Сохранение успешно произведено"
             }
             respond(textMessage)
@@ -594,8 +596,10 @@ fun arguments() = commands("Arguments") {
             val textMessage = if (dataUser == null) {
                 "Пользователя не существует в базе"
             } else {
-                dataUser.mmrAramSaved -= savedMMR.toDouble().to1Digits()
-                dataUser.update()
+                R2DBC.getLOLone({ tbl_lols.id.eq(dataUser.LOL_id) })?.let { lol ->
+                    lol.mmrAramSaved -= savedMMR.toDouble().to1Digits()
+                    lol.update()
+                }
                 "Сохранение успешно произведено"
             }
             respond(textMessage)

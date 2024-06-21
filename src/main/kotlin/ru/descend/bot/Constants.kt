@@ -29,3 +29,13 @@ const val LOAD_MMR_HEROES_MATCHES = 10000
  * Сколько матчей будет загружено по каждому неизвестному пользователю когда загружен матч по известному
  */
 const val LOAD_MATCHES_ON_SAVED_UNDEFINED = 5
+
+/**
+ * Бонусных ММР за получение ранга MVP в АРАМе
+ */
+const val BONUS_MMR_FOR_MVP_ARAM = 2.0
+
+/**
+ * Штрафных ММР за получение ранга LVP в АРАМе
+ */
+const val BONUS_MMR_FOR_LVP_ARAM = 2.0

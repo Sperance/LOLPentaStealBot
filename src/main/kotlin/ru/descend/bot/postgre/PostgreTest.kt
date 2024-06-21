@@ -43,6 +43,7 @@ import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
 import ru.descend.bot.postgre.r2dbc.model.Heroes
+import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
@@ -192,7 +193,6 @@ class PostgreTest {
                     nameEN = curData.id,
                     nameRU = curData.name,
                     key = curData.key,
-                    tags = curData.tags.joinToString(", ")
                 )
                 hero.create(Heroes::key)
             }

@@ -156,20 +156,41 @@ object R2DBC {
             .select(count())
         return db.withTransaction { db.runQuery { query } }?:0L
     }
-    suspend fun addBatchParticipants(list: List<Participants>, batchSize: Int = 100) {
-        db.withTransaction {
+    suspend fun addBatchParticipants(list: List<Participants>, batchSize: Int = 100) : List<Participants> {
+        return db.withTransaction {
             val miniList = ArrayList<Participants>()
+            val resultedList = ArrayList<Participants>()
             list.forEach { value ->
                 miniList.add(value)
                 if (miniList.size == batchSize) {
                     val res = db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
+                    resultedList.addAll(res)
                     res.forEach { printLog("\t[Batch_Participants::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
                 val res = db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
+                resultedList.addAll(res)
                 res.forEach { printLog("\t[Batch_Participants::save] $it") }
+            }
+            resultedList
+        }
+    }
+    suspend fun updateBatchParticipants(list: List<Participants>, batchSize: Int = 100) {
+        db.withTransaction {
+            val miniList = ArrayList<Participants>()
+            list.forEach { value ->
+                miniList.add(value)
+                if (miniList.size == batchSize) {
+                    val res = db.runQuery { QueryDsl.update(tbl_participants).batch(miniList) }
+                    res.forEach { printLog("\t[Batch_Participants::update] $it") }
+                    miniList.clear()
+                }
+            }
+            if (miniList.isNotEmpty()) {
+                val res = db.runQuery { QueryDsl.update(tbl_participants).batch(miniList) }
+                res.forEach { printLog("\t[Batch_Participants::update] $it") }
             }
         }
     }
@@ -182,7 +203,7 @@ object R2DBC {
             .firstOrNull()
         return db.withTransaction { db.runQuery { query } }
     }
-    private suspend fun getHeroes(declaration: WhereDeclaration? = null) : List<Heroes> {
+    suspend fun getHeroes(declaration: WhereDeclaration? = null) : List<Heroes> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_heroes) else QueryDsl.from(tbl_heroes).where(declaration) } }
     }
 
@@ -217,13 +238,30 @@ object R2DBC {
                 miniList.add(value)
                 if (miniList.size == batchSize) {
                     val res = db.runQuery { QueryDsl.insert(tbl_lols).multiple(miniList) }
-                    res.forEach { printLog("[Batch_LOLs::save] $it") }
+                    res.forEach { printLog("\t[Batch_LOLs::save] $it") }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
                 val res = db.runQuery { QueryDsl.insert(tbl_lols).multiple(miniList) }
-                res.forEach { printLog("[Batch_LOLs::save] $it") }
+                res.forEach { printLog("\t[Batch_LOLs::save] $it") }
+            }
+        }
+    }
+    suspend fun updateBatchLOLs(list: List<LOLs>, batchSize: Int = 100) {
+        db.withTransaction {
+            val miniList = ArrayList<LOLs>()
+            list.forEach { value ->
+                miniList.add(value)
+                if (miniList.size == batchSize) {
+                    val res = db.runQuery { QueryDsl.update(tbl_lols).batch(miniList) }
+                    res.forEach { printLog("\t[Batch_LOLs::update] $it") }
+                    miniList.clear()
+                }
+            }
+            if (miniList.isNotEmpty()) {
+                val res = db.runQuery { QueryDsl.update(tbl_lols).batch(miniList) }
+                res.forEach { printLog("\t[Batch_LOLs::update] $it") }
             }
         }
     }

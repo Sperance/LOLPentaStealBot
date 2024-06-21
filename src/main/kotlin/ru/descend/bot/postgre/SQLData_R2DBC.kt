@@ -33,7 +33,7 @@ import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
-data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int, var champion_id: Int?, var mmr: Double?, var match_id: String?, var last_match_id: String?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
+data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int, var champion_id: Int?, var mmr: Double?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
@@ -83,10 +83,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     suspend fun getLOL(id: Int?) = R2DBC.getLOLone({ tbl_lols.id eq id})
     suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
     suspend fun getKORD(id: Int?) = getKORD().find { it.id == id }
+    suspend fun getKORDLOL_fromLOL(lolid: Int) = getKORDLOL().find { it.LOL_id == lolid }
 
-    private val arraySavedParticipants = ArrayList<statMainTemp_r2>()
     suspend fun getSavedParticipants() : ArrayList<statMainTemp_r2> {
-        arraySavedParticipants.clear()
+        val arraySavedParticipants = ArrayList<statMainTemp_r2>()
         R2DBC.runQuery {
             QueryDsl.fromTemplate("SELECT * FROM get_player_stats_param(${guildSQL.id})").select {
                 val id = it.int("id")?:0
@@ -106,9 +106,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return arraySavedParticipants
     }
 
-    private val arrayAramMMRData = ArrayList<statAramDataTemp_r2>()
     suspend fun getArrayAramMMRData() : ArrayList<statAramDataTemp_r2> {
-        arrayAramMMRData.clear()
+        val arrayAramMMRData = ArrayList<statAramDataTemp_r2>()
         R2DBC.runQuery {
             QueryDsl.fromTemplate("SELECT * FROM get_aram_data_param(${guildSQL.id})").select { row ->
                 val id = row.int("id")
@@ -117,16 +116,22 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 val games = row.int("games")?:0
                 val champion_id = row.int("champion_id")
                 val mmr = row.double("mmr")
-                val match_id = row.string("match_id")
                 val mvp_lvp_info = row.string("mvp_lvp_info")
-                val last_match_id = row.string("last_match_id")
-                arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, games, champion_id, mmr, match_id, last_match_id, mvp_lvp_info,false, null))
+//                val match_id = row.string("match_id")
+
+//                val last_match_id = row.string("last_match_id")
+                arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, games, champion_id, mmr, mvp_lvp_info,false, null))
             }
         }
         arrayAramMMRData.forEach {
-            it.kordLOL = getKORDLOL(it.kord_lol_id)
+            it.kordLOL = getKORDLOL_fromLOL(it.kord_lol_id)
         }
         return arrayAramMMRData
+    }
+
+    suspend fun getSavedLOL(lol: LOLs?) : KORDLOLs? {
+        if (lol == null) return null
+        return dataKORDLOL.get().find { it.LOL_id == lol.id }
     }
 
     suspend fun onCalculateTimer() {
@@ -134,7 +139,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     private suspend fun addMatch(match: MatchDTO, mainOrder: Boolean) {
-        val newMatch = Calc_AddMatch(this, match, getKORDLOL())
+        val newMatch = Calc_AddMatch(this, match)
         newMatch.calculate(mainOrder)
         if (mainOrder) {
             val othersLOLS = newMatch.arrayOtherLOLs
@@ -142,9 +147,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }
     }
 
-    private val mapWinStreak = HashMap<Int, Int>()
     suspend fun getWinStreak() : HashMap<Int, Int> {
-        mapWinStreak.clear()
+        val mapWinStreak = HashMap<Int, Int>()
         R2DBC.runQuery {
             QueryDsl.fromTemplate("SELECT * FROM get_streak_results_param(${guildSQL.id})").select { row ->
                 val pers = row.int("PERS")?:-1

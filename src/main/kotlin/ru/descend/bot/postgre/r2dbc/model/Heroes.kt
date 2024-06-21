@@ -16,8 +16,7 @@ data class Heroes(
     var nameEN: String = "",
     var nameRU: String = "",
     var otherNames: String = "",
-    var key: String = "",
-    var tags: String = ""
+    var key: String = ""
 ) {
 
     companion object {

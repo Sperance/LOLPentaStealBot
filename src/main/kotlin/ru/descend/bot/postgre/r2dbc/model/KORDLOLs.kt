@@ -32,8 +32,6 @@ data class KORDLOLs(
     var guild_id: Int = -1,
 
     var showCode: Int = 0,
-    var mmrAram: Double = 0.0,
-    var mmrAramSaved: Double = 0.0,
     var realtime_match_message: String = ""
 ) {
 
@@ -41,18 +39,7 @@ data class KORDLOLs(
         val tbl_kordlols = Meta.kordloLs
     }
 
-    suspend fun deleteWithKORD(guilds: Guilds) {
-        printLog("[KORDLOLs::deleteWithKORD] $this")
-        R2DBC.getKORDs { tbl_kords.id eq KORD_id ; tbl_kords.guild_id eq guilds.id }.forEach {
-            it.delete()
-        }
-        this.delete()
-    }
-
     /*********************************/
-
-    suspend fun KORDidObj() = R2DBC.getKORDs { tbl_kords.id eq KORD_id }.firstOrNull()
-    suspend fun LOLidObj() = R2DBC.getLOLs { tbl_lols.id eq LOL_id }.firstOrNull()
 
     suspend fun asUser(guild: Guild, data: SQLData_R2DBC) : User {
         if (KORD_id == -1) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
@@ -60,6 +47,6 @@ data class KORDLOLs(
     }
 
     override fun toString(): String {
-        return "KORDLOLs(id=$id, showCode=$showCode, mmrAram=$mmrAram, mmrAramSaved=$mmrAramSaved, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
+        return "KORDLOLs(id=$id, showCode=$showCode, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
     }
 }
