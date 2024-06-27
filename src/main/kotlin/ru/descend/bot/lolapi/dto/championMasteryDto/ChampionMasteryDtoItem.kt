@@ -11,4 +11,8 @@ data class ChampionMasteryDtoItem(
     val puuid: String,
     val summonerId: String,
     val tokensEarned: Int
-)
+) {
+    override fun toString(): String {
+        return "ChampionMasteryDtoItem(championId=$championId, championLevel=$championLevel, championPoints=$championPoints, championPointsSinceLastLevel=$championPointsSinceLastLevel, championPointsUntilNextLevel=$championPointsUntilNextLevel, chestGranted=$chestGranted, lastPlayTime=$lastPlayTime, puuid='$puuid', summonerId='$summonerId', tokensEarned=$tokensEarned)"
+    }
+}

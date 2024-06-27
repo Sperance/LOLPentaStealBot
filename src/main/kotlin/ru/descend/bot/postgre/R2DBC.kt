@@ -94,49 +94,14 @@ object R2DBC {
     suspend fun getKORDLOLone(declaration: WhereDeclaration = { tbl_kordlols.id greaterEq 0}, first: Boolean = true) : KORDLOLs? {
         val sortExpr = if (first) tbl_kordlols.id else tbl_kordlols.id.desc()
         val query = QueryDsl.from(tbl_kordlols)
-            .where { declaration }
+            .where(declaration)
             .orderBy(sortExpr)
             .firstOrNull()
         return db.withTransaction { db.runQuery { query } }
     }
 
-    suspend fun addBatchKORDLOLs(list: List<KORDLOLs>, batchSize: Int = 100) {
-        db.withTransaction {
-            val miniList = ArrayList<KORDLOLs>()
-            list.forEach { value ->
-                miniList.add(value)
-                if (miniList.size == batchSize) {
-                    val res = db.runQuery { QueryDsl.insert(tbl_kordlols).multiple(miniList) }
-                    res.forEach { printLog("[Batch_KORDLOLs::save] $it") }
-                    miniList.clear()
-                }
-            }
-            if (miniList.isNotEmpty()) {
-                val res = db.runQuery { QueryDsl.insert(tbl_kordlols).multiple(miniList) }
-                res.forEach { printLog("[Batch_KORDLOLs::save] $it") }
-            }
-        }
-    }
-
     suspend fun getMMRs(declaration: WhereDeclaration?) : List<MMRs> {
         return db.withTransaction { db.runQuery { if (declaration == null) QueryDsl.from(tbl_mmrs) else QueryDsl.from(tbl_mmrs).where(declaration) } }
-    }
-    suspend fun addBatchMMRs(list: List<MMRs>, batchSize: Int = 100) {
-        db.withTransaction {
-            val miniList = ArrayList<MMRs>()
-            list.forEach { value ->
-                miniList.add(value)
-                if (miniList.size == batchSize) {
-                    val res = db.runQuery { QueryDsl.insert(tbl_mmrs).multiple(miniList) }
-                    res.forEach { printLog("[Batch_MMRs::save] $it") }
-                    miniList.clear()
-                }
-            }
-            if (miniList.isNotEmpty()) {
-                val res = db.runQuery { QueryDsl.insert(tbl_mmrs).multiple(miniList) }
-                res.forEach { printLog("[Batch_MMRs::save] $it") }
-            }
-        }
     }
 
     suspend fun getParticipantOne(declaration: WhereDeclaration = { tbl_participants.id greaterEq 0}, first: Boolean = true) : Participants? {
@@ -165,33 +130,16 @@ object R2DBC {
                 if (miniList.size == batchSize) {
                     val res = db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
                     resultedList.addAll(res)
-                    res.forEach { printLog("\t[Batch_Participants::save] $it") }
+                    res.forEach { printLog("\t[Batch_Participants::save] $it", false) }
                     miniList.clear()
                 }
             }
             if (miniList.isNotEmpty()) {
                 val res = db.runQuery { QueryDsl.insert(tbl_participants).multiple(miniList) }
                 resultedList.addAll(res)
-                res.forEach { printLog("\t[Batch_Participants::save] $it") }
+                res.forEach { printLog("\t[Batch_Participants::save] $it", false) }
             }
             resultedList
-        }
-    }
-    suspend fun updateBatchParticipants(list: List<Participants>, batchSize: Int = 100) {
-        db.withTransaction {
-            val miniList = ArrayList<Participants>()
-            list.forEach { value ->
-                miniList.add(value)
-                if (miniList.size == batchSize) {
-                    val res = db.runQuery { QueryDsl.update(tbl_participants).batch(miniList) }
-                    res.forEach { printLog("\t[Batch_Participants::update] $it") }
-                    miniList.clear()
-                }
-            }
-            if (miniList.isNotEmpty()) {
-                val res = db.runQuery { QueryDsl.update(tbl_participants).batch(miniList) }
-                res.forEach { printLog("\t[Batch_Participants::update] $it") }
-            }
         }
     }
 
@@ -245,23 +193,6 @@ object R2DBC {
             if (miniList.isNotEmpty()) {
                 val res = db.runQuery { QueryDsl.insert(tbl_lols).multiple(miniList) }
                 res.forEach { printLog("\t[Batch_LOLs::save] $it") }
-            }
-        }
-    }
-    suspend fun updateBatchLOLs(list: List<LOLs>, batchSize: Int = 100) {
-        db.withTransaction {
-            val miniList = ArrayList<LOLs>()
-            list.forEach { value ->
-                miniList.add(value)
-                if (miniList.size == batchSize) {
-                    val res = db.runQuery { QueryDsl.update(tbl_lols).batch(miniList) }
-                    res.forEach { printLog("\t[Batch_LOLs::update] $it") }
-                    miniList.clear()
-                }
-            }
-            if (miniList.isNotEmpty()) {
-                val res = db.runQuery { QueryDsl.update(tbl_lols).batch(miniList) }
-                res.forEach { printLog("\t[Batch_LOLs::update] $it") }
             }
         }
     }

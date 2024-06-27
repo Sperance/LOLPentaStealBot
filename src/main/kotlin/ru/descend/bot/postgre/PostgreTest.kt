@@ -42,6 +42,7 @@ import ru.descend.bot.datas.toLocalDate
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
+import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
@@ -249,7 +250,8 @@ class PostgreTest {
 
     @Test
     fun test_api_2() {
-        val url = URL("http://127.0.0.1:1337/v1/chat/completions")
+        val url = URL("https://descend-oai-proxy3.hf.space")
+//        val url = URL("https://descend-oai-proxy3.hf.space/v1/chat/completions")
         val connection = url.openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
         connection.setRequestProperty("Content-Type", "application/json")
@@ -280,23 +282,59 @@ class PostgreTest {
     }
 
     @Test
-    fun test_free_api() {
+    fun test_digits(){
+        println((123.4).to1Digits())
+        println((-123.4).to1Digits())
+        println((2.4).to1Digits())
+        println((-2.4).to1Digits())
+        println((-2.0).to1Digits())
+        println((2.0).to1Digits())
+    }
+
+    @Test
+    fun test_proxy_older() {
         runBlocking {
-
-            val requestText = "Напиши очень длинное и оригинальное поздравление ко Дню Рождения"
-
-//            val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
-//            val url = "http://localhost:3040/v1/chat/completions"
-//            val url = "http://localhost:8080/chat/completions"
-            val url = "http://127.0.0.1:1337/v1/chat/completions"
+//            val url = "https://api.openai.com/v1/chat/completions"
+            val url = "https://api.mistral.ai/chat/completions"
+//            val url = "https://descend-oai-proxy5.hf.space/proxy/openai/v1/chat/completions"
+            val requestText = "Hello? how are you?"
             val JSON = "application/json; charset=utf-8".toMediaType()
             val body = RequestBody.create(JSON, "{\n" +
                     "        \"model\": \"gpt-3.5-turbo\",\n" +
-//                    "        \"model\": \"gpt-3.5-turbo-1106\",\n" +
                     "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
                     "    }")
             val request = Request.Builder()
-//                .addHeader("Authorization", "Bearer sk-LT7VD2dmZoQtR0VXftSq4YpXnkS8xcxW")
+                .addHeader("Authorization", "Bearer sk-proj-Hd1fPlDi2K5JHhZsVhiWT3BlbkFJlsrKDAozbpovtMDBW1Pt")
+                .url(url)
+                .post(body)
+                .build()
+            val response = OkHttpClient().newCall(request).await()
+            println("code: ${response.code}")
+            println("message: ${response.message}")
+            println("result: ${response.body?.string()}")
+        }
+    }
+
+    /**
+     * https://infostart.ru/1c/articles/1978921/?ysclid=lxuhv65xoq53314357&ID=1978921
+     *
+     * https://huggingface.co/spaces/mangelaav/oai-proxy
+     */
+    @Test
+    fun test_free_api_proxy() {
+        runBlocking {
+//            val url = "https://descend-oai-proxy-v1.hf.space/proxy/openai/v1/chat"
+            val url = "https://descend-oai-proxy-v1.hf.space/proxy/openai/v1/chat/completions"
+
+            val requestText = "Hello? how are you?"
+            val JSON = "application/json; charset=utf-8".toMediaType()
+            val body = RequestBody.create(JSON, "{\n" +
+                    "    \"model\": \"gpt-3.5-turbo\",\n" +
+                    "    \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
+                    "  }")
+
+            val request = Request.Builder()
+                .addHeader("Authorization", "Bearer sk-proj-Hd1fPlDi2K5JHhZsVhiWT3BlbkFJlsrKDAozbpovtMDBW1Pt")
                 .url(url)
                 .post(body)
                 .build()
@@ -305,11 +343,7 @@ class PostgreTest {
 
             println("code: ${response.code}")
             println("message: ${response.message}")
-
-            val resultString = response.body?.string()
-            println("result: $resultString")
-//            val forecast = GsonBuilder().create().fromJson(resultString, AIResponse::class.java)
-//            println(forecast.choices.first().message.content)
+            println("result: ${response.body?.string()}")
         }
     }
 
@@ -325,8 +359,9 @@ class PostgreTest {
     @Test
     fun test_AI_context() {
         runBlocking {
-            val message = generateAIText("напиши необычное и оригинальное и длинное поздравление игрока Атлант с Пентакиллом за чемпиона Анивия в игре League of Legends от имени Discord сервера АрамоЛолево")
-            printLog(message)
+            val generatedText = generateAIText("Напиши прикольный факт про игру League of Legends")
+            val resultedText = "**Рубрика: интересные факты**\n\n$generatedText"
+            println(resultedText)
         }
     }
 

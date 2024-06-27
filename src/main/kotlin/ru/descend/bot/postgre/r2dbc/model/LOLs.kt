@@ -12,6 +12,8 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
+import ru.descend.bot.BONUS_MMR_FOR_NEW_RANK
+import ru.descend.bot.LIMIT_BINUS_MMR_FOR_MATCH
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
 import ru.descend.bot.datas.Result
@@ -23,6 +25,7 @@ import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.to1Digits
 import ru.descend.bot.writeLog
 import java.time.LocalDateTime
+import kotlin.math.abs
 
 @KomapperEntity
 @KomapperTable("tbl_lols")
@@ -41,28 +44,22 @@ data class LOLs(
     var last_loaded: Long = 0,
     var mmrAram: Double = 0.0,
     var mmrAramSaved: Double = 0.0,
-
-    var mmrAramLast: Double = 0.0,
-    var mmrAramLastText: String = "",
-    var mmrAramLastChampion: Int = 0
 ) {
+    companion object {
+        val tbl_lols = Meta.loLs
+    }
 
     fun removeMMRvalue(removedValue: Double) {
         if (mmrAramSaved > removedValue) {
-            mmrAramSaved -= removedValue
-            mmrAramSaved = mmrAramSaved.to1Digits()
+            mmrAramSaved = (mmrAramSaved - removedValue).to1Digits()
         } else if (mmrAramSaved == removedValue) {
             mmrAramSaved = 0.0
         } else if (mmrAramSaved < removedValue) {
-            mmrAram -= (mmrAramSaved - removedValue)
+            val minusValue = abs(mmrAramSaved - removedValue)
             mmrAramSaved = 0.0
-            mmrAram = mmrAram.to1Digits()
+            mmrAram = (mmrAram - minusValue).to1Digits()
             if (mmrAram < 0.0) mmrAram = 0.0
         }
-    }
-
-    companion object {
-        val tbl_lols = Meta.loLs
     }
 
     suspend fun connectLOL(region: String, summonerName: String, tagline: String) : LOLs? {
@@ -98,6 +95,8 @@ data class LOLs(
     fun getCorrectNameWithTag() : String {
         return getCorrectName() + "#" + LOL_riotIdTagline
     }
+
+    fun getRank() = EnumMMRRank.getMMRRank(mmrAram)
 
     override fun toString(): String {
         return "LOLs(id=$id, riotIdName=$LOL_riotIdName, mmrAram=$mmrAram, savedAram=$mmrAramSaved)"

@@ -1,4 +1,4 @@
-package ru.descend.bot.lolapi.dto.match_dto
+package ru.descend.bot.lolapi.dto.matchDto
 
 data class Participant(
     val allInPings: Int,
@@ -79,18 +79,8 @@ data class Participant(
     val playerAugment2: Int,
     val playerAugment3: Int,
     val playerAugment4: Int,
-    val playerScore0: Int,
-    val playerScore1: Int,
-    val playerScore10: Int,
-    val playerScore11: Int,
-    val playerScore2: Int,
-    val playerScore3: Int,
-    val playerScore4: Int,
-    val playerScore5: Int,
-    val playerScore6: Int,
-    val playerScore7: Int,
-    val playerScore8: Int,
-    val playerScore9: Int,
+    val playerAugment5: Int,
+    val playerAugment6: Int,
     val playerSubteamId: Int,
     val profileIcon: Int,
     val pushPings: Int,

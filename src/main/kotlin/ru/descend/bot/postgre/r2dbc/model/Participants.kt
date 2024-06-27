@@ -5,7 +5,7 @@ import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.core.dsl.Meta
-import ru.descend.bot.lolapi.dto.match_dto.Participant
+import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.to1Digits
@@ -65,6 +65,8 @@ data class Participants(
     var totalTimeSpentDead: Int = 0, //total_time_spent_dead
 
     var dataKey: String = "",
+    var gameMatchKey: String = "",
+    var gameMatchMmr: Double = 0.0
 ) {
 
     constructor(participant: Participant, match: Matches, LOLperson: LOLs) : this() {
@@ -87,7 +89,7 @@ data class Participants(
         this.assists = participant.assists
         this.deaths = participant.deaths
         this.goldEarned = participant.goldEarned
-        this.skillsCast = if (participant.challenges != null) participant.challenges.abilityUses else 0
+        this.skillsCast = participant.challenges?.abilityUses?:0
         this.totalDmgToChampions = participant.totalDamageDealtToChampions
         this.totalHealsOnTeammates = participant.totalHealsOnTeammates
         this.totalDamageShieldedOnTeammates = participant.totalDamageShieldedOnTeammates
@@ -129,6 +131,8 @@ data class Participants(
     suspend fun LOLpersonObj() = R2DBC.getLOLs { tbl_lols.id eq LOLperson_id }.firstOrNull()
 
     override fun toString(): String {
-        return "Participants(id=$id, LOL=$LOLperson_id, match_id=$match_id, championName='$championName')"
+        val textLastMMR = if (gameMatchMmr != 0.0) ", gameMatchMmr='$gameMatchMmr'" else ""
+        val textLastMMRKey = if (gameMatchKey != "") ", gameMatchKey='$gameMatchKey'" else ""
+        return "Participants(id=$id, LOL=$LOLperson_id, match_id=$match_id, championName='$championName'$textLastMMR$textLastMMRKey)"
     }
 }

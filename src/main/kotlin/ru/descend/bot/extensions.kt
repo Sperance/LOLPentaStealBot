@@ -35,9 +35,11 @@ import java.util.Locale
 import kotlin.math.pow
 
 
-fun printLog(message: Any){
+fun printLog(message: Any, writeToFile: Boolean = true){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
-    println("[$curDTime] $message")
+    val lastText = "[$curDTime] $message"
+    println(lastText)
+    if (writeToFile) writeLog(lastText)
 }
 
 suspend fun Guild?.sendMessage(messageId: String, message: String, afterLaunchBody: (() -> Unit)? = null) {
@@ -86,7 +88,7 @@ fun asyncLaunch(block: suspend CoroutineScope.() -> Unit) = CoroutineScope(Dispa
 
 fun printLog(guild: Guild, message: Any){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
-    println("[$curDTime] [${guild.id.value}] $message")
+    printLog("[$curDTime] [${guild.id.value}] $message")
 }
 
 fun <T, E> Map<T, E>.toStringMap() : String {
@@ -163,7 +165,7 @@ suspend fun generateAIText(requestText: String) : String {
     val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
     val JSON = "application/json; charset=utf-8".toMediaType()
     val body = RequestBody.create(JSON, "{\n" +
-            "        \"model\": \"gpt-3.5-turbo-1106\",\n" +
+            "        \"model\": \"gpt-3.5-turbo-0613\",\n" +
             "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
             "    }")
     val request = Request.Builder()
@@ -188,10 +190,6 @@ fun writeLog(text: String?) {
     val curDateText = Date().getStrongDate().date
     var logFile = File(pathFile.path, "log-$curDateText.txt")
     if (!logFile.exists()) logFile.createNewFile()
-
-    if (logFile.sizeInMb > 2.0) {
-        logFile = File(pathFile.path, "log-$curDateText-${pathFile.listFiles()?.size}.txt")
-    }
 
     val curDTime = System.currentTimeMillis().toFormatDateTime()
     logFile.appendText("[$curDTime] $text\n")

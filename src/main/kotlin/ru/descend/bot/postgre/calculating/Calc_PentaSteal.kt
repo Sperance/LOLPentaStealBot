@@ -3,13 +3,13 @@ package ru.descend.bot.postgre.calculating
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
-import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.datas.getStrongDate
+import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
 import ru.descend.bot.writeLog

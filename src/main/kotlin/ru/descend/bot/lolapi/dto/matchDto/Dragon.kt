@@ -1,4 +1,4 @@
-package ru.descend.bot.lolapi.dto.match_dto
+package ru.descend.bot.lolapi.dto.matchDto
 
 data class Dragon(
     val first: Boolean,

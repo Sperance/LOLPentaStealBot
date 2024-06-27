@@ -3,7 +3,7 @@ package ru.descend.bot
 /**
  * Каждый N тик прогрузки матчей будет проходиться по сохранённым пользователям
  */
-const val EVERY_N_TICK_LOAD_MATCH = 3
+const val EVERY_N_TICK_LOAD_MATCH = 2
 
 /**
  * Сколько матчей загружаем по каждому неизвестному пользователю
@@ -30,12 +30,29 @@ const val LOAD_MMR_HEROES_MATCHES = 10000
  */
 const val LOAD_MATCHES_ON_SAVED_UNDEFINED = 5
 
+const val MVP_TAG = "MVP"
 /**
  * Бонусных ММР за получение ранга MVP в АРАМе
  */
 const val BONUS_MMR_FOR_MVP_ARAM = 2.0
 
+const val LVP_TAG = "LVP"
 /**
  * Штрафных ММР за получение ранга LVP в АРАМе
  */
 const val BONUS_MMR_FOR_LVP_ARAM = 2.0
+
+/**
+ * Бонусных ММР за победу
+ */
+const val BONUS_MMR_FOR_WIN = 0.5
+
+/**
+ * Бонусные ММР за получение нового ранга
+ */
+const val BONUS_MMR_FOR_NEW_RANK = 10.0
+
+/**
+ * Максимальное возможное кол-во получения бонусных ММР за матч
+ */
+const val LIMIT_BINUS_MMR_FOR_MATCH = 10.0

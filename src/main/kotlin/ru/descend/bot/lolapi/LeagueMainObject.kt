@@ -10,9 +10,8 @@ import ru.descend.bot.lolapi.dto.InterfaceChampionBase
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.lolapi.dto.currentGameInfo.CurrentGameInfo
-import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
+import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
 import ru.descend.bot.postgre.R2DBC
-import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
@@ -26,24 +25,7 @@ object LeagueMainObject {
     val dragonService = leagueApi.dragonService
     val leagueService = leagueApi.leagueService
 
-//    var heroObjects = ArrayList<InterfaceChampionBase>()
-//    var heroRuNames = ArrayList<String>()
-
     var LOL_VERSION = ""
-
-//    fun catchHeroForId(id: Int?) : InterfaceChampionBase? {
-//        heroObjects.forEach {
-//            if (it.key.lowercase() == id.toString().lowercase()) return it
-//        }
-//        return null
-//    }
-//
-//    fun catchHeroForName(name: String) : InterfaceChampionBase? {
-//        heroObjects.forEach {
-//            if (it.id.lowercase() == name.lowercase()) return it
-//        }
-//        return null
-//    }
 
     suspend fun catchHeroNames() {
 
@@ -95,21 +77,22 @@ object LeagueMainObject {
         }
     }
 
-    suspend fun catchChampionMasteries(puuid: String, agained: Boolean = false) : List<ChampionMasteryDtoItem> {
+    suspend fun catchChampionMasteries(puuid: String, region: String?, agained: Boolean = false) : List<ChampionMasteryDtoItem> {
+        if (region == null) return listOf()
         globalLOLRequests++
         delay(checkRiotQuota())
-        printLog("[catchChampionMasteries::$globalLOLRequests] started with puuid: $puuid")
-        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getChampionMastery(puuid) }){
+        printLog("[catchChampionMasteries::$globalLOLRequests] started with puuid: $puuid region: $region")
+        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getChampionMasteryAny(puuid, region) }){
             is Result.Success -> { res.data }
             is Result.Error -> {
-                val messageError = "catchChampionMasteries failure: ${res.message} puuid: $puuid"
+                val messageError = "catchChampionMasteries failure: ${res.message} puuid: $puuid region: $region"
                 printLog(messageError)
                 writeLog(messageError)
 
                 if (res.errorCode == 404 || agained) listOf()
                 else {
                     statusLOLRequests = 1
-                    catchChampionMasteries(puuid)
+                    catchChampionMasteries(puuid, region)
                 }
             }
         }

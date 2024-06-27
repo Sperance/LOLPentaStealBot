@@ -28,7 +28,9 @@ data class Matches(
     var matchGameVersion: String = "",
     var region: String = "",
     var bots: Boolean = false,
-    var surrender: Boolean = false
+    var surrender: Boolean = false,
+    var endOfGameResult: String = "",
+    var aborted: Boolean = false
 ) {
 
     companion object {

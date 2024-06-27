@@ -1,7 +1,7 @@
-package ru.descend.bot.lolapi.dto.match_dto
+package ru.descend.bot.lolapi.dto.matchDto
 
 data class Info(
-    val endOfGameResult: String,
+    val endOfGameResult: String?,
     val gameCreation: Long,
     val gameDuration: Int,
     val gameEndTimestamp: Long,

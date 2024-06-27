@@ -1,6 +1,5 @@
 package ru.descend.bot.postgre
 
-import co.touchlab.stately.concurrency.AtomicInt
 import dev.kord.core.entity.Guild
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.double
@@ -10,14 +9,14 @@ import org.komapper.core.dsl.query.string
 import ru.descend.bot.LOAD_MATCHES_ON_SAVED_UNDEFINED
 import ru.descend.bot.datas.TextDicrordLimit
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
 import ru.descend.bot.postgre.calculating.Calc_AddMatch
 import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.datas.WorkData
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.toLocalDate
+import ru.descend.bot.generateAIText
+import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
 import ru.descend.bot.postgre.r2dbc.model.Guilds
-import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -25,15 +24,14 @@ import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
-import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
-import ru.descend.bot.printLog
+import ru.descend.bot.sendMessage
 import java.util.Date
 import java.util.concurrent.atomic.AtomicInteger
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
-data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var games: Int, var champion_id: Int?, var mmr: Double?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
+data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var champion_id: Int?, var mmr: Double?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
@@ -113,14 +111,11 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 val id = row.int("id")
                 val mmr_aram = row.double("mmr_aram")
                 val mmr_aram_saved = row.double("mmr_aram_saved")
-                val games = row.int("games")?:0
                 val champion_id = row.int("champion_id")
                 val mmr = row.double("mmr")
                 val mvp_lvp_info = row.string("mvp_lvp_info")
-//                val match_id = row.string("match_id")
-
-//                val last_match_id = row.string("last_match_id")
-                arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, games, champion_id, mmr, mvp_lvp_info,false, null))
+                val last_game = row.string("last_game")
+                arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, champion_id, mmr, mvp_lvp_info,last_game == "+", null))
             }
         }
         arrayAramMMRData.forEach {
@@ -203,4 +198,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return resultAra
     }
     suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
+
+    suspend fun generateFact() {
+        val generatedText = generateAIText("Напиши прикольный факт про игру League of Legends")
+        val resultedText = "**Рубрика: интересные факты**\n\n$generatedText"
+        sendMessage(guildSQL.messageIdStatus, resultedText)
+    }
 }

@@ -3,10 +3,10 @@ package ru.descend.bot.postgre.calculating
 import ru.descend.bot.BONUS_MMR_FOR_LVP_ARAM
 import ru.descend.bot.BONUS_MMR_FOR_MVP_ARAM
 import ru.descend.bot.LOAD_MMR_HEROES_MATCHES
+import ru.descend.bot.LVP_TAG
+import ru.descend.bot.MVP_TAG
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.lolapi.dto.match_dto.MatchDTO
-import ru.descend.bot.lolapi.dto.match_dto.Participant
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs
@@ -14,16 +14,16 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.datas.create
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
-import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.datas.update
 import ru.descend.bot.generateAIText
-import ru.descend.bot.launch
+import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
+import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.lowDescriptor
-import ru.descend.bot.printLog
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormatDate
 import ru.descend.bot.toFormatDateTime
+import ru.descend.bot.writeLog
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -38,6 +38,7 @@ data class Calc_AddMatch (
         arrayOtherLOLs.clear()
         var isBots = false
         var isSurrender = false
+        var isAborted = false
 
         match.info.participants.forEach {
             if (it.summonerId == "BOT" || it.puuid == "BOT") {
@@ -46,6 +47,11 @@ data class Calc_AddMatch (
             if (it.gameEndedInEarlySurrender || it.teamEarlySurrendered) {
                 isSurrender = true
             }
+        }
+
+        //Чёт новое завезли
+        if (match.info.endOfGameResult != null && match.info.endOfGameResult != "GameComplete") {
+            isAborted = true
         }
 
         val pMatchResult = Matches(
@@ -57,7 +63,9 @@ data class Calc_AddMatch (
             matchGameVersion = match.info.gameVersion,
             bots = isBots,
             region = match.metadata.matchId.substringBefore("_"),
-            surrender = isSurrender
+            surrender = isSurrender,
+            endOfGameResult = match.info.endOfGameResult?:"",
+            aborted = isAborted
         ).create(Matches::matchId, "[atom:${sqlData.atomicIntLoaded.get()}]")
 
         if (!pMatchResult.bit) return pMatchResult.result
@@ -110,7 +118,7 @@ data class Calc_AddMatch (
                 if (savedKORDLOL != null && part.pentaKills > 0) {
                     val championName = R2DBC.getHeroFromKey(part.championId.toString())?.nameRU?:""
                     val textPentasCount = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                    val generatedText = generateAIText("Напиши необычное и странное поздравление пользователю ${savedKORDLOL.asUser(sqlData.guild, sqlData).lowDescriptor()} за то что он сделал Пентакилл в игре League of Legends за чемпиона $championName")
+                    val generatedText = generateAIText("Напиши прикольное поздравление в шуточном стиле пользователю ${savedKORDLOL.asUser(sqlData.guild, sqlData).lowDescriptor()} за то что он сделал Пентакилл в игре League of Legends за чемпиона $championName")
                     val resultText = "Поздравляем!!!\n${savedKORDLOL.asUser(sqlData.guild, sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n\n$generatedText"
                     sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, resultText)
                 }
@@ -150,33 +158,33 @@ data class Calc_AddMatch (
         lastPartList.forEach { par ->
             val lolObj = lastLolsList.find { it.id == par.LOLperson_id }!!
             val data = Calc_MMR(par, pMatch, lolObj, sqlData.getMMRforChampion(par.championName))
-            val copyLol = lolObj.copy()
             data.init()
             arrayKORDmmr.add(Pair(data.getSavedLOL(), data.getSavedParticipant()))
             if (mainOrder) {
-                users += "* __" + sqlData.getLOL(par.LOLperson_id)?.getCorrectName() + "__ ${R2DBC.getHeroFromKey(par.championId.toString())?.nameRU?:"null"} win:${par.win} count:${R2DBC.getParticipantsSize { tbl_participants.LOLperson_id eq par.LOLperson_id }} $data\n" +
-                        "OLDLOL: $copyLol\n" +
-                        "NEWLOL: $lolObj\n"
+                users += "* __" + sqlData.getLOL(par.LOLperson_id)?.getCorrectName() + "__ ${R2DBC.getHeroFromKey(par.championId.toString())?.nameRU?:"null"} $data\n"
             }
         }
 
         if (arrayKORDmmr.isNotEmpty()) {
             //Обработка MVP LVP
-            arrayKORDmmr.sortBy { it.first.mmrAramLast }
+            arrayKORDmmr.sortBy { it.second.gameMatchMmr }
             arrayKORDmmr.first().let { first ->
-                first.first.mmrAramLastText = "LVP"
-                first.first.mmrAramLast = (first.first.mmrAramLast - BONUS_MMR_FOR_LVP_ARAM).to1Digits()
-                first.first.removeMMRvalue(BONUS_MMR_FOR_LVP_ARAM.to1Digits())
+                first.second.gameMatchKey = LVP_TAG
+                first.second.gameMatchMmr = (first.second.gameMatchMmr - BONUS_MMR_FOR_LVP_ARAM).to1Digits()
             }
             arrayKORDmmr.last().let { last ->
-                last.first.mmrAramLastText = "MVP"
-                last.first.mmrAramLast = (last.first.mmrAramLast + BONUS_MMR_FOR_MVP_ARAM).to1Digits()
-                last.first.mmrAram = (last.first.mmrAram + BONUS_MMR_FOR_MVP_ARAM).to1Digits()
-
+                last.second.gameMatchKey = MVP_TAG
+                last.second.gameMatchMmr = (last.second.gameMatchMmr + BONUS_MMR_FOR_MVP_ARAM).to1Digits()
+            }
+            //Всякие проверки
+            arrayKORDmmr.forEach {
+                val text = Calc_GainMMR(it.second, it.first)
+                writeLog(text.getTempText())
             }
             //Перезапись полей для сохранения в базу
             arrayKORDmmr.forEach {
                 it.first.update()
+                it.second.update()
             }
         }
 
@@ -191,7 +199,7 @@ data class Calc_AddMatch (
                 "**Добавлен матч: ${pMatch.matchId} ID: ${pMatch.id}\n" +
                         "${pMatch.matchDateStart.toFormatDateTime()} - ${pMatch.matchDateEnd.toFormatDateTime()}\n" +
                         "Duration: $minsDuration:$secondsDuration\n" +
-                        "Mode: ${pMatch.matchMode} Surrender: ${pMatch.surrender} Bots: ${pMatch.bots}**\n$users"
+                        "Mode: ${pMatch.matchMode} Surrender: ${pMatch.surrender} Bots: ${pMatch.bots} Aborted: ${pMatch.aborted}**\n$users"
             )
         }
     }
