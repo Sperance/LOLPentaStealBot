@@ -20,6 +20,7 @@ import org.komapper.core.dsl.query.get
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
 import org.komapper.core.dsl.visitor.QueryVisitor
+import ru.descend.bot.datas.AESUtils
 import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.Toppartisipants
@@ -49,6 +50,7 @@ import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.to1Digits
+import ru.descend.bot.toBase64
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormat
 import ru.descend.bot.toFormatDate
@@ -304,7 +306,6 @@ class PostgreTest {
                     "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
                     "    }")
             val request = Request.Builder()
-                .addHeader("Authorization", "Bearer sk-proj-Hd1fPlDi2K5JHhZsVhiWT3BlbkFJlsrKDAozbpovtMDBW1Pt")
                 .url(url)
                 .post(body)
                 .build()
@@ -334,7 +335,6 @@ class PostgreTest {
                     "  }")
 
             val request = Request.Builder()
-                .addHeader("Authorization", "Bearer sk-proj-Hd1fPlDi2K5JHhZsVhiWT3BlbkFJlsrKDAozbpovtMDBW1Pt")
                 .url(url)
                 .post(body)
                 .build()
@@ -344,15 +344,6 @@ class PostgreTest {
             println("code: ${response.code}")
             println("message: ${response.message}")
             println("result: ${response.body?.string()}")
-        }
-    }
-
-    @Test
-    fun test_last_match() {
-        val match = "RU_12321334"
-        val code = match.substringAfter("_").toLong()
-        for (i in 1..10) {
-            println("RU_${code + i}")
         }
     }
 

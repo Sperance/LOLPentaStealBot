@@ -17,6 +17,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import ru.descend.bot.datas.AESUtils
 import ru.descend.bot.datas.DSC_PS
 import ru.descend.bot.datas.decrypt
 import ru.descend.bot.datas.getStrongDate
@@ -162,6 +163,7 @@ fun catchToken(): List<String> {
 }
 
 suspend fun generateAIText(requestText: String) : String {
+    val key64 = "9E4E8912A59E1A51C220DCC6025F0C3908A0A1407F8ABEDD2597234FEC0750F41641495299F3718721DD657237E57F92".decrypt()
     val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
     val JSON = "application/json; charset=utf-8".toMediaType()
     val body = RequestBody.create(JSON, "{\n" +
@@ -169,7 +171,7 @@ suspend fun generateAIText(requestText: String) : String {
             "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
             "    }")
     val request = Request.Builder()
-        .addHeader("Authorization", "Bearer sk-LT7VD2dmZoQtR0VXftSq4YpXnkS8xcxW")
+        .addHeader("Authorization", "Bearer $key64")
         .url(url)
         .post(body)
         .build()
@@ -198,6 +200,9 @@ fun writeLog(text: String?) {
 fun String.toBase64() : String {
     return Base64.getEncoder().encodeToString(toByteArray())
 }
+
+fun String.encrypt() : String = AESUtils.encrypt(this)
+fun String.decrypt() : String = AESUtils.decrypt(this)
 
 fun String.fromBase64(): String {
     val decodedBytes = Base64.getDecoder().decode(this)
