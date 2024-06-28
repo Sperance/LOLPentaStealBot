@@ -30,7 +30,9 @@ data class Matches(
     var bots: Boolean = false,
     var surrender: Boolean = false,
     var endOfGameResult: String = "",
-    var aborted: Boolean = false
+    var aborted: Boolean = false,
+    var mapId: Int = 0,
+    var gameType: String = ""
 ) {
 
     companion object {

@@ -21,6 +21,7 @@ import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.operator.desc
+import reactor.core.publisher.Hooks
 import ru.descend.bot.datas.LolActiveGame
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
@@ -120,6 +121,7 @@ fun timerMainInformation(guild: Guild, duration: Duration, skipFirst: Boolean = 
 
 private suspend fun firstInitialize() {
     R2DBC.initialize()
+    connectLogger()
 }
 
 suspend fun removeMessage(guild: Guild) {
@@ -567,4 +569,13 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
     }
 
     printLog(sqlData.guild, "[editMessageAramMMRDataContent] completed")
+}
+
+private fun connectLogger() {
+    Hooks.onErrorDropped {
+        writeLog("[HOOKS_ERROR] ${it.localizedMessage}")
+        it.stackTrace.forEach { trace ->
+            writeLog("\t[HOOKS_ERROR] $trace")
+        }
+    }
 }

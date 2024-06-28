@@ -66,7 +66,8 @@ data class Participants(
 
     var dataKey: String = "",
     var gameMatchKey: String = "",
-    var gameMatchMmr: Double = 0.0
+    var gameMatchMmr: Double = 0.0,
+    var visionScore: Int = 0
 ) {
 
     constructor(participant: Participant, match: Matches, LOLperson: LOLs) : this() {
@@ -122,13 +123,14 @@ data class Participants(
         this.profileIcon = participant.profileIcon
         this.team = participant.teamId
         this.win = participant.win
+        this.visionScore = participant.visionScore
     }
 
     companion object {
         val tbl_participants = Meta.participants
     }
 
-    suspend fun LOLpersonObj() = R2DBC.getLOLs { tbl_lols.id eq LOLperson_id }.firstOrNull()
+    suspend fun LOLpersonObj() = R2DBC.getLOLone({ tbl_lols.id eq LOLperson_id })
 
     override fun toString(): String {
         val textLastMMR = if (gameMatchMmr != 0.0) ", gameMatchMmr='$gameMatchMmr'" else ""

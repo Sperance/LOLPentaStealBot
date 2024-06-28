@@ -65,7 +65,9 @@ data class Calc_AddMatch (
             region = match.metadata.matchId.substringBefore("_"),
             surrender = isSurrender,
             endOfGameResult = match.info.endOfGameResult?:"",
-            aborted = isAborted
+            aborted = isAborted,
+            mapId = match.info.mapId,
+            gameType = match.info.gameType
         ).create(Matches::matchId, "[atom:${sqlData.atomicIntLoaded.get()}]")
 
         if (!pMatchResult.bit) return pMatchResult.result

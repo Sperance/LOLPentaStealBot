@@ -33,15 +33,15 @@ data class Calc_PentaSteal (
 
             writeLog(pair.third)
 
-            val firstPart = R2DBC.getParticipants {
+            val firstPart = R2DBC.getParticipantOne({
                 tbl_participants.match_id eq mch.id
                 tbl_participants.LOLperson_id eq pair.first?.id
-            }.firstOrNull()
+            })
 
-            val secondPart = R2DBC.getParticipants {
+            val secondPart = R2DBC.getParticipantOne({
                 tbl_participants.match_id eq mch.id
                 tbl_participants.LOLperson_id eq pair.second?.id
-            }.firstOrNull()
+            })
 
             var textPSteal = ""
             if (firstPart == null) {
