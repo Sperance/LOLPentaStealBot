@@ -13,6 +13,7 @@ import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.datas.delete
+import ru.descend.bot.datas.getData
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.printLog
 import java.time.LocalDateTime
@@ -50,7 +51,7 @@ data class KORDs(
 
     suspend fun deleteWithKORDLOL(guilds: Guilds) {
         printLog("[KORDs::deleteWithKORDLOL] $this")
-        R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq id ; tbl_kordlols.guild_id eq guilds.id }.forEach {
+        KORDLOLs().getData({ tbl_kordlols.KORD_id eq id ; tbl_kordlols.guild_id eq guilds.id }).forEach {
             it.delete()
         }
         this.delete()

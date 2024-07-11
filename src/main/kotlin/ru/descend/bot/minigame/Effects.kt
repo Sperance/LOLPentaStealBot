@@ -46,7 +46,10 @@ class EffectAttackSpeedUP(
     override fun applyEffect(current: Person, enemy: Person?, battleObj: BattleObject?) {
         stackEffect += value
         stackEffect = stackEffect.to1Digits()
-        if (stackEffect > limitValue) return
+        if (stackEffect > limitValue) {
+            current.stats.attackSpeed.setEffectValue(AdditionalValue(hashCode().toString(), limitValue))
+            return
+        }
         current.stats.attackSpeed.setEffectValue(AdditionalValue(hashCode().toString(), stackEffect))
     }
 

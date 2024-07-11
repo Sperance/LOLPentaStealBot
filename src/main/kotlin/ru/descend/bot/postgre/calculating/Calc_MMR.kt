@@ -3,14 +3,15 @@ package ru.descend.bot.postgre.calculating
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
-import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.printLog
 import ru.descend.bot.to1Digits
 import kotlin.math.max
+import kotlin.reflect.KFunction
 import kotlin.reflect.KMutableProperty1
 
-class Calc_MMR(private var participant: Participants, var match: Matches, var lols: LOLs, private var mmrTable: MMRs?) {
+class Calc_MMR(private var participant: ParticipantsNew, var match: Matches, var lols: LOLs, private var mmrTable: MMRs?) {
 
     var mmrValue = 0.0
     private var mmrEmailText = ""
@@ -30,31 +31,26 @@ class Calc_MMR(private var participant: Participants, var match: Matches, var lo
                 mmrModificator = 1.0
             }
 
-            calculateField(Participants::minionsKills, MMRs::minions, minValue = 10.0)
-            calculateField(Participants::skillsCast, MMRs::skills, maxMMR = 1.5)
+            calculateField(ParticipantsNew::totalMinionsKilled, MMRs::minions)
 
-            calculateField(Participants::totalDamageShieldedOnTeammates, MMRs::shielded, minValue = 500.0, maxMMR = 1.0)
-            calculateField(Participants::totalHealsOnTeammates, MMRs::healed, minValue = 500.0, maxMMR = 1.0)
+            calculateField(ParticipantsNew::totalDamageShieldedOnTeammates, MMRs::shielded, maxMMR = 2.0)
+            calculateField(ParticipantsNew::totalHealsOnTeammates, MMRs::healed)
 
-            calculateField(Participants::damageDealtToBuildings, MMRs::dmgBuilding, minValue = 500.0, maxMMR = 1.0)
-            calculateField(Participants::timeCCingOthers, MMRs::controlEnemy, minValue = 5.0)
+            calculateField(ParticipantsNew::damageDealtToBuildings, MMRs::dmgBuilding, maxMMR = 2.0)
+            calculateField(ParticipantsNew::timeCCingOthers, MMRs::controlEnemy, maxMMR = 2.0)
 
-            calculateField(Participants::enemyChampionImmobilizations, MMRs::immobiliz, minValue = 5.0, maxMMR = 1.0)
-            calculateField(Participants::damageTakenOnTeamPercentage, MMRs::dmgTakenPerc, maxMMR = 1.0)
-            calculateField(Participants::skillshotsDodged, MMRs::skillDodge, minValue = 30.0, maxMMR = 1.0)
+            calculateField(ParticipantsNew::enemyChampionImmobilizations, MMRs::immobiliz, maxMMR = 2.0)
+            calculateField(ParticipantsNew::damageTakenOnTeamPercentage, MMRs::dmgTakenPerc)
+            calculateField(ParticipantsNew::skillshotsDodged, MMRs::skillDodge, maxMMR = 2.0)
 
-            calculateField(Participants::teamDamagePercentage, MMRs::dmgDealPerc)
-            calculateField(Participants::kda, MMRs::kda)
+            calculateField(ParticipantsNew::teamDamagePercentage, MMRs::dmgDealPerc)
+            calculateField(ParticipantsNew::kda, MMRs::kda)
 
             calculateMMRaram(lols)
         }
     }
 
     private fun calculateMMRaram(lols: LOLs) {
-        if (match.surrender) return
-        if (match.bots) return
-        if (match.aborted) return
-
         if (participant.win) {
             stockGainMMR = mmrValue.to1Digits()
         } else {
@@ -74,7 +70,7 @@ class Calc_MMR(private var participant: Participants, var match: Matches, var lo
         val tempMaxMMR = maxMMR - rank.rankValue
 
         value = if (tempMaxMMR > mmrValue) {
-            (tempMaxMMR - mmrValue) * (0.3 + rank.rankValue / 10.0)
+            (tempMaxMMR - mmrValue) * (0.2 + rank.rankValue / 10.0)
         } else {
             1.0
         }.to1Digits()
@@ -85,7 +81,7 @@ class Calc_MMR(private var participant: Participants, var match: Matches, var lo
         stockGainMMR = -value.to1Digits()
     }
 
-    private fun calculateField(propertyParticipant: KMutableProperty1<Participants, *>, propertyMmr: KMutableProperty1<MMRs, *>, minValue: Double? = null, maxMMR: Double? = null) {
+    private fun calculateField(propertyParticipant: KMutableProperty1<ParticipantsNew, *>, propertyMmr: KMutableProperty1<MMRs, *>, maxMMR: Double? = null) {
         if (mmrTable == null) return
 
         val valuePropertyMmr = ((propertyMmr.invoke(mmrTable!!) as Double) * baseModificator).to1Digits()
@@ -98,11 +94,6 @@ class Calc_MMR(private var participant: Participants, var match: Matches, var lo
                 0.0
             }
         }.to1Digits()
-
-        if (minValue != null && valuePropertyMmr < (minValue * mmrModificator).to1Digits()) {
-            mmrEmailText += "[FIELDS] ${propertyParticipant.name} текущее значение $valuePropertyMmr меньше требуемого: ${(minValue * mmrModificator).to1Digits()}. пропускаем поле\n"
-            return
-        }
 
         var localMMR = valuePropertyParticipant.fromDoublePerc(valuePropertyMmr * mmrModificator).to1Digits()
         if (maxMMR != null && localMMR > maxMMR) {
@@ -125,17 +116,21 @@ class Calc_MMR(private var participant: Participants, var match: Matches, var lo
 
     private fun Double.fromDoublePerc(stock: Double): Double {
         return when ((this / stock) * 100.0) {
-            in Double.MIN_VALUE..10.0 -> 0.1
-            in 10.0..30.0 -> 0.3
-            in 30.0..50.0 -> 0.6
-            in 50.0..70.0 -> 0.8
-            in 70.0..90.0 -> 1.0
-            in 90.0..110.0 -> 1.2
-            in 110.0..140.0 -> 1.4
-            in 140.0..180.0 -> 1.6
-            in 180.0..220.0 -> 1.8
-            in 220.0..260.0 -> 1.9
-            in 260.0..Double.MAX_VALUE -> 2.0
+            in Double.MIN_VALUE..20.0 -> 0.2
+            in 20.0..40.0 -> 0.4
+            in 40.0..60.0 -> 0.6
+            in 60.0..80.0 -> 0.8
+            in 80.0..100.0 -> 1.0
+            in 100.0..120.0 -> 1.2
+            in 120.0..140.0 -> 1.4
+            in 140.0..160.0 -> 1.6
+            in 160.0..180.0 -> 1.8
+            in 180.0..200.0 -> 2.0
+            in 200.0..220.0 -> 2.2
+            in 220.0..240.0 -> 2.4
+            in 240.0..260.0 -> 2.6
+            in 260.0..280.0 -> 2.8
+            in 280.0..Double.MAX_VALUE -> 3.0
             else -> 0.0
         }
     }

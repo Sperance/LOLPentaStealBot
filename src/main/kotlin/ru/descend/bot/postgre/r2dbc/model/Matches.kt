@@ -35,6 +35,14 @@ data class Matches(
     var gameType: String = ""
 ) {
 
+    fun isNeedCalcMMR() : Boolean {
+        if (matchMode != "ARAM") return false
+        if (bots) return false
+        if (surrender) return false
+        if (aborted) return false
+        return true
+    }
+
     companion object {
         val tbl_matches = Meta.matches
     }

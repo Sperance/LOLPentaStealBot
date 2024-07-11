@@ -98,21 +98,17 @@ object LeagueMainObject {
         }
     }
 
-    suspend fun catchActiveGame(encryptedPUUID: String) : CurrentGameInfo? {
-        globalLOLRequests++
-        delay(checkRiotQuota())
-        printLog("[catchActiveGame::$globalLOLRequests] started with encryptedPUUID: $encryptedPUUID")
-        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getActiveGame(encryptedPUUID) }){
-            is Result.Success -> { res.data }
-            is Result.Error -> {
-//                statusLOLRequests = 1
-//                val messageError = "catchActiveGame failure: ${res.message} with encryptedPUUID: $encryptedPUUID"
-//                printLog(messageError)
-//                writeLog(messageError)
-                null
-            }
-        }
-    }
+//    suspend fun catchActiveGame(encryptedPUUID: String) : CurrentGameInfo? {
+//        globalLOLRequests++
+//        delay(checkRiotQuota())
+//        printLog("[catchActiveGame::$globalLOLRequests] started with encryptedPUUID: $encryptedPUUID")
+//        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getActiveGame(encryptedPUUID) }){
+//            is Result.Success -> { res.data }
+//            is Result.Error -> {
+//                null
+//            }
+//        }
+//    }
 
     suspend fun catchMatch(matchId: String, agained: Boolean = false) : MatchDTO? {
         globalLOLRequests++
@@ -161,9 +157,9 @@ object LeagueMainObject {
         if (statusLOLRequests != 0) {
             statusLOLRequests = 1
             printLog("[leagueApi] checkRiotQuota globalLOLRequests: $globalLOLRequests")
-            return ((1).minutes + (1).seconds) //+1 сек на всякий случай
+            return ((1).minutes)
         }
-        return (0.1).seconds //для безопасности
+        return (0).seconds //для безопасности
     }
 
     private fun reloadRiotQuota() {

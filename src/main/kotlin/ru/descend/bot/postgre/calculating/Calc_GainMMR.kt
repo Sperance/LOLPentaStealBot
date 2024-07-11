@@ -7,12 +7,16 @@ import ru.descend.bot.BONUS_MMR_FOR_WIN
 import ru.descend.bot.LIMIT_BINUS_MMR_FOR_MATCH
 import ru.descend.bot.LVP_TAG
 import ru.descend.bot.MVP_TAG
+import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs
-import ru.descend.bot.postgre.r2dbc.model.Participants
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
+import ru.descend.bot.printLog
 import ru.descend.bot.to1Digits
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
-class Calc_GainMMR(private var participant: Participants, private var lols: LOLs) {
+class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: LOLs, private val sqlData: SQLData_R2DBC) {
 
     private var textTemp = lols.toString() + "\n"
 
@@ -68,7 +72,8 @@ class Calc_GainMMR(private var participant: Participants, private var lols: LOLs
         var value = abs(stockMMR)
 
         //лимит на минимальное снятие
-        val minRemoved = (1.0 + (lols.getRank().rankValue * 0.5)).to1Digits()
+        val minRemoved = max(1.0 + lols.getRank().rankValue / 10.0, (lols.getRank().rankValue * (lols.getRank().rankValue / 10.0)) - 1.0).to1Digits()
+        textTemp += "[calcLooseMMR::ПоражениеМинимум] попытка снять $value минимум снимания $minRemoved\n"
         if (value < minRemoved) {
             textTemp += "[calcLooseMMR::ПоражениеМинимум] было: $value стало $minRemoved\n"
             value = minRemoved

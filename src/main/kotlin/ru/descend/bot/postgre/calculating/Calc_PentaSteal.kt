@@ -1,15 +1,17 @@
 package ru.descend.bot.postgre.calculating
 
 import ru.descend.bot.asyncLaunch
+import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
-import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.sendMessage
 import ru.descend.bot.toDate
 import ru.descend.bot.writeLog
@@ -33,14 +35,14 @@ data class Calc_PentaSteal (
 
             writeLog(pair.third)
 
-            val firstPart = R2DBC.getParticipantOne({
-                tbl_participants.match_id eq mch.id
-                tbl_participants.LOLperson_id eq pair.first?.id
+            val firstPart = ParticipantsNew().getDataOne({
+                tbl_participantsnew.match_id eq mch.id
+                tbl_participantsnew.LOLperson_id eq pair.first?.id
             })
 
-            val secondPart = R2DBC.getParticipantOne({
-                tbl_participants.match_id eq mch.id
-                tbl_participants.LOLperson_id eq pair.second?.id
+            val secondPart = ParticipantsNew().getDataOne({
+                tbl_participantsnew.match_id eq mch.id
+                tbl_participantsnew.LOLperson_id eq pair.second?.id
             })
 
             var textPSteal = ""
@@ -72,7 +74,7 @@ data class Calc_PentaSteal (
 
         val mapPUUID = HashMap<Long, LOLs?>()
         dto.info.participants.forEach { part ->
-            mapPUUID[part.participantId] = R2DBC.getLOLs { LOLs.tbl_lols.LOL_puuid eq part.puuid }.firstOrNull()
+            mapPUUID[part.participantId] = LOLs().getDataOne({ LOLs.tbl_lols.LOL_puuid eq part.puuid })
         }
 
         var lastDate = System.currentTimeMillis()

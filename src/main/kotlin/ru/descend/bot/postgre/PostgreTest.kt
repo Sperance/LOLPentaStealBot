@@ -3,6 +3,7 @@ package ru.descend.bot.postgre
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -12,21 +13,33 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import org.junit.Test
 import org.komapper.core.dsl.QueryDsl
+import org.komapper.core.dsl.expression.SortExpression
+import org.komapper.core.dsl.expression.WhereDeclaration
+import org.komapper.core.dsl.metamodel.EntityMetamodel
+import org.komapper.core.dsl.metamodel.PropertyMetamodel
+import org.komapper.core.dsl.operator.count
 import org.komapper.core.dsl.operator.desc
 import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.bind
 import org.komapper.core.dsl.query.double
+import org.komapper.core.dsl.query.firstOrNull
 import org.komapper.core.dsl.query.get
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
 import org.komapper.core.dsl.visitor.QueryVisitor
+import ru.descend.bot.EnumMeasures
 import ru.descend.bot.datas.AESUtils
+import ru.descend.bot.datas.CoreResult
 import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.Toppartisipants
+import ru.descend.bot.datas.addBatch
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.datas.create
+import ru.descend.bot.datas.getData
+import ru.descend.bot.datas.getInstanceClassForTbl
+import ru.descend.bot.datas.getSize
 import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
@@ -34,8 +47,6 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
-import ru.descend.bot.postgre.r2dbc.model.Participants
-import ru.descend.bot.postgre.r2dbc.model.Participants.Companion.tbl_participants
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
@@ -43,12 +54,14 @@ import ru.descend.bot.datas.toLocalDate
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
-import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
+import ru.descend.bot.measureBlock
 import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
+import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toBase64
 import ru.descend.bot.toDate
@@ -68,7 +81,13 @@ import java.time.temporal.TemporalUnit
 import java.util.Calendar
 import java.util.Date
 import java.util.HashMap
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
+import kotlin.reflect.KMutableProperty1
+import kotlin.system.measureTimeMillis
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.milliseconds
 
 class PostgreTest {
 
@@ -92,74 +111,8 @@ class PostgreTest {
         }
     }
 
-    @Test
-    fun test_quety() {
-        runBlocking {
-            val query = QueryDsl
-                .from(tbl_participants)
-                .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
-                .innerJoin(tbl_kordlols) { tbl_kordlols.LOL_id eq tbl_participants.LOLperson_id }
-                .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false }
-                .selectAsEntity(tbl_participants)
-
-            val result = R2DBC.runQuery { query }
-            println("res size: ${result.size}")
-        }
-    }
-
-    @Test
-    fun test_day_diff() {
-
-        val curTimeMinus60 = Date().time.toLocalDate().minusDays(60).toDate().time
-        val curTime = Date().time
-        println((1718371294011).toFormatDate() + " " + (1718371294011).betweenCurrent().days.toString() + " 1718371294011 - $curTime - $curTimeMinus60")
-        println((1718371311013).toFormatDate() + " " + (1718371311013).betweenCurrent().days.toString() + " 1718371311013 - $curTime - $curTimeMinus60")
-
-        runBlocking {
-            val query = QueryDsl
-                .from(tbl_lols)
-                .innerJoin(tbl_participants) { tbl_participants.LOLperson_id eq tbl_lols.id }
-                .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
-                .where {
-                    tbl_lols.last_loaded.lessEq(Date().time.toLocalDate().minusDays(60).toDate().time)
-                    tbl_lols.LOL_region.eq("RU")
-                    tbl_lols.LOL_riotIdName.notEq("null")
-                }
-                .orderBy(listOf(tbl_matches.matchDateEnd.desc(), tbl_lols.id.desc()))
-                .limit(100)
-                .selectAsEntity(tbl_lols)
-
-            R2DBC.runQuery { query }.forEach {
-                println("${it.id} last: ${it.last_loaded.toFormatDateTime()}(${it.last_loaded}) minus60: ${curTimeMinus60.toFormatDateTime()}($curTimeMinus60")
-            }
-        }
-    }
-
     fun Long.betweenCurrent() : Period {
         return Period.between(this.toLocalDate(), Date().time.toLocalDate())
-    }
-
-    @Test
-    fun test_quety_lols() {
-        runBlocking {
-            val query = QueryDsl
-                .from(tbl_lols)
-                .innerJoin(tbl_participants) { tbl_participants.LOLperson_id eq tbl_lols.id }
-                .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
-                .where {
-                    tbl_lols.last_loaded.eq(0)
-                    tbl_lols.LOL_region.eq("RU")
-                    tbl_lols.LOL_riotIdName.notEq("null")
-                }
-                .orderBy(listOf(tbl_matches.matchDateEnd.desc(), tbl_lols.id.desc()))
-                .limit(20)
-                .selectAsEntity(tbl_lols)
-
-            val result = R2DBC.runQuery { query }
-            result.forEach {
-                println("IT: $it")
-            }
-        }
     }
 
     @Test
@@ -202,6 +155,18 @@ class PostgreTest {
         }
     }
 
+    suspend fun <META : EntityMetamodel<Any, Any, META>> EntityMetamodel<*, *, *>.getSize(declaration: WhereDeclaration): Long {
+        return R2DBC.runQuery { QueryDsl.from(this@getSize as META).where(declaration).select(count()) }?:0L
+    }
+
+    @Test
+    fun test_generics2() {
+        runBlocking {
+            val data = tbl_lols.getSize { tbl_lols.id greaterEq 0 }
+            println(data)
+        }
+    }
+
     @Test
     fun test_digits_double() {
         printLog((523.523).to1Digits())
@@ -226,16 +191,6 @@ class PostgreTest {
         var championWins: Int,
         var championKDA: Double
     )
-
-    @Test
-    fun test_sort_expressions() {
-        runBlocking {
-            val user = R2DBC.getLOLone(declaration = { tbl_lols.last_loaded.eq(0) ; tbl_lols.LOL_region.eq("RU") }, sortExpression = tbl_lols.id.desc())
-            println("user id: ${user?.id}")
-            val user2 = R2DBC.getLOLone(declaration = { tbl_lols.last_loaded.eq(0) ; tbl_lols.LOL_region.eq("RU") }, sortExpression = tbl_lols.id.desc())
-            println("user2 id: ${user2?.id}")
-        }
-    }
 
     @Test
     fun test_remove_match() {
@@ -365,64 +320,6 @@ class PostgreTest {
     }
 
     @Test
-    fun test_parts() {
-        runBlocking {
-            val query = QueryDsl
-                .from(tbl_participants)
-                .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participants.match_id }
-                .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false }
-                .orderBy(tbl_participants.id)
-                .selectAsEntity(tbl_participants)
-
-            val statClass = Toppartisipants()
-            val result = R2DBC.runQuery { query }
-            println("Data Size: ${result.size}")
-            result.forEach {
-                statClass.calculateField(it, "Убийств", it.kills.toDouble())
-                statClass.calculateField(it, "Смертей", it.deaths.toDouble())
-                statClass.calculateField(it, "Ассистов", it.assists.toDouble())
-                statClass.calculateField(it, "KDA", it.kda)
-                statClass.calculateField(it, "Урон в минуту", it.damagePerMinute)
-//        statClass.calculateField(it, "Эффектных щитов/хилов", it.effectiveHealAndShielding)
-                statClass.calculateField(it, "Урона строениям", it.damageDealtToBuildings.toDouble())
-                statClass.calculateField(it, "Урона поглощено", it.damageSelfMitigated.toDouble())
-                statClass.calculateField(it, "Секунд контроля врагам", it.enemyChampionImmobilizations.toDouble())
-                statClass.calculateField(it, "Получено золота", it.goldEarned.toDouble())
-//        statClass.calculateField(it, "Уничтожено ингибиторов", it.inhibitorKills.toDouble())
-                statClass.calculateField(it, "Критический удар", it.largestCriticalStrike.toDouble())
-                statClass.calculateField(it, "Магического урона чемпионам", it.magicDamageDealtToChampions.toDouble())
-                statClass.calculateField(it, "Физического урона чемпионам", it.physicalDamageDealtToChampions.toDouble())
-                statClass.calculateField(it, "Чистого урона чемпионам", it.trueDamageDealtToChampions.toDouble())
-                statClass.calculateField(it, "Убито миньонов", it.minionsKills.toDouble())
-                statClass.calculateField(it, "Использовано заклинаний", it.skillsCast.toDouble())
-                statClass.calculateField(it, "Уклонений от заклинаний", it.skillshotsDodged.toDouble())
-                statClass.calculateField(it, "Попаданий заклинаниями", it.skillshotsHit.toDouble())
-                statClass.calculateField(it, "Попаданий снежками", it.snowballsHit.toDouble())
-//        statClass.calculateField(it, "Соло-убийств", it.soloKills.toDouble())
-//        statClass.calculateField(it, "Провёл в контроле (сек)", it.timeCCingOthers.toDouble())
-                statClass.calculateField(it, "Наложено щитов союзникам", it.totalDamageShieldedOnTeammates.toDouble())
-                statClass.calculateField(it, "Получено урона", it.totalDamageTaken.toDouble())
-                statClass.calculateField(it, "Нанесено урона чемпионам", it.totalDmgToChampions.toDouble())
-                statClass.calculateField(it, "Лечение союзников", it.totalHealsOnTeammates.toDouble())
-//        statClass.calculateField(it, "Контроль врагов (сек)", it.totalTimeCCDealt.toDouble())
-            }
-
-            var resultText = ""
-            statClass.getResults().forEach {
-                resultText += "* $it\n"
-                println("* $it\n")
-            }
-        }
-    }
-
-    @Test
-    fun test_proc() {
-        runBlocking {
-            R2DBC.executeProcedure("call \"GetAVGs\"()")
-        }
-    }
-
-    @Test
     fun test_duplicates() {
         runBlocking {
             val objectDB = KORDs()
@@ -434,45 +331,6 @@ class PostgreTest {
                 QueryDsl.insert(tbl_kords).onDuplicateKeyUpdate(tbl_kords.donations).set { excl ->
                     tbl_kords.KORD_id eq "KORDID2"
                 }.single(objectDB)
-            }
-        }
-    }
-
-    @Test
-    fun test_calc_winrate() {
-        runBlocking {
-            val lolid = 14
-
-            val arrayARAM = HashMap<Int, ArrayList<Pair<Int, Int>>>()
-
-            val allKORDLOLS = R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq 1; tbl_kordlols.LOL_id notEq lolid }
-            val savedParticipantsMatches = R2DBC.getParticipants { Participants.tbl_participants.LOLperson_id eq lolid }
-            val arrayMatches = R2DBC.getMatches { Matches.tbl_matches.id.inList(savedParticipantsMatches.map { it.match_id }) ; Matches.tbl_matches.surrender eq false ; Matches.tbl_matches.bots eq false }
-            val lastParticipants = R2DBC.getParticipants { Participants.tbl_participants.match_id.inList(arrayMatches.map { it.id }) ; Participants.tbl_participants.LOLperson_id.inList(allKORDLOLS.map { it.LOL_id }) }
-            lastParticipants.forEach {
-                if (arrayMatches.find { mch -> mch.id == it.match_id }?.matchMode == "ARAM") {
-                    if (arrayARAM[it.LOLperson_id] == null) {
-                        arrayARAM[it.LOLperson_id] = ArrayList()
-                        arrayARAM[it.LOLperson_id]!!.add(Pair(if (it.win) 1 else 0, if (!it.win) 1 else 0))
-                    } else {
-                        arrayARAM[it.LOLperson_id]!!.add(Pair(if (it.win) 1 else 0, if (!it.win) 1 else 0))
-                    }
-                }
-            }
-
-            val arrayStat = ArrayList<DataStatRate>()
-            arrayARAM.forEach { (i, pairs) ->
-                var winGames = 0.0
-                pairs.forEach {
-                    if (it.first == 1) winGames++
-                }
-                arrayStat.add(DataStatRate(lol_id = i, allGames = pairs.size, winGames = winGames))
-            }
-
-            arrayStat.sortByDescending { (it.winGames / it.allGames * 100.0).to1Digits() }
-
-            arrayStat.forEach {
-                printLog("** ${R2DBC.getLOLs { tbl_lols.id eq it.lol_id }.firstOrNull()?.getCorrectName()}** ${(it.winGames / it.allGames * 100.0).to1Digits()}% Games:${it.allGames}")
             }
         }
     }

@@ -23,7 +23,7 @@ const val LOAD_SAVED_USER_MATCHES = 50
 /**
  * Каждое указанное кол-во матчей будет прогрузка таблицы ММР и Чемпионов
  */
-const val LOAD_MMR_HEROES_MATCHES = 10000
+const val LOAD_MMR_HEROES_MATCHES = 5000
 
 /**
  * Сколько матчей будет загружено по каждому неизвестному пользователю когда загружен матч по известному
@@ -56,3 +56,8 @@ const val BONUS_MMR_FOR_NEW_RANK = 10.0
  * Максимальное возможное кол-во получения бонусных ММР за матч
  */
 const val LIMIT_BINUS_MMR_FOR_MATCH = 10.0
+
+/**
+ * Кол-во дней для прогрузки матчей каждого пользователя (было 60)
+ */
+const val DAYS_MIN_IN_LOAD = 30L

@@ -20,6 +20,8 @@ import ru.descend.bot.postgre.PostgreTest
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.datas.create
 import ru.descend.bot.datas.delete
+import ru.descend.bot.datas.getData
+import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -27,7 +29,6 @@ import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches
-import ru.descend.bot.postgre.r2dbc.model.Participants
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
@@ -278,9 +279,7 @@ fun arguments() = commands("Arguments") {
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
-            val KORD =
-                R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }
-                    .firstOrNull()
+            val KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id })
             if (KORD == null) {
                 respond("Пользователь ${user.lowDescriptor()} не зарегистрирован в боте. Его изменение невозможно")
                 return@execute
@@ -403,7 +402,7 @@ fun arguments() = commands("Arguments") {
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
             var KORD = KORDs(guilds, user)
-            KORD = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }.firstOrNull() ?: KORD.create(KORDs::KORD_id).result
+            KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }) ?: KORD.create(KORDs::KORD_id).result
 
             //Создаем LOL сразу со связью с аккаунтом Лиги Легенд
             var LOL = LOLs().connectLOL(region, summonerName, tagLine)
@@ -413,10 +412,10 @@ fun arguments() = commands("Arguments") {
             }
 
             //Если аккаунт есть в базе - ок, если нет - создаём в базе
-            LOL = R2DBC.getLOLs { tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }.firstOrNull() ?: LOL.create(LOLs::LOL_puuid).result
+            LOL = LOLs().getDataOne({ tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }) ?: LOL.create(LOLs::LOL_puuid).result
 
             //Проверка что к пользователю уже привязан какой-либо аккаунт лиги
-            val alreadyKORDLOL = R2DBC.getKORDLOLs { tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id; tbl_kordlols.LOL_id eq LOL.id }.firstOrNull()
+            val alreadyKORDLOL = KORDLOLs().getDataOne({ tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id; tbl_kordlols.LOL_id eq LOL.id })
             if (alreadyKORDLOL != null) {
                 respond("Призыватель уже связан с аккаунтом лиги легенд (KORDLOL: ${alreadyKORDLOL.id}). Для внесения изменений - сначала удалите из базы пользователя ${user.lowDescriptor()}")
                 return@execute
@@ -431,7 +430,7 @@ fun arguments() = commands("Arguments") {
 
                 val resultData = KORDLOL.create(null).result
                 val arrayData = ArrayList<KORDLOLs>()
-                arrayData.addAll(R2DBC.getKORDLOLs { tbl_kordlols.guild_id eq guilds.id })
+                arrayData.addAll(KORDLOLs().getData({ tbl_kordlols.guild_id eq guilds.id }))
                 arrayData.sortBy { data -> data.showCode }
                 resultData.showCode = arrayData.last().showCode + 1
                 resultData.update()
@@ -515,9 +514,7 @@ fun arguments() = commands("Arguments") {
             val guilds = R2DBC.getGuild(guild)
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataKORD =
-                R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }
-                    .firstOrNull()
+            val dataKORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id })
             val textMessage = if (dataKORD == null) {
                 "Пользователя не существует в базе"
             } else {
@@ -538,7 +535,7 @@ fun arguments() = commands("Arguments") {
             val guilds = R2DBC.getGuild(guild)
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataKORD = R2DBC.getKORDLOLs { tbl_kordlols.showCode eq id; tbl_kordlols.guild_id eq guilds.id }
+            val dataKORD = KORDLOLs().getData({ tbl_kordlols.showCode eq id; tbl_kordlols.guild_id eq guilds.id })
 
             if (dataKORD.isEmpty()) {
                 respond("Пользователя с id $id в базе не найдено. Операция отменена. Обратитесь к Администратору")
@@ -553,7 +550,7 @@ fun arguments() = commands("Arguments") {
             val textMessage = run {
                 val kordId = dataKORD.first().KORD_id
                 dataKORD.first().delete()
-                R2DBC.getKORDs { tbl_kords.id eq kordId }.firstOrNull()?.delete()
+                KORDs().getDataOne({ tbl_kords.id eq kordId })?.delete()
                 "Удаление произошло успешно"
             }
             respond(textMessage)
@@ -573,7 +570,7 @@ fun arguments() = commands("Arguments") {
             val textMessage = if (dataUser == null) {
                 "Пользователя не существует в базе"
             } else {
-                R2DBC.getLOLone({ tbl_lols.id.eq(dataUser.LOL_id) })?.let { lol ->
+                LOLs().getDataOne({ tbl_lols.id.eq(dataUser.LOL_id) })?.let { lol ->
                     lol.mmrAramSaved += savedMMR.toDouble().to1Digits()
                     lol.update()
                 }
@@ -596,7 +593,7 @@ fun arguments() = commands("Arguments") {
             val textMessage = if (dataUser == null) {
                 "Пользователя не существует в базе"
             } else {
-                R2DBC.getLOLone({ tbl_lols.id.eq(dataUser.LOL_id) })?.let { lol ->
+                LOLs().getDataOne({ tbl_lols.id.eq(dataUser.LOL_id) })?.let { lol ->
                     lol.mmrAramSaved -= savedMMR.toDouble().to1Digits()
                     lol.update()
                 }
@@ -615,7 +612,7 @@ fun arguments() = commands("Arguments") {
             val guilds = R2DBC.getGuild(guild)
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataUser = R2DBC.getKORDs { tbl_kords.KORD_id eq user.toStringUID() }.firstOrNull()
+            val dataUser = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID() })
             val textMessage = if (dataUser == null) {
                 "Пользователя не существует в базе"
             } else {

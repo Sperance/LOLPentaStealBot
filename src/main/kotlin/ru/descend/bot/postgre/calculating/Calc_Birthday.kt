@@ -1,11 +1,14 @@
 package ru.descend.bot.postgre.calculating
 
+import ru.descend.bot.datas.getData
+import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.datas.update
+import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.sendMessage
 import ru.descend.bot.writeLog
@@ -24,9 +27,9 @@ data class Calc_Birthday(private var sqlData: SQLData_R2DBC, var dataList: List<
             val newTextBirthday = currentTextBirthday.dropLast(4) + GregorianCalendar.getInstance().get(Calendar.YEAR)
             it.date_birthday = newTextBirthday
             it.update()
-            val kordlol = R2DBC.getKORDLOLone({ KORDLOLs.tbl_kordlols.KORD_id eq it.id })
+            val kordlol = KORDLOLs().getDataOne({ KORDLOLs.tbl_kordlols.KORD_id eq it.id })
             if (kordlol != null) {
-                val listLols = R2DBC.getLOLs { tbl_lols.id.eq(kordlol.LOL_id) }
+                val listLols = LOLs().getData({ tbl_lols.id.eq(kordlol.LOL_id) })
                 listLols.forEach { lol ->
                     lol.mmrAramSaved += 10.0
                     lol.update()

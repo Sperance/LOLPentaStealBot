@@ -16,7 +16,7 @@ import me.jakejmattson.discordkt.util.descriptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import ru.descend.bot.datas.AESUtils
 import ru.descend.bot.datas.DSC_PS
 import ru.descend.bot.datas.decrypt
@@ -33,7 +33,11 @@ import java.util.Base64
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 import kotlin.math.pow
+import kotlin.time.Duration.Companion.milliseconds
 
 
 fun printLog(message: Any, writeToFile: Boolean = true){
@@ -41,6 +45,30 @@ fun printLog(message: Any, writeToFile: Boolean = true){
     val lastText = "[$curDTime] $message"
     println(lastText)
     if (writeToFile) writeLog(lastText)
+}
+
+enum class EnumMeasures {
+    METHOD,
+    QUERY,
+    BLOCK
+}
+
+@OptIn(ExperimentalContracts::class)
+suspend fun <T> measureBlock(enum: EnumMeasures, text: String, block: suspend () -> T) : T {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    val start = System.currentTimeMillis()
+    val resT = block()
+    val result = System.currentTimeMillis() - start
+    var addText = when (enum) {
+        EnumMeasures.METHOD -> "[{METHOD} "
+        EnumMeasures.QUERY -> "\t[{QUERY} "
+        EnumMeasures.BLOCK -> "["
+    }
+
+    printLog("$addText$text :: ${result.milliseconds}]")
+    return resT
 }
 
 suspend fun Guild?.sendMessage(messageId: String, message: String, afterLaunchBody: (() -> Unit)? = null) {
@@ -157,7 +185,7 @@ fun catchToken(): List<String> {
     val file = File("token.dsc")
     if (!file.exists()) {
         file.createNewFile()
-        //TODO Write token 1 - dicsord/2 - LOL/3 - Gemini
+        //TODO Write token 1 - dicsord/2 - LOL
     }
     return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
 }
@@ -166,10 +194,10 @@ suspend fun generateAIText(requestText: String) : String {
     val key64 = "9E4E8912A59E1A51C220DCC6025F0C3908A0A1407F8ABEDD2597234FEC0750F41641495299F3718721DD657237E57F92".decrypt()
     val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
     val JSON = "application/json; charset=utf-8".toMediaType()
-    val body = RequestBody.create(JSON, "{\n" +
+    val body = ("{\n" +
             "        \"model\": \"gpt-3.5-turbo-0613\",\n" +
             "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
-            "    }")
+            "    }").toRequestBody(JSON)
     val request = Request.Builder()
         .addHeader("Authorization", "Bearer $key64")
         .url(url)

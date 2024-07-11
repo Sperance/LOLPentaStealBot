@@ -31,7 +31,7 @@ class TestGame {
         val newEffectHeal = BaseApplyEffect("Новый эф", listOf(
             EffectHeal(10.0, EnumPersonLifects.ON_TAKE_DAMAGE),
 //            EffectAdditionalDamage(10.0, EnumPersonLifects.ON_DEAL_DAMAGE),
-            EffectAttackSpeedUP(0.1, 2.0, EnumPersonLifects.ON_DEAL_DAMAGE),
+            EffectAttackSpeedUP(0.3, 2.0, EnumPersonLifects.ON_DEAL_DAMAGE),
             EffectDoubleDamageEveryAttack(3)
         ))
 

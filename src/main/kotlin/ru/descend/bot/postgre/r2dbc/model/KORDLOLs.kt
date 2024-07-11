@@ -41,9 +41,9 @@ data class KORDLOLs(
 
     /*********************************/
 
-    suspend fun asUser(guild: Guild, data: SQLData_R2DBC) : User {
+    suspend fun asUser(data: SQLData_R2DBC) : User {
         if (KORD_id == -1) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
-        return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), guild.kord)
+        return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), data.guild.kord)
     }
 
     override fun toString(): String {
