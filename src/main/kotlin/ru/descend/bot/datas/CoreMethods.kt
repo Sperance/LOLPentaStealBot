@@ -9,6 +9,7 @@ import org.komapper.core.dsl.metamodel.EntityMetamodel
 import org.komapper.core.dsl.metamodel.PropertyMetamodel
 import org.komapper.core.dsl.metamodel.getAutoIncrementProperty
 import org.komapper.core.dsl.operator.count
+import org.komapper.core.dsl.operator.desc
 import org.komapper.core.dsl.query.firstOrNull
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.R2DBC.db
@@ -117,7 +118,7 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getData(dec
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataOne(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : TYPE? {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr: WhereDeclaration = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    val sortExpr = sortExpression ?: metaTable.getAutoIncrementProperty()!!
+    val sortExpr = sortExpression ?: metaTable.getAutoIncrementProperty()!!.desc()
     return R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpr).limit(1).firstOrNull() } as TYPE?
 }
 

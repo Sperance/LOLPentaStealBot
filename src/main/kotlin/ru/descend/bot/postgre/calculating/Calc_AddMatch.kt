@@ -167,6 +167,19 @@ data class Calc_AddMatch (
         }
 
         if (arrayKORDmmr.isNotEmpty() && needCalcMMR) {
+
+            //Обработка высших полей
+            arrayKORDmmr.forEach {
+                //Топ урона
+                if (it.second.highestChampionDamage > 0) {
+                    it.second.gameMatchMmr = (it.second.gameMatchMmr + 2.0).to1Digits()
+                }
+                //Топ контроля
+                if (it.second.highestCrowdControlScore > 0) {
+                    it.second.gameMatchMmr = (it.second.gameMatchMmr + 2.0).to1Digits()
+                }
+            }
+
             //Обработка MVP LVP
             arrayKORDmmr.sortBy { it.second.gameMatchMmr }
             arrayKORDmmr.first().let { first ->

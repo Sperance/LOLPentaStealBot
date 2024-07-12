@@ -1,8 +1,16 @@
 package ru.descend.bot.commands
 
+import com.google.gson.Gson
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
+import dev.kord.common.entity.Snowflake
+import dev.kord.core.behavior.channel.createMessage
+import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.rest.NamedFile
+import io.ktor.client.request.forms.ChannelProvider
+import io.ktor.utils.io.ByteReadChannel
+import kotlinx.serialization.json.Json
 import me.jakejmattson.discordkt.arguments.AnyArg
 import me.jakejmattson.discordkt.arguments.AutocompleteArg
 import me.jakejmattson.discordkt.arguments.ChannelArg
@@ -22,6 +30,7 @@ import ru.descend.bot.datas.create
 import ru.descend.bot.datas.delete
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
+import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -32,12 +41,21 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
+import ru.descend.bot.datas.toLocalDate
+import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
+import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
+import ru.descend.bot.toNamedFile
 import ru.descend.bot.toStringUID
+import ru.descend.bot.toTextFields
+import java.io.File
 import java.time.LocalDate
 import java.util.Calendar
+import java.util.Date
 import java.util.GregorianCalendar
 
 fun arguments() = commands("Arguments") {
@@ -489,6 +507,37 @@ fun arguments() = commands("Arguments") {
 //            respond(retText)
 //        }
 //    }
+
+    slash("getMatchInfo", "Получить данные из Бота по указанному матчу", Permissions(Permission.UseApplicationCommands)) {
+        execute(AnyArg("matchText")) {
+            val (matchText) = args
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'matchText'=${matchText}"
+            printLog(textCommand)
+
+            val match = Matches().getDataOne({ tbl_matches.matchId eq matchText })
+            if (match == null) {
+                respond("Матч '$matchText' не найден в БД бота")
+                return@execute
+            }
+
+            var textAnswer = "Данные по матчу\n"
+            textAnswer += Gson().toJson(match)
+
+            textAnswer += "\nДанные по игрокам\n"
+            val participants = ParticipantsNew().getData({ tbl_participantsnew.match_id eq match.id })
+            participants.forEach {
+                textAnswer += Gson().toJson(it)
+            }
+
+            val file = File("$matchText.txt")
+            file.writeText(textAnswer)
+            channel.createMessage {
+                files.add(file.toNamedFile())
+            }
+
+            respond("Генерация файла...")
+        }
+    }
 
     slash("genTextAdmin", "", Permissions(Permission.Administrator)) {
         execute(AnyArg("request")) {

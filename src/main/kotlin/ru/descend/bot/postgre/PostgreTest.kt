@@ -1,5 +1,6 @@
 package ru.descend.bot.postgre
 
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -38,6 +39,7 @@ import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.datas.create
 import ru.descend.bot.datas.getData
+import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.datas.getInstanceClassForTbl
 import ru.descend.bot.datas.getSize
 import ru.descend.bot.datas.getStrongDate
@@ -62,12 +64,14 @@ import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toBase64
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormat
 import ru.descend.bot.toFormatDate
 import ru.descend.bot.toFormatDateTime
+import ru.descend.bot.toTextFields
 import ru.gildor.coroutines.okhttp.await
 import java.io.BufferedReader
 import java.io.IOException
@@ -320,18 +324,35 @@ class PostgreTest {
     }
 
     @Test
+    fun testPart() {
+        runBlocking {
+            val query = QueryDsl
+                .from(tbl_participantsnew)
+                .leftJoin(tbl_matches) { tbl_matches.id eq tbl_participantsnew.match_id }
+                .innerJoin(tbl_kordlols) { tbl_kordlols.LOL_id eq tbl_participantsnew.LOLperson_id }
+                .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) }
+                .orderBy(tbl_participantsnew.id)
+                .selectAsEntity(tbl_participantsnew)
+
+            val statClass = Toppartisipants()
+            val result = R2DBC.runQuery { query }//.sortedBy { it.id }
+            result.forEach {
+                statClass.calculateField(it, "Нанесено урона чемпионам", it.totalDamageDealtToChampions.toDouble())
+            }
+
+            var resultText = ""
+            statClass.getResults().forEach {
+                resultText += "* $it\n"
+            }
+            printLog("size: ${resultText.length}")
+        }
+    }
+
+    @Test
     fun test_duplicates() {
         runBlocking {
-            val objectDB = KORDs()
-            objectDB.guild_id = 2
-            objectDB.KORD_id = "KORDID2"
-            objectDB.KORD_name = "null"
-            objectDB.donations = 666.0
-            R2DBC.runQuery {
-                QueryDsl.insert(tbl_kords).onDuplicateKeyUpdate(tbl_kords.donations).set { excl ->
-                    tbl_kords.KORD_id eq "KORDID2"
-                }.single(objectDB)
-            }
+            var newPart = Matches().getDataOne({ tbl_matches.matchId eq "RU_493104216" })!!
+            println(Gson().toJson(newPart))
         }
     }
 

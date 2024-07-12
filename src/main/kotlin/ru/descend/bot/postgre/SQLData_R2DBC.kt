@@ -33,6 +33,7 @@ import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.sendMessage
 import java.util.Date
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
@@ -46,13 +47,13 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     var olderDateLong = Date().time.toLocalDate().minusDays(DAYS_MIN_IN_LOAD).toDate().time
     var currentDateLong = Date().time
     val atomicIntLoaded = AtomicInteger()
+    val atomicNeedUpdateTables = AtomicBoolean(true)
 
     val dataKORDLOL = WorkData<KORDLOLs>("KORDLOL")
     val dataKORD = WorkData<KORDs>("KORD")
     val dataMMR = WorkData<MMRs>("MMR")
 
     val dataSavedLOL = WorkData<LOLs>("SavedLOL")
-    val dataSavedParticipants = WorkData<ParticipantsNew>("SavedParticipants")
 
     fun initialize() {
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { KORDLOLs().getData({ tbl_kordlols.guild_id eq guildSQL.id }) }
@@ -63,13 +64,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             dataSavedLOL.bodyReset = {
                 val kordLol_lol_id = dataKORDLOL.get().map { it.LOL_id }
                 R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
-            }
-        }
-
-        if (dataSavedParticipants.bodyReset == null) {
-            dataSavedParticipants.bodyReset = {
-                val kordLol_lol_id = dataKORDLOL.get().map { it.LOL_id }
-                R2DBC.runQuery(QueryDsl.from(tbl_participantsnew).where { tbl_participantsnew.LOLperson_id.inList(kordLol_lol_id) })
             }
         }
     }
@@ -187,6 +181,9 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         listChecked.sortBy { it }
         listChecked.forEach { newMatch ->
             atomicIntLoaded.incrementAndGet()
+            if (mainOrder && !atomicNeedUpdateTables.get()) {
+                atomicNeedUpdateTables.set(true)
+            }
             R2DBC.runTransaction {
                 LeagueMainObject.catchMatch(newMatch)?.let { match ->
                     addMatch(match, mainOrder)

@@ -213,7 +213,7 @@ private suspend fun getLastLOLs(sqlData: SQLData_R2DBC, region: String, size: In
                 tbl_lols.LOL_region.eq(region)
 //                tbl_lols.LOL_riotIdName.notEq("null")
             }
-            .orderBy(listOf(tbl_participantsnew.matchDateEnd.desc()))
+            .orderBy(tbl_participantsnew.id.desc())
             .limit(size)
             .selectAsEntity(tbl_lols)
 
@@ -261,20 +261,19 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     launch {
+
         //Таблица Главная - ID никнейм серияпобед
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
             editMessageMainDataContent(it, sqlData)
         }) {
             createMessageMainData(channelText, sqlData)
         }
-
         //Таблица ММР - все про ММР арама
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, "MessageAramMMRDataContent", {
             editMessageAramMMRDataContent(it, sqlData)
         }) {
             createMessageAramMMRData(channelText, sqlData)
         }
-
         //Таблица по играм\винрейту\сериям убийств
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, "MessageGlobalStatisticContent", {
             editMessageGlobalStatisticContent(it, sqlData)
@@ -304,7 +303,8 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.dataKORDLOL.reset()
     sqlData.dataKORD.reset()
     sqlData.dataSavedLOL.reset()
-    sqlData.dataSavedParticipants.clear()
+
+    sqlData.atomicNeedUpdateTables.set(false)
 }
 
 suspend fun isNeedUpdateTop(channelText: TextChannel, sqlData: SQLData_R2DBC) : Boolean {
@@ -384,6 +384,8 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
 
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
 
+    if (!sqlData.atomicNeedUpdateTables.get()) return
+
     val charStr = " / "
     val savedParts = sqlData.getSavedParticipants()
 
@@ -411,13 +413,13 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
 
     builder.content = "**ТОП сервера по параметрам (за матч)**\nОбновлено: ${TimeStamp.now()}\n"
 
-    sqlData.generateFact()
+    //sqlData.generateFact()
 
     val query = QueryDsl
         .from(tbl_participantsnew)
-        .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participantsnew.match_id }
+        .leftJoin(tbl_matches) { tbl_matches.id eq tbl_participantsnew.match_id }
         .innerJoin(KORDLOLs.tbl_kordlols) { KORDLOLs.tbl_kordlols.LOL_id eq tbl_participantsnew.LOLperson_id }
-        .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_matches.surrender eq false ; tbl_matches.aborted eq false }
+        .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) }
         .orderBy(tbl_participantsnew.id)
         .selectAsEntity(tbl_participantsnew)
 
@@ -428,12 +430,23 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         statClass.calculateField(it, "Смертей", it.deaths.toDouble())
         statClass.calculateField(it, "Ассистов", it.assists.toDouble())
         statClass.calculateField(it, "KDA", it.kda)
+        statClass.calculateField(it, "ММР за АРАМ", it.gameMatchMmr)
+//        statClass.calculateField(it, "Убито Баронов", it.baronKills.toDouble())
+//        statClass.calculateField(it, "Убито Драконов", it.dragonKills.toDouble())
+//        statClass.calculateField(it, "Установлено вардов", it.wardsPlaced.toDouble())
+//        statClass.calculateField(it, "Уничтожено вардов", it.wardsKilled.toDouble())
+//        statClass.calculateField(it, "Уничтожено 'плит' у вышек", it.turretPlatesTaken.toDouble())
+        statClass.calculateField(it, "Пентакиллов", it.kills5.toDouble())
+        statClass.calculateField(it, "Квадракиллов", it.kills4.toDouble())
+        statClass.calculateField(it, "Трипплкиллов", it.kills3.toDouble())
+        statClass.calculateField(it, "Даблкиллов", it.kills2.toDouble())
         statClass.calculateField(it, "Урон в минуту", it.damagePerMinute)
+        statClass.calculateField(it, "Золота в минуту", it.goldPerMinute)
         statClass.calculateField(it, "Урона строениям", it.damageDealtToBuildings.toDouble())
         statClass.calculateField(it, "Урона поглощено", it.damageSelfMitigated.toDouble())
-        statClass.calculateField(it, "Провёл в контроле (сек)", it.timeCCingOthers.toDouble())
-        statClass.calculateField(it, "Наложил контроля (сек)", it.totalTimeCCDealt.toDouble())
-        statClass.calculateField(it, "Обездвиживаний нанесено (сек)", it.enemyChampionImmobilizations.toDouble())
+        statClass.calculateField(it, "Провёл в контроле(сек)", it.timeCCingOthers.toDouble())
+        statClass.calculateField(it, "Наложил контроля(сек)", it.totalTimeCCDealt.toDouble())
+        statClass.calculateField(it, "Обездвиживаний нанесено(сек)", it.enemyChampionImmobilizations.toDouble())
         statClass.calculateField(it, "Получено золота", it.goldEarned.toDouble())
         statClass.calculateField(it, "Критический удар", it.largestCriticalStrike.toDouble())
         statClass.calculateField(it, "Магического урона чемпионам", it.magicDamageDealtToChampions.toDouble())
@@ -441,21 +454,24 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         statClass.calculateField(it, "Чистого урона чемпионам", it.trueDamageDealtToChampions.toDouble())
         statClass.calculateField(it, "Убито миньонов", it.totalMinionsKilled.toDouble())
         statClass.calculateField(it, "Использовано заклинаний", it.calcSkillShots().toDouble())
-        statClass.calculateField(it, "Уклонений от заклинаний", it.skillshotsDodged.toDouble())
-        statClass.calculateField(it, "Попаданий заклинаниями", it.skillshotsHit.toDouble())
+//        statClass.calculateField(it, "Уклонений от заклинаний", it.skillshotsDodged.toDouble())
+//        statClass.calculateField(it, "Попаданий заклинаниями", it.skillshotsHit.toDouble())
         statClass.calculateField(it, "Попаданий снежками", it.snowballsHit.toDouble())
         statClass.calculateField(it, "Наложено щитов союзникам", it.totalDamageShieldedOnTeammates.toDouble())
         statClass.calculateField(it, "Получено урона", it.totalDamageTaken.toDouble())
         statClass.calculateField(it, "Нанесено урона чемпионам", it.totalDamageDealtToChampions.toDouble())
         statClass.calculateField(it, "Лечение союзников", it.totalHealsOnTeammates.toDouble())
-        statClass.calculateField(it, "Времени жизни (сек)", it.longestTimeSpentLiving.toDouble())
-        statClass.calculateField(it, "Времени на экране смерти (сек)", it.totalTimeSpentDead.toDouble())
+//        statClass.calculateField(it, "Времени жизни (сек)", it.longestTimeSpentLiving.toDouble())
+//        statClass.calculateField(it, "Времени на экране смерти (сек)", it.totalTimeSpentDead.toDouble())
+//        statClass.calculateField(it, "Получил урона и выжил (за Файт)", it.tookLargeDamageSurvived.toDouble())
+//        statClass.calculateField(it, "Смертей не от чемпионов", it.deaths.toDouble() - it.deathsByEnemyChamps.toDouble())
     }
 
     var resultText = ""
     statClass.getResults(sqlData).forEach {
         resultText += "* $it\n"
     }
+    printLog("size: ${resultText.length}")
     builder.content += resultText
 
     sqlData.guildSQL.messageIdTopUpdated = System.currentTimeMillis()
@@ -522,6 +538,8 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
     contentText += "* Версия игры: ${LeagueMainObject.LOL_VERSION}\n"
     builder.content = contentText
 
+    if (!sqlData.atomicNeedUpdateTables.get()) return
+
     val data = sqlData.getKORDLOL()
     data.sortBy { it.showCode }
 
@@ -554,6 +572,8 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
 suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
 
     builder.content = "**Статистика ММР**\nОбновлено: ${TimeStamp.now()}\n"
+
+    if (!sqlData.atomicNeedUpdateTables.get()) return
 
     val charStr = " / "
     val aramData = sqlData.getArrayAramMMRData()

@@ -79,13 +79,11 @@ object R2DBC {
 
     suspend fun executeProcedure(command: String) {
         printLog("[executeProcedure] $command")
-        runQuery {
-            QueryDsl.executeScript(command)
-        }
+        runQuery { QueryDsl.executeScript(command) }
     }
 
-    suspend fun getHeroFromNameEN(nameEN: String) = Heroes().getDataOne({ tbl_heroes.nameEN eq nameEN})
-    suspend fun getHeroFromKey(key: String) = Heroes().getDataOne({ tbl_heroes.key eq key})
+    suspend fun getHeroFromNameEN(nameEN: String) = stockHEROES.get().find { it.nameEN == nameEN }
+    suspend fun getHeroFromKey(key: String) = stockHEROES.get().find { it.key == key }
 
     suspend fun getKORDLOLs_forKORD(guilds: Guilds, kord: String) : KORDLOLs? {
         return db.withTransaction {

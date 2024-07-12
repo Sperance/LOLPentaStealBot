@@ -32,6 +32,7 @@ class Calc_MMR(private var participant: ParticipantsNew, var match: Matches, var
             }
 
             calculateField(ParticipantsNew::totalMinionsKilled, MMRs::minions)
+            calculateField(ParticipantsNew::abilityUses, MMRs::skills, maxMMR = 1.0)
 
             calculateField(ParticipantsNew::totalDamageShieldedOnTeammates, MMRs::shielded, maxMMR = 2.0)
             calculateField(ParticipantsNew::totalHealsOnTeammates, MMRs::healed)

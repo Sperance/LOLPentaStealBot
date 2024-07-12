@@ -111,8 +111,6 @@ data class ParticipantsNew(
     var wardsKilled: Int = 0,
     var wardsPlaced: Int = 0,
     var win: Boolean = false,
-    var fasterSupportQuestCompletion: Int = 0,
-    var fastestLegendary: Double = 0.0,
     var hadAfkTeammate: Int = 0,
     var highestChampionDamage: Int = 0,
     var highestCrowdControlScore: Int = 0,
@@ -302,8 +300,8 @@ data class ParticipantsNew(
         this.playerSubteamId = participant.playerSubteamId
         this.profileIcon = participant.profileIcon
         this.puuid = participant.puuid
-        this.riotIdGameName = participant.riotIdGameName
-        this.riotIdTagline = participant.riotIdTagline
+        this.riotIdGameName = participant.riotIdGameName?:""
+        this.riotIdTagline = participant.riotIdTagline?:""
         this.role = participant.role
         this.spell1Casts = participant.spell1Casts
         this.spell2Casts = participant.spell2Casts
@@ -346,8 +344,6 @@ data class ParticipantsNew(
         this.win = participant.win
 
         if (participant.challenges != null) {
-            this.fasterSupportQuestCompletion = participant.challenges.fasterSupportQuestCompletion
-            this.fastestLegendary = participant.challenges.fastestLegendary.to1Digits()
             this.hadAfkTeammate = participant.challenges.hadAfkTeammate
             this.highestChampionDamage = participant.challenges.highestChampionDamage
             this.highestCrowdControlScore = participant.challenges.highestCrowdControlScore
@@ -379,7 +375,7 @@ data class ParticipantsNew(
             this.buffsStolen = participant.challenges.buffsStolen
             this.completeSupportQuestInTime = participant.challenges.completeSupportQuestInTime
             this.controlWardsPlaced = participant.challenges.controlWardsPlaced
-            this.damagePerMinute = participant.challenges.damagePerMinute
+            this.damagePerMinute = participant.challenges.damagePerMinute.to1Digits()
             this.damageTakenOnTeamPercentage = participant.challenges.damageTakenOnTeamPercentage.to1Digits()
             this.dancedWithRiftHerald = participant.challenges.dancedWithRiftHerald
             this.deathsByEnemyChamps = participant.challenges.deathsByEnemyChamps

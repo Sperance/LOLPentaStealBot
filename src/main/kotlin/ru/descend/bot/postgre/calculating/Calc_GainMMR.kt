@@ -37,11 +37,11 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
         var addedValue = stockMMR.to1Digits()
 
         //Штраф за победу на высоком ранге
-        val removeMMR = (lols.getRank().rankValue / 3.0).to1Digits()
-        if (removeMMR > 0.0) {
-            textTemp += "[calcWinMMR::ШтрафПобеды] было: $addedValue вычитаем $removeMMR\n"
-            addedValue -= removeMMR
-        }
+//        val removeMMR = (lols.getRank().rankValue / 3.0).to1Digits()
+//        if (removeMMR > 0.0) {
+//            textTemp += "[calcWinMMR::ШтрафПобеды] было: $addedValue вычитаем $removeMMR\n"
+//            addedValue -= removeMMR
+//        }
 
         //обработка минимума получаемых ММР
         val minimumGainMMRwin = 1 + (lols.getRank().rankValue / 2.0)
@@ -72,7 +72,7 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
         var value = abs(stockMMR)
 
         //лимит на минимальное снятие
-        val minRemoved = max(1.0 + lols.getRank().rankValue / 10.0, (lols.getRank().rankValue * (lols.getRank().rankValue / 10.0)) - 1.0).to1Digits()
+        val minRemoved = (lols.getRank().rankValue / 1.4).to1Digits()
         textTemp += "[calcLooseMMR::ПоражениеМинимум] попытка снять $value минимум снимания $minRemoved\n"
         if (value < minRemoved) {
             textTemp += "[calcLooseMMR::ПоражениеМинимум] было: $value стало $minRemoved\n"
@@ -80,7 +80,7 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
         }
 
         //лимит на максимальное снятие
-        val maxRemoved = (lols.getRank().rankValue + 1.0).to1Digits()
+        val maxRemoved = (lols.getRank().rankValue).toDouble().to1Digits()
         if (value > maxRemoved){
             textTemp += "[calcLooseMMR::ПоражениеМаксимум] было: $value стало $maxRemoved\n"
             value = maxRemoved

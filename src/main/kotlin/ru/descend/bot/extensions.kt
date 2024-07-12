@@ -8,6 +8,9 @@ import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.rest.NamedFile
+import io.ktor.client.request.forms.ChannelProvider
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -20,9 +23,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import ru.descend.bot.datas.AESUtils
 import ru.descend.bot.datas.DSC_PS
 import ru.descend.bot.datas.decrypt
+import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.openapi.AIResponse
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.gildor.coroutines.okhttp.await
 import java.io.File
 import java.math.RoundingMode
@@ -69,6 +74,12 @@ suspend fun <T> measureBlock(enum: EnumMeasures, text: String, block: suspend ()
 
     printLog("$addText$text :: ${result.milliseconds}]")
     return resT
+}
+
+fun File.toNamedFile() : NamedFile {
+    return NamedFile(name, ChannelProvider(null) {
+        ByteReadChannel(this.readBytes())
+    })
 }
 
 suspend fun Guild?.sendMessage(messageId: String, message: String, afterLaunchBody: (() -> Unit)? = null) {
@@ -188,6 +199,15 @@ fun catchToken(): List<String> {
         //TODO Write token 1 - dicsord/2 - LOL
     }
     return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
+}
+
+fun Any.toTextFields() : String {
+    var result = ""
+    this::class.java.declaredFields.forEach {
+        it.isAccessible = true
+        result += "${it.name}: ${it.get(this)}\n"
+    }
+    return result
 }
 
 suspend fun generateAIText(requestText: String) : String {
