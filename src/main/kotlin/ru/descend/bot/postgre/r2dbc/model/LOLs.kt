@@ -49,6 +49,27 @@ data class LOLs(
         val tbl_lols = Meta.loLs
     }
 
+    /**
+     * Минимальное снятие ММР при поражении (меньше этого значения - не снимется (без учёта Тегов))
+     */
+    fun calcMinRemovedMMR() : Double {
+        return (1.0 + (getRank().rankValue / 2.0)).to1Digits()
+    }
+
+    /**
+     * Максимальное снятие ММР при поражении (больше этого значения - не снимается (без учёта Тегов))
+     */
+    fun calcMaxRemovedMMR() : Double {
+        return (getRank().rankValue + 1.0).to1Digits()
+    }
+
+    /**
+     * Минимальное значение ММР получаемое при победе (меньше получить невозможно)
+     */
+    fun calcMinGainedMMR() : Double {
+        return (1.0 + (getRank().rankValue / 2.0)).to1Digits()
+    }
+
     fun removeMMRvalue(removedValue: Double) {
         if (mmrAramSaved > removedValue) {
             mmrAramSaved = (mmrAramSaved - removedValue).to1Digits()

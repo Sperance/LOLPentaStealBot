@@ -11,6 +11,8 @@ import org.komapper.core.dsl.metamodel.getAutoIncrementProperty
 import org.komapper.core.dsl.operator.count
 import org.komapper.core.dsl.operator.desc
 import org.komapper.core.dsl.query.firstOrNull
+import org.komapper.core.dsl.query.single
+import org.komapper.core.dsl.query.singleOrNull
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.R2DBC.db
 import ru.descend.bot.postgre.r2dbc.model.Guilds
@@ -55,8 +57,8 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.update() : 
     val already = R2DBC.runQuery {
         QueryDsl.from(metaTable)
             .where { prop_id eq this@update.getField("id") as Int }
-            .limit(1)
-    }.firstOrNull()
+            .singleOrNull()
+    }
 
     if (already == this) return already as TYPE
     if (already == null) throw IllegalArgumentException("In table for name tbl_${this::class.java.simpleName.lowercase()}) in Meta ${metaTable.javaClass.simpleName} don`t find object with id ${this@update.getField("id")}. Object: $this")
@@ -81,8 +83,8 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kPro
         val already = R2DBC.runQuery {
             QueryDsl.from(metaTable)
                 .where { metaProperty eq kProperty1.get(this@create) }
-                .limit(1)
-        }.firstOrNull()
+                .singleOrNull()
+        }
 
         if (already != null) {
             return CoreResult(bit = false, result = already as TYPE)
@@ -110,16 +112,32 @@ suspend fun <META : EntityMetamodel<Any, Any, META>> Any.delete() {
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getData(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : List<TYPE> {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    val sortExpr = sortExpression ?: metaTable.getAutoIncrementProperty()!!
-    return R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpr) } as List<TYPE>
+    return if (sortExpression == null) R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr) } as List<TYPE>
+    else R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression) } as List<TYPE>
+}
+
+@Suppress("UNCHECKED_CAST")
+suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataWithoutTransaction(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : List<TYPE> {
+    val metaTable = getInstanceClassForTbl(this) as META
+    val whereExpr = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
+    return if (sortExpression == null) db.runQuery { QueryDsl.from(metaTable).where(whereExpr) } as List<TYPE>
+    else db.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression) } as List<TYPE>
 }
 
 @Suppress("UNCHECKED_CAST")
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataOne(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : TYPE? {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr: WhereDeclaration = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    val sortExpr = sortExpression ?: metaTable.getAutoIncrementProperty()!!.desc()
-    return R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpr).limit(1).firstOrNull() } as TYPE?
+    return if (sortExpression == null) R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).firstOrNull() } as TYPE?
+    else R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression).firstOrNull() } as TYPE?
+}
+
+@Suppress("UNCHECKED_CAST")
+suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataOneWithoutTransaction(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : TYPE? {
+    val metaTable = getInstanceClassForTbl(this) as META
+    val whereExpr: WhereDeclaration = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
+    return if (sortExpression == null) db.runQuery { QueryDsl.from(metaTable).where(whereExpr).single() } as TYPE?
+    else db.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression).single() } as TYPE?
 }
 
 @Suppress("UNCHECKED_CAST")

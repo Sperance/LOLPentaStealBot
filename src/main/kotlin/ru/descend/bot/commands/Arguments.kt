@@ -20,6 +20,7 @@ import me.jakejmattson.discordkt.arguments.IntegerArg
 import me.jakejmattson.discordkt.arguments.UserArg
 import me.jakejmattson.discordkt.commands.commands
 import me.jakejmattson.discordkt.util.fullName
+import ru.descend.bot.EnumMeasures
 import ru.descend.bot.asyncLaunch
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lowDescriptor
@@ -42,8 +43,13 @@ import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.toLocalDate
+import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.measureBlock
+import ru.descend.bot.postgre.calculating.Calc_MMR
 import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
+import ru.descend.bot.postgre.r2dbc.model.MMRs
+import ru.descend.bot.postgre.r2dbc.model.MMRs.Companion.tbl_mmrs
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
@@ -57,6 +63,7 @@ import java.time.LocalDate
 import java.util.Calendar
 import java.util.Date
 import java.util.GregorianCalendar
+import kotlin.time.measureTime
 
 fun arguments() = commands("Arguments") {
 
@@ -313,8 +320,7 @@ fun arguments() = commands("Arguments") {
     slash("initMainChannel", "Основной канал для бота", Permissions(Permission.Administrator)) {
         execute(ChannelArg<TextChannel>("channel")) {
             val (channel) = args
-            val textCommand =
-                "[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'"
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'"
             printLog(textCommand)
             val r2Guild = R2DBC.getGuild(guild)
             guild.sendMessage(r2Guild.messageIdDebug, textCommand)
@@ -324,11 +330,7 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash(
-        "clearMainChannel",
-        "Очистка основного канал для бота",
-        Permissions(Permission.Administrator)
-    ) {
+    slash("clearMainChannel", "Очистка основного канал для бота", Permissions(Permission.Administrator)) {
         execute {
             val textCommand = "[Start command] '$name' from ${author.fullName}"
             printLog(textCommand)
@@ -343,8 +345,7 @@ fun arguments() = commands("Arguments") {
     slash("initStatusChannel", "Канал для сообщений бота", Permissions(Permission.Administrator)) {
         execute(ChannelArg<TextChannel>("channel")) {
             val (channel) = args
-            val textCommand =
-                "[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'"
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'channel=${channel.name}'"
             val r2Guild = R2DBC.getGuild(guild)
             guild.sendMessage(r2Guild.messageIdDebug, textCommand)
             r2Guild.messageIdStatus = channel.id.value.toString()
@@ -353,11 +354,7 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash(
-        "clearStatusChannel",
-        "Очистка канала для сообщений бота",
-        Permissions(Permission.Administrator)
-    ) {
+    slash("clearStatusChannel", "Очистка канала для сообщений бота", Permissions(Permission.Administrator)) {
         execute {
             val textCommand = "[Start command] '$name' from ${author.fullName}"
             printLog(textCommand)
@@ -369,11 +366,7 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash(
-        "initDebugChannel",
-        "Канал для системных сообщений",
-        Permissions(Permission.Administrator)
-    ) {
+    slash("initDebugChannel", "Канал для системных сообщений", Permissions(Permission.Administrator)) {
         execute(ChannelArg<TextChannel>("channel")) {
             val (channel) = args
             val textCommand =
@@ -387,11 +380,7 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash(
-        "clearDebugChannel",
-        "Очистка канала для системных сообщений",
-        Permissions(Permission.Administrator)
-    ) {
+    slash("clearDebugChannel", "Очистка канала для системных сообщений", Permissions(Permission.Administrator)) {
         execute {
             val textCommand = "[Start command] '$name' from ${author.fullName}"
             printLog(textCommand)
@@ -508,6 +497,57 @@ fun arguments() = commands("Arguments") {
 //        }
 //    }
 
+    slash("getMatchAramMMR", "Получить статистику по подсчёту ММР по матчу", Permissions(Permission.Administrator)) {
+        execute(AnyArg("matchText")) {
+            val (matchText) = args
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'matchText'=${matchText}"
+            printLog(textCommand)
+
+            respond("Генерация ответа по матчу $matchText...")
+
+            println("1")
+            val guilds = R2DBC.getGuild(guild)
+
+            println("2")
+            val KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq author.toStringUID(); tbl_kords.guild_id eq guilds.id })
+            if (KORD == null) {
+                channel.createMessage { content = "Пользователь ${author.lowDescriptor()} не зарегистрирован в боте" }
+                return@execute
+            }
+
+            println("3")
+            val KORDLOLs = KORDLOLs().getData({ tbl_kordlols.KORD_id eq KORD.id ; tbl_kordlols.guild_id eq guilds.id })
+
+            println("4")
+            val match = Matches().getDataOne({ tbl_matches.matchId eq matchText })
+            if (match == null) {
+                channel.createMessage { content = "Матч '$matchText' не найден в БД бота" }
+                return@execute
+            }
+
+            println("5")
+            val participants = ParticipantsNew().getDataOne({ tbl_participantsnew.match_id eq match.id ; tbl_participantsnew.LOLperson_id.inList(KORDLOLs.map { it.LOL_id }) })
+            if (participants == null) {
+                channel.createMessage { content = "Не найден игрок ${author.toStringUID()} в матче '$matchText' по LOL id: ${KORDLOLs.map { it.LOL_id }}" }
+                return@execute
+            }
+
+            println("6")
+
+            launch {
+                println("7")
+                val mmrData = R2DBC.getMMRforChampion(participants.championName)
+                println("8")
+                val result = Calc_MMR(participants, match, mmrData)
+                result.init()
+                println("9")
+
+                channel.createMessage { content = "**Результаты подсчета ММР по матчу ${matchText}**\n\n${result.mmrValueTextLog}" }
+                println("10")
+            }
+        }
+    }
+
     slash("getMatchInfo", "Получить данные из Бота по указанному матчу", Permissions(Permission.UseApplicationCommands)) {
         execute(AnyArg("matchText")) {
             val (matchText) = args
@@ -520,22 +560,25 @@ fun arguments() = commands("Arguments") {
                 return@execute
             }
 
-            var textAnswer = "Данные по матчу\n"
-            textAnswer += Gson().toJson(match)
+            launch {
+                var textAnswer = "Данные по матчу\n"
+                textAnswer += Gson().toJson(match)
 
-            textAnswer += "\nДанные по игрокам\n"
-            val participants = ParticipantsNew().getData({ tbl_participantsnew.match_id eq match.id })
-            participants.forEach {
-                textAnswer += Gson().toJson(it)
+                textAnswer += "\nДанные по игрокам\n"
+                val participants = ParticipantsNew().getData({ tbl_participantsnew.match_id eq match.id })
+                participants.forEach {
+                    textAnswer += Gson().toJson(it) + "\n"
+                }
+
+                val file = File("$matchText.txt")
+                file.writeText(textAnswer)
+                channel.createMessage {
+                    content = "Файл данных по матчу $matchText"
+                    files.add(file.toNamedFile())
+                }
             }
 
-            val file = File("$matchText.txt")
-            file.writeText(textAnswer)
-            channel.createMessage {
-                files.add(file.toNamedFile())
-            }
-
-            respond("Генерация файла...")
+            respond("Генерация ответа...")
         }
     }
 

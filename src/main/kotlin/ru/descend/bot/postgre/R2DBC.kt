@@ -13,6 +13,7 @@ import org.komapper.core.dsl.query.QueryScope
 import org.komapper.core.dsl.query.firstOrNull
 import org.komapper.r2dbc.R2dbcDatabase
 import org.komapper.tx.core.CoroutineTransactionOperator
+import org.komapper.tx.core.TransactionAttribute
 import ru.descend.bot.datas.WorkData
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
@@ -51,8 +52,10 @@ object R2DBC {
     val db = R2dbcDatabase(connectionFactory)
 
     val stockHEROES = WorkData<Heroes>("HEROES")
+    val stockMMR = WorkData<MMRs>("MMR")
 
     suspend fun runTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction { body.invoke(it) }
+    suspend fun runStrongTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction(transactionAttribute = TransactionAttribute.REQUIRES_NEW) { body.invoke(it) }
 
     suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
     suspend fun <T> runQuery(block: QueryScope.() -> Query<T>) =
@@ -73,6 +76,7 @@ object R2DBC {
             db.runQuery { QueryDsl.create(tbl_participantsnew) }
         }
         if (stockHEROES.bodyReset == null) stockHEROES.bodyReset = { Heroes().getData() }
+        if (stockMMR.bodyReset == null) stockMMR.bodyReset = { MMRs().getData() }
 
         LeagueMainObject.catchHeroNames()
     }
@@ -84,6 +88,7 @@ object R2DBC {
 
     suspend fun getHeroFromNameEN(nameEN: String) = stockHEROES.get().find { it.nameEN == nameEN }
     suspend fun getHeroFromKey(key: String) = stockHEROES.get().find { it.key == key }
+    suspend fun getMMRforChampion(championName: String) = stockMMR.get().find { it.champion == championName }
 
     suspend fun getKORDLOLs_forKORD(guilds: Guilds, kord: String) : KORDLOLs? {
         return db.withTransaction {

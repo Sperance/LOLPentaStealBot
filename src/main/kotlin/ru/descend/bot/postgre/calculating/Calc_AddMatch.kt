@@ -80,7 +80,6 @@ data class Calc_AddMatch (
 
         if (pMatch.id % LOAD_MMR_HEROES_MATCHES == 0){
             R2DBC.executeProcedure("call \"GetAVGs\"()")
-            sqlData.dataMMR.clear()
             LeagueMainObject.catchHeroNames()
         }
 
@@ -160,9 +159,9 @@ data class Calc_AddMatch (
         lastPartList.forEach { par ->
             val lolObj = lastLolsList.find { it.id == par.LOLperson_id }!!
             if (needCalcMMR) {
-                val data = Calc_MMR(par, pMatch, lolObj, sqlData.getMMRforChampion(par.championName))
+                val data = Calc_MMR(par, pMatch, R2DBC.getMMRforChampion(par.championName))
                 data.init()
-                arrayKORDmmr.add(Pair(data.getSavedLOL(), data.getSavedParticipant()))
+                arrayKORDmmr.add(Pair(lolObj, par))
             }
         }
 
@@ -202,7 +201,7 @@ data class Calc_AddMatch (
 
             //Присвоение ММР в LOLs
             arrayKORDmmr.forEach {
-                val text = Calc_GainMMR(it.second, it.first, sqlData)
+                val text = Calc_GainMMR(it.second, it.first)
                 writeLog(text.getTempText())
             }
             //Перезапись полей для сохранения в базу

@@ -16,7 +16,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: LOLs, private val sqlData: SQLData_R2DBC) {
+class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: LOLs) {
 
     private var textTemp = lols.toString() + "\n"
 
@@ -37,14 +37,14 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
         var addedValue = stockMMR.to1Digits()
 
         //Штраф за победу на высоком ранге
-//        val removeMMR = (lols.getRank().rankValue / 3.0).to1Digits()
-//        if (removeMMR > 0.0) {
-//            textTemp += "[calcWinMMR::ШтрафПобеды] было: $addedValue вычитаем $removeMMR\n"
-//            addedValue -= removeMMR
-//        }
+        val removeMMR = (lols.getRank().rankValue / 10.0).to1Digits()
+        if (removeMMR > 0.0) {
+            textTemp += "[calcWinMMR::ШтрафПобеды] было: $addedValue вычитаем $removeMMR\n"
+            addedValue -= removeMMR
+        }
 
         //обработка минимума получаемых ММР
-        val minimumGainMMRwin = 1 + (lols.getRank().rankValue / 2.0)
+        val minimumGainMMRwin = lols.calcMinGainedMMR()
         if (addedValue < minimumGainMMRwin) {
             textTemp += "[calcWinMMR::МинимумПобеды] было: $addedValue стало $minimumGainMMRwin\n"
             addedValue = minimumGainMMRwin
@@ -64,15 +64,16 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
 
         //Если повысился ранг - даём сверху 10 ММР бонуса
         if (oldRank.ordinal < lols.getRank().ordinal) {
-            lols.mmrAramSaved = (lols.mmrAramSaved + BONUS_MMR_FOR_NEW_RANK).to1Digits()
+            lols.mmrAramSaved = (lols.mmrAramSaved + BONUS_MMR_FOR_NEW_RANK + lols.getRank().ordinal).to1Digits()
         }
     }
 
     private fun calcLooseMMR(stockMMR: Double) {
         var value = abs(stockMMR)
+        textTemp += "[calcLooseMMR::Поражение] стоковое снятие: $value\n"
 
         //лимит на минимальное снятие
-        val minRemoved = (lols.getRank().rankValue / 1.4).to1Digits()
+        val minRemoved = lols.calcMinRemovedMMR()
         textTemp += "[calcLooseMMR::ПоражениеМинимум] попытка снять $value минимум снимания $minRemoved\n"
         if (value < minRemoved) {
             textTemp += "[calcLooseMMR::ПоражениеМинимум] было: $value стало $minRemoved\n"
@@ -80,7 +81,7 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
         }
 
         //лимит на максимальное снятие
-        val maxRemoved = (lols.getRank().rankValue).toDouble().to1Digits()
+        val maxRemoved = lols.calcMaxRemovedMMR()
         if (value > maxRemoved){
             textTemp += "[calcLooseMMR::ПоражениеМаксимум] было: $value стало $maxRemoved\n"
             value = maxRemoved
@@ -118,9 +119,10 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
             textTemp += "[calcSavedMMR::Квадры] количество: ${participant.kills4} добавляем бонуса ${participant.kills4 * 3.0}\n"
         }
 
-        if (addSavedMMR > LIMIT_BINUS_MMR_FOR_MATCH) {
-            textTemp += "[calcSavedMMR::ЛимитБонуса] лимит: $LIMIT_BINUS_MMR_FOR_MATCH до лимита: $addSavedMMR\n"
-            addSavedMMR = LIMIT_BINUS_MMR_FOR_MATCH
+        val limitBonus = LIMIT_BINUS_MMR_FOR_MATCH + lols.getRank().rankValue
+        if (addSavedMMR > limitBonus) {
+            textTemp += "[calcSavedMMR::ЛимитБонуса] лимит: $limitBonus до лимита: $addSavedMMR\n"
+            addSavedMMR = limitBonus
         }
 
         if (participant.win) {

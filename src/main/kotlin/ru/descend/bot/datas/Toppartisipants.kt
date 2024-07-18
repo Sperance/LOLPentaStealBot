@@ -24,7 +24,7 @@ data class TopPartObject(
 ) {
     override fun toString(): String {
         val textBold = stat_date_long.toDate().isBeforeDay() || stat_date_long.toDate().isCurrentDay()
-        return "${if (textBold) "**" else ""}__${stat_name}:__ $stat_value '$stat_champion' $stat_date $stat_lol_name${if (textBold) "**" else ""}"
+        return "${if (textBold) "**" else ""}__${stat_name}:__ $stat_value '$stat_champion' $stat_date |$stat_lol_name|${if (textBold) "**" else ""}"
     }
 }
 
@@ -58,7 +58,6 @@ class Toppartisipants {
     suspend fun calculateField(participants: ParticipantsNew, name: String, value: Double) {
         val obj = arrayData.find { it.stat_name == name }
         if (obj != null) {
-            if (value > 0.1) println("part(${participants.id}): ${participants.LOLperson_id} match: ${participants.match_id} value: $value")
             if (obj.stat_value < value) {
                 obj.lol_id = participants.LOLperson_id
                 obj.match_id = participants.match_id

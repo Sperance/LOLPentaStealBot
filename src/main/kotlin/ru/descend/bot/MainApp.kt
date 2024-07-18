@@ -213,7 +213,7 @@ private suspend fun getLastLOLs(sqlData: SQLData_R2DBC, region: String, size: In
                 tbl_lols.LOL_region.eq(region)
 //                tbl_lols.LOL_riotIdName.notEq("null")
             }
-            .orderBy(tbl_participantsnew.id.desc())
+            .orderBy(tbl_participantsnew.matchDateEnd.desc())
             .limit(size)
             .selectAsEntity(tbl_lols)
 
@@ -419,7 +419,7 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         .from(tbl_participantsnew)
         .leftJoin(tbl_matches) { tbl_matches.id eq tbl_participantsnew.match_id }
         .innerJoin(KORDLOLs.tbl_kordlols) { KORDLOLs.tbl_kordlols.LOL_id eq tbl_participantsnew.LOLperson_id }
-        .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) }
+        .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_participantsnew.championName.notInList(listOf("", "null"))  }
         .orderBy(tbl_participantsnew.id)
         .selectAsEntity(tbl_participantsnew)
 

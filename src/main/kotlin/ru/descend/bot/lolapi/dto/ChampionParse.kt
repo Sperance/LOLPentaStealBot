@@ -22,6 +22,7 @@ data class Data(
     @SerializedName("Aphelios") val aphelios: InterfaceChampionBase,
     @SerializedName("Ashe") val ashe: InterfaceChampionBase,
     @SerializedName("AurelionSol") val aurelionSol: InterfaceChampionBase,
+    @SerializedName("Aurora") val aurora: InterfaceChampionBase,
     @SerializedName("Azir") val azir: InterfaceChampionBase,
     @SerializedName("Bard") val bard: InterfaceChampionBase,
     @SerializedName("Belveth") val belveth: InterfaceChampionBase,

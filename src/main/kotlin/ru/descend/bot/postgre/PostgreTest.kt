@@ -2,11 +2,13 @@ package ru.descend.bot.postgre
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import dev.kord.core.behavior.channel.createMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import me.jakejmattson.discordkt.util.fullName
 import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -20,12 +22,15 @@ import org.komapper.core.dsl.metamodel.EntityMetamodel
 import org.komapper.core.dsl.metamodel.PropertyMetamodel
 import org.komapper.core.dsl.operator.count
 import org.komapper.core.dsl.operator.desc
+import org.komapper.core.dsl.operator.max
 import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.bind
 import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.firstOrNull
 import org.komapper.core.dsl.query.get
 import org.komapper.core.dsl.query.int
+import org.komapper.core.dsl.query.single
+import org.komapper.core.dsl.query.singleOrNull
 import org.komapper.core.dsl.query.string
 import org.komapper.core.dsl.visitor.QueryVisitor
 import ru.descend.bot.EnumMeasures
@@ -40,6 +45,8 @@ import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.datas.create
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
+import ru.descend.bot.datas.getDataOneWithoutTransaction
+import ru.descend.bot.datas.getDataWithoutTransaction
 import ru.descend.bot.datas.getInstanceClassForTbl
 import ru.descend.bot.datas.getSize
 import ru.descend.bot.datas.getStrongDate
@@ -56,13 +63,18 @@ import ru.descend.bot.datas.toLocalDate
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
+import ru.descend.bot.lowDescriptor
 import ru.descend.bot.measureBlock
+import ru.descend.bot.postgre.calculating.Calc_MMR
+import ru.descend.bot.postgre.r2dbc.model.Guilds
+import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.MMRs.Companion.tbl_mmrs
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.to1Digits
@@ -71,6 +83,7 @@ import ru.descend.bot.toDate
 import ru.descend.bot.toFormat
 import ru.descend.bot.toFormatDate
 import ru.descend.bot.toFormatDateTime
+import ru.descend.bot.toStringUID
 import ru.descend.bot.toTextFields
 import ru.gildor.coroutines.okhttp.await
 import java.io.BufferedReader
@@ -353,6 +366,105 @@ class PostgreTest {
         runBlocking {
             var newPart = Matches().getDataOne({ tbl_matches.matchId eq "RU_493104216" })!!
             println(Gson().toJson(newPart))
+        }
+    }
+
+    @Test
+    fun test_data_double() {
+        val value = 2.45
+        println(value.fromDoublePerc(2.0))
+        println((value / 2.0).to1Digits())
+
+        println(value.fromDoublePerc(3.0))
+        println((value / 3.0).to1Digits())
+
+        println(value.fromDoublePerc(1.6))
+        println((value / 1.6).to1Digits())
+
+    }
+
+    private fun Double.fromDoublePerc(stock: Double): Double {
+        return when ((this / stock) * 100.0) {
+            in Double.MIN_VALUE..20.0 -> 0.2
+            in 20.0..40.0 -> 0.4
+            in 40.0..60.0 -> 0.6
+            in 60.0..80.0 -> 0.8
+            in 80.0..100.0 -> 1.0
+            in 100.0..120.0 -> 1.2
+            in 120.0..140.0 -> 1.4
+            in 140.0..160.0 -> 1.6
+            in 160.0..180.0 -> 1.8
+            in 180.0..200.0 -> 2.0
+            in 200.0..220.0 -> 2.2
+            in 220.0..240.0 -> 2.4
+            in 240.0..260.0 -> 2.6
+            in 260.0..280.0 -> 2.8
+            in 280.0..Double.MAX_VALUE -> 3.0
+            else -> 0.0
+        }
+    }
+
+    @Test
+    fun test_get_data() {
+        runBlocking {
+            measureBlock(EnumMeasures.BLOCK, "1") {
+                println(ParticipantsNew().getDataWithoutTransaction({ tbl_participantsnew.match_id eq 754421 }))
+            }
+            measureBlock(EnumMeasures.BLOCK, "2") {
+                println(ParticipantsNew().getDataOneWithoutTransaction({ tbl_participantsnew.match_id eq 754421 }))
+            }
+            measureBlock(EnumMeasures.BLOCK, "3") {
+                println(R2DBC.runQuery { QueryDsl.from(tbl_participantsnew).where { tbl_participantsnew.match_id eq 754421 } })
+            }
+        }
+    }
+
+    @Test
+    fun tset_Asda(){
+        runBlocking {
+//            val data = R2DBC.runQuery { QueryDsl.from(tbl_participantsnew).where { tbl_participantsnew.kills5.isNotNull() }.selectAsEntity(tbl_participantsnew, max(tbl_participantsnew.kills5)).singleOrNull() }
+//            println(data)
+
+            val sql = "SELECT LOLperson_id, MAX(kills5) as ks FROM tbl_participants_new GROUP BY LOLperson_id ORDER BY ks DESC LIMIT 1"
+            R2DBC.runQuery {
+                QueryDsl.fromTemplate(sql).select {
+                    val data1 = it.int("LOLperson_id")
+                    val data2 = it.int("ks")
+                    println("data1: $data1, data2: $data2")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun test_part_code() {
+        runBlocking {
+            val matchText = "RU_493303533"
+
+            R2DBC.runStrongTransaction {
+                println(1)
+                val guilds = Guilds().getDataOneWithoutTransaction({ tbl_guilds.id eq 1 })!!
+                println(2)
+                val KORD = KORDs().getDataOneWithoutTransaction({ tbl_kords.id eq 11 })!!
+                println(3)
+                val match = Matches().getDataOneWithoutTransaction({ tbl_matches.matchId eq matchText })!!
+                println(4)
+                val KORDLOLs = KORDLOLs().getDataWithoutTransaction({ tbl_kordlols.KORD_id eq KORD.id ; tbl_kordlols.guild_id eq guilds.id })
+                println(5)
+                val matchParts = ParticipantsNew().getDataWithoutTransaction({ tbl_participantsnew.match_id eq match.id })
+                println(5.2)
+                val myLOL: LOLs = LOLs().getDataOneWithoutTransaction({ tbl_lols.LOL_region eq match.region ; tbl_lols.id.inList(KORDLOLs.map { it.LOL_id }) })!!
+                println(5.5)
+                val participants = ParticipantsNew().getDataOneWithoutTransaction({ tbl_participantsnew.match_id eq match.id ; tbl_participantsnew.LOLperson_id eq myLOL.id })!!
+                println(6)
+                val mmrData = MMRs().getDataOneWithoutTransaction({ tbl_mmrs.champion eq participants.championName })!!
+                println(7)
+                val result = Calc_MMR(participants, match, mmrData)
+                println(8)
+                result.init()
+                println(9)
+                println("**Результаты подсчета ММР по матчу ${matchText}**\n\n${result.mmrValueTextLog}")
+            }
         }
     }
 

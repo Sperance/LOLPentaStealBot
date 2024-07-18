@@ -45,6 +45,7 @@ object LeagueMainObject {
             }
         }
         val heroes = R2DBC.stockHEROES.get()
+        R2DBC.stockMMR.reset()
         champions.data::class.java.declaredFields.forEach {
             it.isAccessible = true
             val curData = it.get(champions.data) as InterfaceChampionBase

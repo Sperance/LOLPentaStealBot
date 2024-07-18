@@ -51,14 +51,12 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     val dataKORDLOL = WorkData<KORDLOLs>("KORDLOL")
     val dataKORD = WorkData<KORDs>("KORD")
-    val dataMMR = WorkData<MMRs>("MMR")
 
     val dataSavedLOL = WorkData<LOLs>("SavedLOL")
 
     fun initialize() {
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { KORDLOLs().getData({ tbl_kordlols.guild_id eq guildSQL.id }) }
         if (dataKORD.bodyReset == null) dataKORD.bodyReset = { KORDs().getData({ tbl_kords.guild_id eq guildSQL.id }) }
-        if (dataMMR.bodyReset == null) dataMMR.bodyReset = { MMRs().getData() }
 
         if (dataSavedLOL.bodyReset == null) {
             dataSavedLOL.bodyReset = {
@@ -144,9 +142,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }
     }
 
-    val tempMapWinStreak = HashMap<Int, Int>()
     suspend fun getWinStreak() : HashMap<Int, Int> {
-        tempMapWinStreak.clear()
+        val tempMapWinStreak = HashMap<Int, Int>()
         measureBlock(EnumMeasures.QUERY, "get_streak_results_param") {
             R2DBC.runQuery {
                 QueryDsl.fromTemplate("SELECT * FROM get_streak_results_param(${guildSQL.id})").select { row ->
@@ -205,7 +202,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }
         return resultAra
     }
-    suspend fun getMMRforChampion(championName: String) = dataMMR.get().find { it.champion == championName }
 
     suspend fun generateFact() {
         val generatedText = generateAIText("Напиши интересный факт про игру League of Legends")

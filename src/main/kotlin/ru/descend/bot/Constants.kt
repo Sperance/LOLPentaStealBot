@@ -3,7 +3,7 @@ package ru.descend.bot
 /**
  * Каждый N тик прогрузки матчей будет проходиться по сохранённым пользователям
  */
-const val EVERY_N_TICK_LOAD_MATCH = 2
+const val EVERY_N_TICK_LOAD_MATCH = 3
 
 /**
  * Сколько матчей загружаем по каждому неизвестному пользователю
@@ -61,3 +61,8 @@ const val LIMIT_BINUS_MMR_FOR_MATCH = 10.0
  * Кол-во дней для прогрузки матчей каждого пользователя (было 60)
  */
 const val DAYS_MIN_IN_LOAD = 30L
+
+/**
+ * Модификатор для ММР
+ */
+const val MMR_STOCK_MODIFICATOR = 1.2
