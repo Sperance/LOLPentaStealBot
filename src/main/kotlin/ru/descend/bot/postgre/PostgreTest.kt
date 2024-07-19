@@ -1,55 +1,26 @@
 package ru.descend.bot.postgre
 
 import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import dev.kord.core.behavior.channel.createMessage
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
-import me.jakejmattson.discordkt.util.fullName
-import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import org.junit.Test
 import org.komapper.core.dsl.QueryDsl
-import org.komapper.core.dsl.expression.SortExpression
 import org.komapper.core.dsl.expression.WhereDeclaration
 import org.komapper.core.dsl.metamodel.EntityMetamodel
-import org.komapper.core.dsl.metamodel.PropertyMetamodel
 import org.komapper.core.dsl.operator.count
-import org.komapper.core.dsl.operator.desc
-import org.komapper.core.dsl.operator.max
-import org.komapper.core.dsl.query.Query
-import org.komapper.core.dsl.query.bind
-import org.komapper.core.dsl.query.double
-import org.komapper.core.dsl.query.firstOrNull
 import org.komapper.core.dsl.query.get
 import org.komapper.core.dsl.query.int
-import org.komapper.core.dsl.query.single
-import org.komapper.core.dsl.query.singleOrNull
-import org.komapper.core.dsl.query.string
-import org.komapper.core.dsl.visitor.QueryVisitor
 import ru.descend.bot.EnumMeasures
-import ru.descend.bot.datas.AESUtils
-import ru.descend.bot.datas.CoreResult
-import ru.descend.bot.datas.DataStatRate
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.Toppartisipants
-import ru.descend.bot.datas.addBatch
 import ru.descend.bot.enums.EnumMMRRank
-import ru.descend.bot.postgre.openapi.AIResponse
 import ru.descend.bot.datas.create
-import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.datas.getDataOneWithoutTransaction
 import ru.descend.bot.datas.getDataWithoutTransaction
-import ru.descend.bot.datas.getInstanceClassForTbl
-import ru.descend.bot.datas.getSize
-import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
@@ -58,18 +29,19 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
-import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.toLocalDate
+import ru.descend.bot.enums.EnumMMRRank.PAPER_III
+import ru.descend.bot.enums.EnumMMRRank.UNRANKED
+import ru.descend.bot.enums.EnumMMRRank.entries
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.lolapi.LeagueMainObject.dragonService
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
-import ru.descend.bot.lowDescriptor
 import ru.descend.bot.measureBlock
 import ru.descend.bot.postgre.calculating.Calc_MMR
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.Heroes
-import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
@@ -78,42 +50,29 @@ import ru.descend.bot.postgre.r2dbc.model.MMRs.Companion.tbl_mmrs
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.to1Digits
-import ru.descend.bot.toBase64
-import ru.descend.bot.toDate
-import ru.descend.bot.toFormat
-import ru.descend.bot.toFormatDate
-import ru.descend.bot.toFormatDateTime
-import ru.descend.bot.toStringUID
-import ru.descend.bot.toTextFields
 import ru.gildor.coroutines.okhttp.await
 import java.io.BufferedReader
-import java.io.IOException
 import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
 import java.time.Period
-import java.time.temporal.TemporalUnit
-import java.util.Calendar
 import java.util.Date
 import java.util.HashMap
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
-import kotlin.reflect.KMutableProperty1
-import kotlin.system.measureTimeMillis
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.milliseconds
 
 class PostgreTest {
 
     @Test
     fun test_mmrs(){
-        printLog("MMR: ${EnumMMRRank.getMMRRank(42.0)}")
-        printLog("MMR: ${EnumMMRRank.getMMRRank(420.0)}")
-        printLog("MMR: ${EnumMMRRank.getMMRRank(0.0)}")
-        printLog("MMR: ${EnumMMRRank.getMMRRank(89.5)}")
+        printLog("MMR: ${getMMRRank(2236.3)}")
+        printLog("MMR: ${getMMRRank(124.3)}")
+        printLog("MMR: ${getMMRRank(1124.3)}")
+        printLog("MMR: ${getMMRRank(0.0)}")
+        printLog("MMR: ${getMMRRank(57.7)}")
+    }
+
+    fun getMMRRank(mmr: Double) : EnumMMRRank {
+        return entries.sortedBy { it.minMMR }.firstOrNull { it.minMMR >= mmr } ?: entries.last()
     }
 
     private fun asyncLoadMatches(listChecked: List<String>, mainOrder: Boolean) {
@@ -223,19 +182,43 @@ class PostgreTest {
     }
 
     @Test
+    fun test_parse_json() {
+        runBlocking {
+            val champions = when (val res = safeApiCall { dragonService.getChampions("14.14.1", "ru_RU") }){
+                is Result.Success -> res.data
+                is Result.Error -> {
+                    printLog("[catchHeroNames] error: ${res.message}")
+                    throw IllegalAccessException("[catchHeroNames] error: ${res.message}")
+                }
+            }
+            val result = Gson().fromJson(Gson().toJson(champions), ChampionsDTOsample::class.java)
+            var count = 0
+            result.data.forEach { (_, any2) ->
+                count++
+                println("any3: ${Gson().fromJson(Gson().toJson(any2), InterfaceChampionBase::class.java)}")
+            }
+            println("Count: $count")
+        }
+    }
+
+    data class ChampionsDTOsample(
+        val type: String,
+        val format: String,
+        val version: String,
+        val data: HashMap<Any, Any>,
+    )
+
+    @Test
     fun test_api_2() {
-        val url = URL("https://descend-oai-proxy3.hf.space")
-//        val url = URL("https://descend-oai-proxy3.hf.space/v1/chat/completions")
+
+        //@GET("http://ddragon.leagueoflegends.com/cdn/{version}/data/{locale}/champion.json")
+
+        val url = URL("http://ddragon.leagueoflegends.com/cdn/14.14.1/data/ru_RU/champion.json")
         val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
+        connection.requestMethod = "GET"
         connection.setRequestProperty("Content-Type", "application/json")
         connection.setRequestProperty("Accept", "application/json")
         connection.doOutput = true
-
-        val writer = OutputStreamWriter(connection.outputStream, "UTF-8")
-        writer.write("{model=\"gpt-3.5-turbo\",\n" +
-                "    messages=[{\"role\": \"user\", \"content\": \"Hello\"}],}")
-        writer.close()
 
         val reader = BufferedReader(InputStreamReader(connection.inputStream, "UTF-8"))
         var line: String?
@@ -248,10 +231,10 @@ class PostgreTest {
         reader.close()
         connection.disconnect()
 
-        println("url: ${connection.url}")
-        println("requestMethod: ${connection.requestMethod}")
-        println("responseCode: ${connection.responseCode}")
-        println("responseMessage: ${connection.responseMessage}")
+//        println("url: ${connection.url}")
+//        println("requestMethod: ${connection.requestMethod}")
+//        println("responseCode: ${connection.responseCode}")
+//        println("responseMessage: ${connection.responseMessage}")
         println(response)
     }
 

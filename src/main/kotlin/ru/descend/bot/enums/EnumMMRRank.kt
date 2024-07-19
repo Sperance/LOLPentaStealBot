@@ -37,10 +37,7 @@ enum class EnumMMRRank(val nameRank: String, val minMMR: Double, val rankValue: 
 
     companion object {
         fun getMMRRank(mmr: Double) : EnumMMRRank {
-            entries.forEach {
-                if (it.minMMR >= mmr) return it
-            }
-            return UNRANKED
+            return entries.sortedBy { it.minMMR }.firstOrNull { it.minMMR >= mmr } ?: entries.last()
         }
     }
 }

@@ -103,10 +103,11 @@ data class Calc_AddMatch (
                     LOL_riotIdTagline = part.riotIdTagline,
                     LOL_summonerLevel = part.summonerLevel,
                     LOL_region = pMatch.getRegionValue(),
-                    profile_icon = part.profileIcon).create(LOLs::LOL_puuid).result
+                    profile_icon = part.profileIcon,
+                    match_date_last = pMatch.matchDateEnd).create(LOLs::LOL_puuid).result
             } else if (!curLOL.isBot()) {
                 //Вдруг что изменится в профиле игрока
-                if (curLOL.LOL_summonerLevel < part.summonerLevel || (curLOL.LOL_summonerLevel == part.summonerLevel && (curLOL.LOL_region != pMatch.getRegionValue() || curLOL.LOL_riotIdTagline != part.riotIdTagline || curLOL.LOL_summonerId != part.summonerId || curLOL.LOL_riotIdName != part.riotIdGameName || curLOL.profile_icon != part.profileIcon))) {
+                if (curLOL.isNeedUpdate(pMatch, part)) {
                     curLOL.LOL_riotIdTagline = part.riotIdTagline
                     curLOL.LOL_region = pMatch.getRegionValue()
                     curLOL.LOL_summonerId = part.summonerId
@@ -114,6 +115,7 @@ data class Calc_AddMatch (
                     if (newName != "null") curLOL.LOL_riotIdName = newName
                     curLOL.LOL_summonerLevel = part.summonerLevel
                     curLOL.profile_icon = part.profileIcon
+                    curLOL.match_date_last = pMatch.matchDateEnd
                     curLOL = curLOL.update()
                 }
             }

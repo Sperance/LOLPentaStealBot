@@ -24,7 +24,7 @@ data class TopPartObject(
 ) {
     override fun toString(): String {
         val textBold = stat_date_long.toDate().isBeforeDay() || stat_date_long.toDate().isCurrentDay()
-        return "${if (textBold) "**" else ""}__${stat_name}:__ $stat_value '$stat_champion' $stat_date |$stat_lol_name|${if (textBold) "**" else ""}"
+        return "${if (textBold) "**" else ""}__${stat_name}:__ $stat_value '$stat_champion' $stat_date $stat_lol_name${if (textBold) "**" else ""}"
     }
 }
 

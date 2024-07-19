@@ -206,16 +206,13 @@ private suspend fun getLastLOLs(sqlData: SQLData_R2DBC, region: String, size: In
     return measureBlock(EnumMeasures.METHOD, "getLastLOLs") {
         val query = QueryDsl
             .from(tbl_lols)
-            .leftJoin(tbl_participantsnew) { tbl_participantsnew.LOLperson_id eq tbl_lols.id }
-//            .innerJoin(tbl_matches) { tbl_matches.id eq tbl_participantsnew.match_id }
             .where {
                 tbl_lols.last_loaded.less(sqlData.olderDateLong)
                 tbl_lols.LOL_region.eq(region)
-//                tbl_lols.LOL_riotIdName.notEq("null")
+                tbl_lols.LOL_summonerLevel.greaterEq(50)
             }
-            .orderBy(tbl_participantsnew.matchDateEnd.desc())
+            .orderBy(tbl_lols.match_date_last.desc(), tbl_lols.id.desc())
             .limit(size)
-            .selectAsEntity(tbl_lols)
 
         R2DBC.runQuery { query }
     }
@@ -411,8 +408,6 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
 suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC){
     if (sqlData.isNeedUpdateDays) sqlData.isNeedUpdateDays = false
 
-    builder.content = "**ТОП сервера по параметрам (за матч)**\nОбновлено: ${TimeStamp.now()}\n"
-
     //sqlData.generateFact()
 
     val query = QueryDsl
@@ -430,7 +425,7 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         statClass.calculateField(it, "Смертей", it.deaths.toDouble())
         statClass.calculateField(it, "Ассистов", it.assists.toDouble())
         statClass.calculateField(it, "KDA", it.kda)
-        statClass.calculateField(it, "ММР за АРАМ", it.gameMatchMmr)
+//        statClass.calculateField(it, "ММР за АРАМ", it.gameMatchMmr)
 //        statClass.calculateField(it, "Убито Баронов", it.baronKills.toDouble())
 //        statClass.calculateField(it, "Убито Драконов", it.dragonKills.toDouble())
 //        statClass.calculateField(it, "Установлено вардов", it.wardsPlaced.toDouble())
@@ -453,7 +448,7 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         statClass.calculateField(it, "Физического урона чемпионам", it.physicalDamageDealtToChampions.toDouble())
         statClass.calculateField(it, "Чистого урона чемпионам", it.trueDamageDealtToChampions.toDouble())
         statClass.calculateField(it, "Убито миньонов", it.totalMinionsKilled.toDouble())
-        statClass.calculateField(it, "Использовано заклинаний", it.calcSkillShots().toDouble())
+//        statClass.calculateField(it, "Использовано заклинаний", it.calcSkillShots().toDouble())
 //        statClass.calculateField(it, "Уклонений от заклинаний", it.skillshotsDodged.toDouble())
 //        statClass.calculateField(it, "Попаданий заклинаниями", it.skillshotsHit.toDouble())
         statClass.calculateField(it, "Попаданий снежками", it.snowballsHit.toDouble())
@@ -472,7 +467,7 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         resultText += "* $it\n"
     }
     printLog("size: ${resultText.length}")
-    builder.content += resultText
+    builder.content = "**ТОП сервера по параметрам (за матч)**\nОбновлено: ${TimeStamp.now()}\n" + resultText
 
     sqlData.guildSQL.messageIdTopUpdated = System.currentTimeMillis()
     sqlData.guildSQL.update()

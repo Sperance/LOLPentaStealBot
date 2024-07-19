@@ -1,5 +1,6 @@
 package ru.descend.bot.lolapi
 
+import com.google.gson.Gson
 import kotlinx.coroutines.delay
 import ru.descend.bot.catchToken
 import ru.descend.bot.datas.Result
@@ -9,10 +10,11 @@ import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
-import ru.descend.bot.lolapi.dto.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
+import ru.descend.bot.postgre.PostgreTest.ChampionsDTOsample
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Heroes
+import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.writeLog
@@ -46,34 +48,32 @@ object LeagueMainObject {
         }
         val heroes = R2DBC.stockHEROES.get()
         R2DBC.stockMMR.reset()
-        champions.data::class.java.declaredFields.forEach {
-            it.isAccessible = true
-            val curData = it.get(champions.data) as InterfaceChampionBase
-
-            if (heroes.find { hero -> hero.key == curData.key } == null) {
-                Heroes(nameEN = curData.id, nameRU = curData.name, key = curData.key).create(Heroes::key)
+        val result = Gson().fromJson(Gson().toJson(champions), ChampionsDTOsample::class.java)
+        result.data.forEach { (_, any2) ->
+            val dataChamp = Gson().fromJson(Gson().toJson(any2), InterfaceChampionBase::class.java)
+            if (heroes.find { hero -> hero.key == dataChamp.key } == null) {
+                Heroes(nameEN = dataChamp.id, nameRU = dataChamp.name, key = dataChamp.key).create(Heroes::key)
             }
         }
 
         LOL_VERSION = champions.version
-
         printLog("Version Data: ${champions.version} Heroes: ${heroes.size}")
     }
 
-    suspend fun catchMatchID(puuid: String, summonerName: String, start: Int, count: Int, agained: Boolean = false) : List<String> {
+    suspend fun catchMatchID(lol: LOLs, start: Int, count: Int, agained: Boolean = false) : List<String> {
         globalLOLRequests++
         delay(checkRiotQuota())
-        printLog("[catchMatchID::$globalLOLRequests] started with summonerName: $summonerName start: $start count: $count")
-        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchIDByPUUID(puuid, start, count) }){
+        printLog("[catchMatchID::$globalLOLRequests] started with summonerName: ${lol.getCorrectNameWithTag()}(lol_id: ${lol.id}) start: $start count: $count")
+        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchIDByPUUID(lol.LOL_puuid, start, count) }){
             is Result.Success -> { res.data }
             is Result.Error -> {
                 statusLOLRequests = 1
-                val messageError = "catchMatchID failure: ${res.message} puuid: $puuid start: $start count: $count"
+                val messageError = "catchMatchID failure: ${res.message} puuid: ${lol.LOL_puuid} start: $start count: $count"
                 printLog(messageError)
                 writeLog(messageError)
 
                 if (agained) listOf()
-                else catchMatchID(puuid, summonerName,start, count, true)
+                else catchMatchID(lol, start, count, true)
             }
         }
     }
@@ -139,7 +139,6 @@ object LeagueMainObject {
             is Result.Error -> {
                 val messageError = "catchPentaSteal failure: ${res.message} with matchId: $matchId"
                 printLog(messageError)
-                writeLog(messageError)
 
                 if (agained) null
                 else {

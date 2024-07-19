@@ -166,7 +166,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         lols.forEach {
             if (it.LOL_puuid == "") return@forEach
             atomicIntLoaded.incrementAndGet()
-            LeagueMainObject.catchMatchID(it.LOL_puuid, it.getCorrectName(), 0, count).forEach ff@{ matchId ->
+            LeagueMainObject.catchMatchID(it, 0, count).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }

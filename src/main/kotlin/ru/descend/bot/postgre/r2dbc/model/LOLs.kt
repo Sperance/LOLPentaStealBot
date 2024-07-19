@@ -1,30 +1,21 @@
 package ru.descend.bot.postgre.r2dbc.model
 
-import dev.kord.common.entity.Snowflake
-import dev.kord.core.cache.data.UserData
-import dev.kord.core.entity.Guild
-import dev.kord.core.entity.User
-import org.junit.jupiter.params.aggregator.ArgumentAccessException
 import org.komapper.annotation.KomapperAutoIncrement
-import org.komapper.annotation.KomapperCreatedAt
 import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
-import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import ru.descend.bot.BONUS_MMR_FOR_NEW_RANK
-import ru.descend.bot.LIMIT_BINUS_MMR_FOR_MATCH
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.safeApiCall
+import ru.descend.bot.datas.update
 import ru.descend.bot.enums.EnumMMRRank
-import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.to1Digits
 import ru.descend.bot.writeLog
-import java.time.LocalDateTime
 import kotlin.math.abs
 
 @KomapperEntity
@@ -44,6 +35,7 @@ data class LOLs(
     var last_loaded: Long = 0,
     var mmrAram: Double = 0.0,
     var mmrAramSaved: Double = 0.0,
+    var match_date_last: Long = 0,
 ) {
     companion object {
         val tbl_lols = Meta.loLs
@@ -104,6 +96,15 @@ data class LOLs(
     }
 
     fun isBot() = LOL_puuid.trim() == "BOT"
+
+    fun isNeedUpdate(match: Matches, parts: Participant) : Boolean {
+        if (match_date_last <= match.matchDateEnd && LOL_summonerLevel <= parts.summonerLevel) {
+            if (LOL_region != match.getRegionValue() || LOL_riotIdTagline != parts.riotIdTagline || LOL_summonerId != parts.summonerId || LOL_riotIdName != parts.riotIdGameName || profile_icon != parts.profileIcon) {
+                return true
+            }
+        }
+        return false
+    }
 
     fun getIconURL() : String {
         return "https://ddragon.leagueoflegends.com/cdn/$LOL_VERSION/img/profileicon/$profile_icon.png"
