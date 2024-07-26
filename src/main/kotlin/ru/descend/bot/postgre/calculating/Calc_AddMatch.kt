@@ -1,7 +1,5 @@
 package ru.descend.bot.postgre.calculating
 
-import ru.descend.bot.BONUS_MMR_FOR_LVP_ARAM
-import ru.descend.bot.BONUS_MMR_FOR_MVP_ARAM
 import ru.descend.bot.LOAD_MMR_HEROES_MATCHES
 import ru.descend.bot.LVP_TAG
 import ru.descend.bot.MVP_TAG
@@ -14,7 +12,6 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.datas.create
 import ru.descend.bot.datas.getData
-import ru.descend.bot.datas.getSize
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.datas.update
 import ru.descend.bot.generateAIText
@@ -22,15 +19,10 @@ import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
 import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
-import ru.descend.bot.printLog
 import ru.descend.bot.sendMessage
-import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormatDate
 import ru.descend.bot.toFormatDateTime
 import ru.descend.bot.writeLog
-import kotlin.math.abs
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 data class Calc_AddMatch (
     val sqlData: SQLData_R2DBC,
@@ -39,7 +31,7 @@ data class Calc_AddMatch (
 
     val arrayOtherLOLs = ArrayList<LOLs>()
 
-    suspend fun calculate() : Matches {
+    suspend fun calculate(mainOrder: Boolean) : Matches {
         arrayOtherLOLs.clear()
         var isBots = false
         var isSurrender = false
@@ -78,6 +70,8 @@ data class Calc_AddMatch (
         if (!pMatchResult.bit) return pMatchResult.result
         val pMatch = pMatchResult.result
 
+        if (pMatch.matchMode == "ARAM" && mainOrder) sqlData.isHaveLastARAM = true
+
         if (pMatch.id % LOAD_MMR_HEROES_MATCHES == 0){
             R2DBC.executeProcedure("call \"GetAVGs\"()")
             LeagueMainObject.catchHeroNames()
@@ -105,19 +99,16 @@ data class Calc_AddMatch (
                     LOL_region = pMatch.getRegionValue(),
                     profile_icon = part.profileIcon,
                     match_date_last = pMatch.matchDateEnd).create(LOLs::LOL_puuid).result
-            } else if (!curLOL.isBot()) {
-                //Вдруг что изменится в профиле игрока
-                if (curLOL.isNeedUpdate(pMatch, part)) {
-                    curLOL.LOL_riotIdTagline = part.riotIdTagline
-                    curLOL.LOL_region = pMatch.getRegionValue()
-                    curLOL.LOL_summonerId = part.summonerId
-                    val newName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName
-                    if (newName != "null") curLOL.LOL_riotIdName = newName
-                    curLOL.LOL_summonerLevel = part.summonerLevel
-                    curLOL.profile_icon = part.profileIcon
-                    curLOL.match_date_last = pMatch.matchDateEnd
-                    curLOL = curLOL.update()
-                }
+            } else if (!curLOL.isBot() && curLOL.isNeedUpdate(pMatch, part)) {
+                curLOL.LOL_riotIdTagline = part.riotIdTagline
+                curLOL.LOL_region = pMatch.getRegionValue()
+                curLOL.LOL_summonerId = part.summonerId
+                val newName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName
+                if (newName != "null") curLOL.LOL_riotIdName = newName
+                curLOL.LOL_summonerLevel = part.summonerLevel
+                curLOL.profile_icon = part.profileIcon
+                curLOL.match_date_last = pMatch.matchDateEnd
+                curLOL = curLOL.update()
             }
 
             asyncLaunch {
@@ -141,65 +132,37 @@ data class Calc_AddMatch (
         }
 
         arrayOtherLOLs.removeIf { savedLOL.find { finded -> finded.id == it.id } != null }
-        val lastPartList = ParticipantsNew().addBatch(arrayNewParts)
+        val lastPartList = ParticipantsNew().addBatch(arrayNewParts, printLog = false)
 
-        calculateMMR(pMatch, lastPartList, lastLolsList)
-        sqlData.textNewMatches.appendLine("${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n", pMatch.id.toString())
+        calculateMMR(pMatch, lastPartList, lastLolsList, mainOrder)
 
         return pMatch
     }
 
-    private suspend fun calculateMMR(
-        pMatch: Matches,
-        lastPartList: List<ParticipantsNew>,
-        lastLolsList: List<LOLs>,
-    ) {
-
-        val needCalcMMR = pMatch.isNeedCalcMMR()
-
+    private suspend fun calculateMMR(pMatch: Matches, lastPartList: List<ParticipantsNew>, lastLolsList: List<LOLs>, mainOrder: Boolean) {
         val arrayKORDmmr = ArrayList<Pair<LOLs, ParticipantsNew>>()
-        lastPartList.forEach { par ->
-            val lolObj = lastLolsList.find { it.id == par.LOLperson_id }!!
-            if (needCalcMMR) {
-                val data = Calc_MMR(par, pMatch, R2DBC.getMMRforChampion(par.championName))
-                data.init()
-                arrayKORDmmr.add(Pair(lolObj, par))
+        if (pMatch.isNeedCalcMMR()) {
+            val data = Calc_MMR(lastPartList, pMatch)
+            data.calculateMMR()
+            lastLolsList.forEach {
+                val finededPart = lastPartList.find { par -> par.LOLperson_id == it.id }
+                if (finededPart != null) {
+                    arrayKORDmmr.add(Pair(it, finededPart))
+                }
             }
         }
 
-        if (arrayKORDmmr.isNotEmpty() && needCalcMMR) {
+        var textMatch: String
+        if (arrayKORDmmr.isNotEmpty() && pMatch.isNeedCalcMMR()) {
 
-            //Обработка высших полей
-            arrayKORDmmr.forEach {
-                //Топ урона
-                if (it.second.highestChampionDamage > 0) {
-                    it.second.gameMatchMmr = (it.second.gameMatchMmr + 2.0).to1Digits()
-                }
-                //Топ контроля
-                if (it.second.highestCrowdControlScore > 0) {
-                    it.second.gameMatchMmr = (it.second.gameMatchMmr + 2.0).to1Digits()
-                }
-            }
+            textMatch = if (mainOrder) "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${arrayKORDmmr.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectName() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr }}\n**"
+            else "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n"
 
-            //Обработка MVP LVP
             arrayKORDmmr.sortBy { it.second.gameMatchMmr }
-            arrayKORDmmr.first().let { first ->
-                first.second.gameMatchKey = LVP_TAG
-                first.second.gameMatchMmr = (first.second.gameMatchMmr - BONUS_MMR_FOR_LVP_ARAM).to1Digits()
-            }
-            arrayKORDmmr.last().let { last ->
-                last.second.gameMatchKey = MVP_TAG
-                last.second.gameMatchMmr = (last.second.gameMatchMmr + BONUS_MMR_FOR_MVP_ARAM).to1Digits()
-            }
 
-            //Обработка лузстрика\винстрика
-//            arrayKORDmmr.forEach {
-//                val dataMap = sqlData.tempMapWinStreak[it.first.id] ?: return@forEach
-//                if (it.second.win && dataMap <= -3) {
-//                    it.second.gameMatchMmr = (it.second.gameMatchMmr + (0.5 * abs(dataMap))).to1Digits()
-//                    printLog("У игрока ${it.first.getCorrectName()} был лузстрик ($dataMap) и он Победил. Добавляем ${0.5 * abs(dataMap)} ММР")
-//                }
-//            }
+            //Обработка MVP LVP и всей жижи которая потом обработается в Calc_GainMMR
+            arrayKORDmmr.first().second.gameMatchKey = LVP_TAG
+            arrayKORDmmr.last().second.gameMatchKey = MVP_TAG
 
             //Присвоение ММР в LOLs
             arrayKORDmmr.forEach {
@@ -211,6 +174,11 @@ data class Calc_AddMatch (
                 it.first.update()
                 it.second.update()
             }
+        } else {
+            textMatch = if (mainOrder) "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${lastPartList.joinToString { it.win.toString() + " lol: " + it.LOLperson_id + " " + it.championName + "\n" }}"
+            else "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n"
         }
+
+        sqlData.textNewMatches.appendLine(textMatch)
     }
 }

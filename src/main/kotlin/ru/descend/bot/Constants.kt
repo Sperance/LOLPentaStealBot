@@ -3,7 +3,7 @@ package ru.descend.bot
 /**
  * Каждый N тик прогрузки матчей будет проходиться по сохранённым пользователям
  */
-const val EVERY_N_TICK_LOAD_MATCH = 3
+const val EVERY_N_TICK_LOAD_MATCH = 2
 
 /**
  * Сколько матчей загружаем по каждому неизвестному пользователю
@@ -66,3 +66,8 @@ const val DAYS_MIN_IN_LOAD = 30L
  * Модификатор для ММР
  */
 const val MMR_STOCK_MODIFICATOR = 1.2
+
+/**
+ * Сколько ММР необходимо добавить к Максимальному ММР для подсчёта ММР для проигравшей команды
+ */
+const val ADD_MMR_FOR_LOOSE_ARAM_CALC = 2.0

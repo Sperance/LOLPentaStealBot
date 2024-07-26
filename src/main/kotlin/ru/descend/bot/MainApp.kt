@@ -302,6 +302,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.dataSavedLOL.reset()
 
     sqlData.atomicNeedUpdateTables.set(false)
+    sqlData.isHaveLastARAM = false
 }
 
 suspend fun isNeedUpdateTop(channelText: TextChannel, sqlData: SQLData_R2DBC) : Boolean {
@@ -569,6 +570,7 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
     builder.content = "**Статистика ММР**\nОбновлено: ${TimeStamp.now()}\n"
 
     if (!sqlData.atomicNeedUpdateTables.get()) return
+    if (!sqlData.isHaveLastARAM) return
 
     val charStr = " / "
     val aramData = sqlData.getArrayAramMMRData()

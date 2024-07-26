@@ -1,20 +1,22 @@
 package ru.descend.bot.datas
 
+data class TextDicrordString (
+    val text: String,
+    val date: Long = System.currentTimeMillis()
+)
+
 class TextDicrordLimit {
-    private val textArray = ArrayList<String>()
-    private var lastMatchId = ""
+    private val textArray = ArrayList<TextDicrordString>()
     private val delimiter = "\n-----\n"
 
-    fun getAllText() = textArray.sortedByDescending { it.length }
-    fun getLastMatchId() = lastMatchId
+    fun getAllText() = textArray.sortedBy { it.date }.map { it.text }
 
-    fun appendLine(line: String, matchId: String) {
-        lastMatchId = matchId
-        val lastLine = textArray.findLast { it.length < 1900 }
+    fun appendLine(line: String) {
+        val lastLine = textArray.findLast { it.text.length < (1990 - line.length) }
         if (lastLine != null) {
-            textArray[textArray.indexOf(lastLine)] = lastLine + line
+            textArray[textArray.indexOf(lastLine)] = TextDicrordString(lastLine.text + line)
         } else {
-            textArray.add(delimiter + line)
+            textArray.add(TextDicrordString(delimiter + line))
         }
     }
 

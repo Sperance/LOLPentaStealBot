@@ -9,13 +9,11 @@ import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.safeApiCall
-import ru.descend.bot.datas.update
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.to1Digits
-import ru.descend.bot.writeLog
 import kotlin.math.abs
 
 @KomapperEntity
@@ -89,21 +87,29 @@ data class LOLs(
                 statusLOLRequests = 1
                 val messageError = "connectLOL failure: ${res.message} with summonerName: $summonerName"
                 printLog(messageError)
-                writeLog(messageError)
                 null
             }
         }
     }
 
-    fun isBot() = LOL_puuid.trim() == "BOT"
+    fun isBot() = LOL_puuid.trim() == "BOT" || LOL_summonerId == "BOT" || LOL_puuid.length < 10
 
     fun isNeedUpdate(match: Matches, parts: Participant) : Boolean {
+        if (match_date_last != 0L && match_date_last < match.matchDateEnd) {
+            return isSameFields(match, parts)
+        }
         if (match_date_last <= match.matchDateEnd && LOL_summonerLevel <= parts.summonerLevel) {
-            if (LOL_region != match.getRegionValue() || LOL_riotIdTagline != parts.riotIdTagline || LOL_summonerId != parts.summonerId || LOL_riotIdName != parts.riotIdGameName || profile_icon != parts.profileIcon) {
-                return true
-            }
+            return isSameFields(match, parts)
         }
         return false
+    }
+
+    private fun isSameFields(match: Matches, parts: Participant) : Boolean {
+        return (LOL_region != match.getRegionValue() ||
+            LOL_riotIdTagline != parts.riotIdTagline ||
+            LOL_summonerId != parts.summonerId ||
+            LOL_riotIdName != parts.riotIdGameName ||
+            profile_icon != parts.profileIcon)
     }
 
     fun getIconURL() : String {
@@ -121,6 +127,6 @@ data class LOLs(
     fun getRank() = EnumMMRRank.getMMRRank(mmrAram)
 
     override fun toString(): String {
-        return "LOLs(id=$id, riotIdName=$LOL_riotIdName, mmrAram=$mmrAram, savedAram=$mmrAramSaved)"
+        return "LOLs(id=$id, riotIdName=${getCorrectName()}, region=$LOL_region, mmrAram=$mmrAram, savedAram=$mmrAramSaved)"
     }
 }

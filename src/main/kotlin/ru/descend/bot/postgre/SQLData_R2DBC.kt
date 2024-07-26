@@ -41,6 +41,7 @@ data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var m
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
+    var isHaveLastARAM = false
     var isNeedUpdateDays = false
     var updatesBeforeLoadUsersMatch = 0
     var textNewMatches = TextDicrordLimit()
@@ -135,7 +136,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     private suspend fun addMatch(match: MatchDTO, mainOrder: Boolean) {
         val newMatch = Calc_AddMatch(this, match)
-        newMatch.calculate()
+        newMatch.calculate(mainOrder)
         if (mainOrder) {
             val othersLOLS = newMatch.arrayOtherLOLs
             loadMatches(othersLOLS, LOAD_MATCHES_ON_SAVED_UNDEFINED, false)

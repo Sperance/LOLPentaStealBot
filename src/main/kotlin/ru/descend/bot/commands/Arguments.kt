@@ -497,7 +497,7 @@ fun arguments() = commands("Arguments") {
 //        }
 //    }
 
-    slash("getMatchAramMMR", "Получить статистику по подсчёту ММР по матчу", Permissions(Permission.Administrator)) {
+    slash("getMatchAramMMR", "Получить статистику по подсчёту ММР по матчу по всем пользователям", Permissions(Permission.Administrator)) {
         execute(AnyArg("matchText")) {
             val (matchText) = args
             val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'matchText'=${matchText}"
@@ -505,45 +505,29 @@ fun arguments() = commands("Arguments") {
 
             respond("Генерация ответа по матчу $matchText...")
 
-            println("1")
-            val guilds = R2DBC.getGuild(guild)
-
-            println("2")
-            val KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq author.toStringUID(); tbl_kords.guild_id eq guilds.id })
-            if (KORD == null) {
-                channel.createMessage { content = "Пользователь ${author.lowDescriptor()} не зарегистрирован в боте" }
-                return@execute
-            }
-
-            println("3")
-            val KORDLOLs = KORDLOLs().getData({ tbl_kordlols.KORD_id eq KORD.id ; tbl_kordlols.guild_id eq guilds.id })
-
-            println("4")
             val match = Matches().getDataOne({ tbl_matches.matchId eq matchText })
             if (match == null) {
                 channel.createMessage { content = "Матч '$matchText' не найден в БД бота" }
                 return@execute
             }
 
-            println("5")
-            val participants = ParticipantsNew().getDataOne({ tbl_participantsnew.match_id eq match.id ; tbl_participantsnew.LOLperson_id.inList(KORDLOLs.map { it.LOL_id }) })
-            if (participants == null) {
-                channel.createMessage { content = "Не найден игрок ${author.toStringUID()} в матче '$matchText' по LOL id: ${KORDLOLs.map { it.LOL_id }}" }
+            val participants = ParticipantsNew().getData({ tbl_participantsnew.match_id eq match.id })
+            if (participants.isEmpty()) {
+                channel.createMessage { content = "Не найдены игроки в матче '$matchText'" }
                 return@execute
             }
 
-            println("6")
-
             launch {
-                println("7")
-                val mmrData = R2DBC.getMMRforChampion(participants.championName)
-                println("8")
-                val result = Calc_MMR(participants, match, mmrData)
-                result.init()
-                println("9")
+                val result = Calc_MMR(participants, match)
+                result.calculateMMR()
+                var resultedText = result.mmrValueTextLog
 
-                channel.createMessage { content = "**Результаты подсчета ММР по матчу ${matchText}**\n\n${result.mmrValueTextLog}" }
-                println("10")
+                val file = File("${matchText}_ALL.txt")
+                file.writeText(resultedText)
+                channel.createMessage {
+                    content = "Файл данных по матчу $matchText"
+                    files.add(file.toNamedFile())
+                }
             }
         }
     }

@@ -63,7 +63,7 @@ object LeagueMainObject {
     suspend fun catchMatchID(lol: LOLs, start: Int, count: Int, agained: Boolean = false) : List<String> {
         globalLOLRequests++
         delay(checkRiotQuota())
-        printLog("[catchMatchID::$globalLOLRequests] started with summonerName: ${lol.getCorrectNameWithTag()}(lol_id: ${lol.id}) start: $start count: $count")
+//        printLog("[catchMatchID::$globalLOLRequests] started with summonerName: ${lol.getCorrectNameWithTag()}(lol_id: ${lol.id}) start: $start count: $count")
         return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchIDByPUUID(lol.LOL_puuid, start, count) }){
             is Result.Success -> { res.data }
             is Result.Error -> {
@@ -114,7 +114,7 @@ object LeagueMainObject {
     suspend fun catchMatch(matchId: String, agained: Boolean = false) : MatchDTO? {
         globalLOLRequests++
         delay(checkRiotQuota())
-        printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
+//        printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
         return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchInfo(matchId) }){
             is Result.Success -> { res.data }
             is Result.Error -> {
@@ -133,7 +133,7 @@ object LeagueMainObject {
     suspend fun catchPentaSteal(matchId: String, agained: Boolean = false) : MatchTimelineDTO? {
         globalLOLRequests++
         delay(checkRiotQuota())
-        printLog("[catchPentaSteal::$globalLOLRequests] started with matchId: $matchId")
+//        printLog("[catchPentaSteal::$globalLOLRequests] started with matchId: $matchId")
         return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchTimeline(matchId) }){
             is Result.Success -> { res.data }
             is Result.Error -> {

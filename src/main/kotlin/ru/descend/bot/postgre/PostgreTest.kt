@@ -420,38 +420,6 @@ class PostgreTest {
     }
 
     @Test
-    fun test_part_code() {
-        runBlocking {
-            val matchText = "RU_493303533"
-
-            R2DBC.runStrongTransaction {
-                println(1)
-                val guilds = Guilds().getDataOneWithoutTransaction({ tbl_guilds.id eq 1 })!!
-                println(2)
-                val KORD = KORDs().getDataOneWithoutTransaction({ tbl_kords.id eq 11 })!!
-                println(3)
-                val match = Matches().getDataOneWithoutTransaction({ tbl_matches.matchId eq matchText })!!
-                println(4)
-                val KORDLOLs = KORDLOLs().getDataWithoutTransaction({ tbl_kordlols.KORD_id eq KORD.id ; tbl_kordlols.guild_id eq guilds.id })
-                println(5)
-                val matchParts = ParticipantsNew().getDataWithoutTransaction({ tbl_participantsnew.match_id eq match.id })
-                println(5.2)
-                val myLOL: LOLs = LOLs().getDataOneWithoutTransaction({ tbl_lols.LOL_region eq match.region ; tbl_lols.id.inList(KORDLOLs.map { it.LOL_id }) })!!
-                println(5.5)
-                val participants = ParticipantsNew().getDataOneWithoutTransaction({ tbl_participantsnew.match_id eq match.id ; tbl_participantsnew.LOLperson_id eq myLOL.id })!!
-                println(6)
-                val mmrData = MMRs().getDataOneWithoutTransaction({ tbl_mmrs.champion eq participants.championName })!!
-                println(7)
-                val result = Calc_MMR(participants, match, mmrData)
-                println(8)
-                result.init()
-                println(9)
-                println("**Результаты подсчета ММР по матчу ${matchText}**\n\n${result.mmrValueTextLog}")
-            }
-        }
-    }
-
-    @Test
     fun test_birthday_parse() {
         val dateValue = "05041900_2024"
 
