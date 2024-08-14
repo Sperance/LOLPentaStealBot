@@ -7,16 +7,23 @@ import ru.descend.bot.BONUS_MMR_FOR_WIN
 import ru.descend.bot.LIMIT_BINUS_MMR_FOR_MATCH
 import ru.descend.bot.LVP_TAG
 import ru.descend.bot.MVP_TAG
+import ru.descend.bot.generateAIText
+import ru.descend.bot.launch
+import ru.descend.bot.lowDescriptor
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.printLog
+import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
+import ru.descend.bot.toFormatDateTime
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: LOLs) {
+class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: LOLs, private var sqldata: SQLData_R2DBC) {
 
     private var textTemp = lols.toString() + "\n"
 
@@ -111,6 +118,7 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
         if (participant.kills5 > 0) {
             addSavedMMR += participant.kills5 * 5.0
             textTemp += "[calcSavedMMR::Пентакиллы] количество: ${participant.kills5} добавляем бонуса ${participant.kills5 * 5.0}\n"
+            sqldata.calculatePentakill(lols, participant)
         }
 
         //за каждую квадру 3 очка

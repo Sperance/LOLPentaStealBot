@@ -1,17 +1,11 @@
 package ru.descend.bot.postgre.r2dbc.model
 
 import org.komapper.annotation.KomapperAutoIncrement
-import org.komapper.annotation.KomapperCreatedAt
 import org.komapper.annotation.KomapperEntity
 import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
-import org.komapper.annotation.KomapperUpdatedAt
 import org.komapper.core.dsl.Meta
-import org.komapper.core.dsl.QueryDsl
-import org.komapper.core.dsl.query.bind
-import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.toFormatDate
-import java.time.LocalDateTime
 
 @KomapperEntity
 @KomapperTable("tbl_matches")
@@ -35,12 +29,16 @@ data class Matches(
     var gameType: String = ""
 ) {
 
-    fun isNeedCalcMMR() : Boolean {
-        if (matchMode != "ARAM") return false
+    fun isNeedCalcStats() : Boolean {
         if (bots) return false
         if (surrender) return false
         if (aborted) return false
         return true
+    }
+
+    fun isNeedCalcMMR() : Boolean {
+        if (matchMode != "ARAM") return false
+        return isNeedCalcStats()
     }
 
     companion object {

@@ -11,43 +11,28 @@ import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.expression.WhereDeclaration
 import org.komapper.core.dsl.metamodel.EntityMetamodel
 import org.komapper.core.dsl.operator.count
+import org.komapper.core.dsl.operator.or
+import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.get
-import org.komapper.core.dsl.query.int
-import ru.descend.bot.EnumMeasures
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.datas.create
 import ru.descend.bot.datas.getDataOne
-import ru.descend.bot.datas.getDataOneWithoutTransaction
-import ru.descend.bot.datas.getDataWithoutTransaction
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
-import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
-import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.datas.toLocalDate
-import ru.descend.bot.enums.EnumMMRRank.PAPER_III
-import ru.descend.bot.enums.EnumMMRRank.UNRANKED
 import ru.descend.bot.enums.EnumMMRRank.entries
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.LeagueMainObject.dragonService
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
-import ru.descend.bot.measureBlock
-import ru.descend.bot.postgre.calculating.Calc_MMR
-import ru.descend.bot.postgre.r2dbc.model.Guilds
-import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.Heroes
-import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
-import ru.descend.bot.postgre.r2dbc.model.KORDs
-import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
-import ru.descend.bot.postgre.r2dbc.model.LOLs
-import ru.descend.bot.postgre.r2dbc.model.MMRs.Companion.tbl_mmrs
-import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
+import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.to1Digits
 import ru.gildor.coroutines.okhttp.await
@@ -140,6 +125,34 @@ class PostgreTest {
         runBlocking {
             val data = tbl_lols.getSize { tbl_lols.id greaterEq 0 }
             println(data)
+        }
+    }
+
+    @Test
+    fun test_with_transactions() {
+        runBlocking {
+            var hero = Heroes().getDataOne({ tbl_heroes.id eq 1 })!!
+            println(hero)
+
+            hero.otherNames = ""
+            hero.nameRU = "Атрокс"
+
+            hero = Heroes().getDataOne({ tbl_heroes.id eq 1 })!!
+            println(hero)
+        }
+    }
+
+    @Test
+    fun test_without_transactions() {
+        runBlocking {
+//            var hero = Heroes().getDataOne({ tbl_heroes.id eq 1 })!!
+//            println(hero)
+//
+//            hero.otherNames = "12345"
+//            hero.updateWithoutT()
+//
+//            hero = Heroes().getDataOne({ tbl_heroes.id eq 1 })!!
+//            println(hero)
         }
     }
 
@@ -353,68 +366,56 @@ class PostgreTest {
     }
 
     @Test
-    fun test_data_double() {
-        val value = 2.45
-        println(value.fromDoublePerc(2.0))
-        println((value / 2.0).to1Digits())
-
-        println(value.fromDoublePerc(3.0))
-        println((value / 3.0).to1Digits())
-
-        println(value.fromDoublePerc(1.6))
-        println((value / 1.6).to1Digits())
-
-    }
-
-    private fun Double.fromDoublePerc(stock: Double): Double {
-        return when ((this / stock) * 100.0) {
-            in Double.MIN_VALUE..20.0 -> 0.2
-            in 20.0..40.0 -> 0.4
-            in 40.0..60.0 -> 0.6
-            in 60.0..80.0 -> 0.8
-            in 80.0..100.0 -> 1.0
-            in 100.0..120.0 -> 1.2
-            in 120.0..140.0 -> 1.4
-            in 140.0..160.0 -> 1.6
-            in 160.0..180.0 -> 1.8
-            in 180.0..200.0 -> 2.0
-            in 200.0..220.0 -> 2.2
-            in 220.0..240.0 -> 2.4
-            in 240.0..260.0 -> 2.6
-            in 260.0..280.0 -> 2.8
-            in 280.0..Double.MAX_VALUE -> 3.0
-            else -> 0.0
+    fun test_updates() {
+        runBlocking {
+            val query: Query<Long> = QueryDsl.update(tbl_heroes).set {
+                tbl_heroes.otherNames eq ""
+            }.where {
+                tbl_heroes.id less 10
+            }
+            R2DBC.runQuery { query }
         }
     }
 
     @Test
-    fun test_get_data() {
+    fun test_correct() {
         runBlocking {
-            measureBlock(EnumMeasures.BLOCK, "1") {
-                println(ParticipantsNew().getDataWithoutTransaction({ tbl_participantsnew.match_id eq 754421 }))
-            }
-            measureBlock(EnumMeasures.BLOCK, "2") {
-                println(ParticipantsNew().getDataOneWithoutTransaction({ tbl_participantsnew.match_id eq 754421 }))
-            }
-            measureBlock(EnumMeasures.BLOCK, "3") {
-                println(R2DBC.runQuery { QueryDsl.from(tbl_participantsnew).where { tbl_participantsnew.match_id eq 754421 } })
-            }
-        }
-    }
 
-    @Test
-    fun tset_Asda(){
-        runBlocking {
-//            val data = R2DBC.runQuery { QueryDsl.from(tbl_participantsnew).where { tbl_participantsnew.kills5.isNotNull() }.selectAsEntity(tbl_participantsnew, max(tbl_participantsnew.kills5)).singleOrNull() }
-//            println(data)
+            val whereSurrender: WhereDeclaration = {
+                tbl_matches.surrender eq true
+                tbl_participantsnew.needCalcStats eq true
+            }
+            val whereAborted: WhereDeclaration = {
+                tbl_matches.aborted eq true
+                tbl_participantsnew.needCalcStats eq true
+            }
+            val whereBots: WhereDeclaration = {
+                tbl_matches.bots eq true
+                tbl_participantsnew.needCalcStats eq true
+            }
+            val sumWhere: WhereDeclaration = whereSurrender.or(whereAborted).or(whereBots)
 
-            val sql = "SELECT LOLperson_id, MAX(kills5) as ks FROM tbl_participants_new GROUP BY LOLperson_id ORDER BY ks DESC LIMIT 1"
-            R2DBC.runQuery {
-                QueryDsl.fromTemplate(sql).select {
-                    val data1 = it.int("LOLperson_id")
-                    val data2 = it.int("ks")
-                    println("data1: $data1, data2: $data2")
+            var size = 0L
+            val query = QueryDsl
+                .from(tbl_participantsnew)
+                .leftJoin(tbl_matches) { tbl_matches.id eq tbl_participantsnew.match_id }
+                .where(sumWhere)
+                .select(tbl_participantsnew.id, tbl_matches.matchDateEnd)
+            val result = R2DBC.runQuery { query }
+
+            result.forEach {
+                if (it.first == null) return@forEach
+
+                val newDate = it.second?:0L
+                val queryUpdate: Query<Long> = QueryDsl.update(tbl_participantsnew).set {
+                    tbl_participantsnew.matchDateEnd eq newDate
+                    tbl_participantsnew.needCalcStats eq false
+                }.where {
+                    tbl_participantsnew.id eq it.first
                 }
+                R2DBC.runQuery { queryUpdate }
+
+                println("id: ${it.first} date: $newDate (updated ${++size} of ${result.size})")
             }
         }
     }
@@ -437,20 +438,6 @@ class PostgreTest {
         if (curDate < curSysDate) printLog("low")
         if (curDate > curSysDate) printLog("great")
         if (curDate == curSysDate) printLog("eq")
-    }
-
-    @Test
-    fun test_mmr() {
-        runBlocking {
-            val mmr = MMRs(champion = "champ")
-
-            mmr.create(MMRs::champion)
-            printLog(mmr)
-            val str = "asd"
-            mmr.champion = "champ new"
-            mmr.update()
-            printLog(mmr)
-        }
     }
 
     @Test

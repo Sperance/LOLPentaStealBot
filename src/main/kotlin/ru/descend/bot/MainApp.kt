@@ -37,6 +37,7 @@ import ru.descend.bot.datas.update
 import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
+import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
@@ -77,7 +78,7 @@ fun main() {
             stackTraceRecovery = true
         }
         onStart {
-            firstInitialize()
+            R2DBC.initialize()
             kord.guilds.collect {
                 val guilds = R2DBC.getGuild(it)
                 mapMainData[it] = SQLData_R2DBC(it, guilds)
@@ -116,11 +117,6 @@ fun timerMainInformation(guild: Guild, duration: Duration, skipFirst: Boolean = 
         }
         delay(duration)
     }
-}
-
-private suspend fun firstInitialize() {
-    R2DBC.initialize()
-    connectLogger()
 }
 
 suspend fun removeMessage(guild: Guild) {
@@ -228,9 +224,10 @@ suspend fun loadingLastMatches(sqlData: SQLData_R2DBC) {
     resultedList.addAll(getLastLOLs(sqlData, "RU", LAST_UNDEFINED_USERS_FOR_LOAD))
     resultedList.forEach {lastLOLObj ->
         if (sqlData.atomicIntLoaded.get() >= (98 - LOAD_MATCHES_IN_USER)) return@forEach
-        printLog("[loadingLastMatches::updated] LOL id: ${lastLOLObj.id} ${lastLOLObj.getCorrectName()} before: ${lastLOLObj.last_loaded}(${lastLOLObj.last_loaded.toFormatDate()}) new: ${sqlData.currentDateLong}(${sqlData.currentDateLong.toFormatDate()}) checked: ${sqlData.olderDateLong}(${sqlData.olderDateLong.toFormatDate()})")
-        lastLOLObj.last_loaded = sqlData.currentDateLong
-        lastLOLObj.update()
+        R2DBC.runTransaction {
+            lastLOLObj.last_loaded = sqlData.currentDateLong
+            lastLOLObj.update()
+        }
         sqlData.loadMatches(listOf(lastLOLObj), LOAD_MATCHES_IN_USER, false)
     }
 }
@@ -238,27 +235,30 @@ suspend fun loadingLastMatches(sqlData: SQLData_R2DBC) {
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.onCalculateTimer()
 
-    launch {
-        sqlData.updatesBeforeLoadUsersMatch++
-        val arraySaveds = sqlData.dataSavedLOL.get()
-        if (sqlData.updatesBeforeLoadUsersMatch == 1) {
-            sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES, true)
-        } else if (sqlData.updatesBeforeLoadUsersMatch >= EVERY_N_TICK_LOAD_MATCH) {
-            sqlData.updatesBeforeLoadUsersMatch = 0
-        }
-        printLog("[showLeagueHistory loaded: ${sqlData.atomicIntLoaded.get()}][updates: ${sqlData.updatesBeforeLoadUsersMatch}]")
-        loadingLastMatches(sqlData)
+    measureBlock(EnumMeasures.BLOCK, "showLeagueHistory Matches") {
+        launch {
+            sqlData.updatesBeforeLoadUsersMatch++
+            val arraySaveds = sqlData.dataSavedLOL.get()
+            if (sqlData.updatesBeforeLoadUsersMatch == 1) {
+                printLog("[showLeagueHistory start launch loading main matches]")
+                sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES, true)
+                printLog("[showLeagueHistory end launch loading main matches]")
+            } else if (sqlData.updatesBeforeLoadUsersMatch >= EVERY_N_TICK_LOAD_MATCH) {
+                sqlData.updatesBeforeLoadUsersMatch = 0
+            }
+            printLog("[showLeagueHistory loaded: ${sqlData.atomicIntLoaded.get()}][updates: ${sqlData.updatesBeforeLoadUsersMatch}]")
+            loadingLastMatches(sqlData)
 
-        sqlData.textNewMatches.getAllText().forEach {str ->
-            sqlData.sendMessage(sqlData.guildSQL.messageIdDebug, str)
-            delay(1000)
-        }
-        sqlData.clearTempData()
-    }.join()
+            sqlData.textNewMatches.getAllText().forEach {str ->
+                sqlData.sendMessage(sqlData.guildSQL.messageIdDebug, str)
+                delay(1000)
+            }
+            sqlData.clearTempData()
+        }.join()
+    }
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     launch {
-
         //Таблица Главная - ID никнейм серияпобед
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
             editMessageMainDataContent(it, sqlData)
@@ -277,7 +277,6 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }) {
             createMessageGlobalStatistic(channelText, sqlData)
         }
-
         //Таблица по Мастерству ТОП3 чемпионов каждого игрока
         if (isNeedUpdateMasteries(channelText, sqlData)) {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, "MessageMasteriesContent", {
@@ -286,7 +285,6 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
                 createMessageMasteries(channelText, sqlData)
             }
         }
-
         //Таблица по ТОП чемпионам сервера
         if (isNeedUpdateTop(channelText, sqlData)) {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, "MessageTopContent", {
@@ -297,9 +295,9 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }
     }.join()
 
-    sqlData.dataKORDLOL.reset()
-    sqlData.dataKORD.reset()
-    sqlData.dataSavedLOL.reset()
+    sqlData.dataKORDLOL.clear()
+    sqlData.dataKORD.clear()
+    sqlData.dataSavedLOL.clear()
 
     sqlData.atomicNeedUpdateTables.set(false)
     sqlData.isHaveLastARAM = false
@@ -409,7 +407,7 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
 suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC){
     if (sqlData.isNeedUpdateDays) sqlData.isNeedUpdateDays = false
 
-    //sqlData.generateFact()
+    sqlData.generateFact()
 
     val query = QueryDsl
         .from(tbl_participantsnew)
@@ -520,16 +518,15 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 }
 
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
-
     val sizeMatches = Matches().getSize()
     val sizeLOLs = LOLs().getSize()
     val sizeParticipants = ParticipantsNew().getSize()
-    val sizeHeroes = Heroes().getSize()
+    val sizeHeroes = R2DBC.stockHEROES.get().size
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
-    contentText += "* Матчей: $sizeMatches (CLASSIC:${Matches().getSize { tbl_matches.matchMode.eq("CLASSIC") }} ARAM:${Matches().getSize { tbl_matches.matchMode.eq("ARAM") }})\n"
-    contentText += "* Игроков: $sizeLOLs (RU:${LOLs().getSize { tbl_lols.LOL_region.eq("RU") }} EUW1:${LOLs().getSize { tbl_lols.LOL_region.eq("EUW1") }})\n"
-    contentText += "* Данных (строк): ~${sizeParticipants + sizeMatches + sizeLOLs + sizeHeroes}\n"
+    contentText += "* Матчей: $sizeMatches\n"
+    contentText += "* Игроков: $sizeLOLs\n"
+    contentText += "* Данных (строк): ~${sizeParticipants + sizeMatches + sizeLOLs}\n"
     contentText += "* Чемпионов: $sizeHeroes\n"
     contentText += "* Версия игры: ${LeagueMainObject.LOL_VERSION}\n"
     builder.content = contentText
@@ -590,7 +587,6 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
         textBold + R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info + textBold
     })
 
-
     builder.embed {
         field {
             name = "ARAM Rank"
@@ -606,15 +602,6 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
             name = "LastGame/MMR"
             value = mainDataList3.joinToString(separator = "\n")
             inline = true
-        }
-    }
-}
-
-private fun connectLogger() {
-    Hooks.onErrorDropped {
-        writeLog("[HOOKS_ERROR] ${it.localizedMessage}")
-        it.stackTrace.forEach { trace ->
-            writeLog("\t[HOOKS_ERROR] $trace")
         }
     }
 }

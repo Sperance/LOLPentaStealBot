@@ -1,10 +1,9 @@
 package ru.descend.bot.postgre.calculating
 
+import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.LOAD_MMR_HEROES_MATCHES
 import ru.descend.bot.LVP_TAG
 import ru.descend.bot.MVP_TAG
-import ru.descend.bot.asyncLaunch
-import ru.descend.bot.datas.addBatch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.R2DBC
@@ -12,16 +11,14 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.datas.create
 import ru.descend.bot.datas.getData
-import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.datas.update
-import ru.descend.bot.generateAIText
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
 import ru.descend.bot.lolapi.dto.matchDto.Participant
-import ru.descend.bot.lowDescriptor
+import ru.descend.bot.postgre.db
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
-import ru.descend.bot.sendMessage
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.toFormatDate
-import ru.descend.bot.toFormatDateTime
 import ru.descend.bot.writeLog
 
 data class Calc_AddMatch (
@@ -109,18 +106,9 @@ data class Calc_AddMatch (
                 curLOL.profile_icon = part.profileIcon
                 curLOL.match_date_last = pMatch.matchDateEnd
                 curLOL = curLOL.update()
-            }
-
-            asyncLaunch {
-                val savedKORDLOL = sqlData.getSavedLOL(curLOL)
-                //Проверка пентакилла
-                if (savedKORDLOL != null && part.pentaKills > 0) {
-                    val championName = R2DBC.getHeroFromKey(part.championId.toString())?.nameRU?:""
-                    val textPentasCount = if (part.pentaKills == 1) "" else "(${part.pentaKills})"
-                    val generatedText = generateAIText("Напиши прикольное поздравление в шуточном стиле пользователю ${savedKORDLOL.asUser(sqlData).lowDescriptor()} за то что он сделал Пентакилл в игре League of Legends за чемпиона $championName")
-                    val resultText = "Поздравляем!!!\n${savedKORDLOL.asUser(sqlData).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName\nМатч: ${match.metadata.matchId} Дата: ${match.info.gameCreation.toFormatDateTime()}\n\n$generatedText"
-                    sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, resultText)
-                }
+            } else if (!curLOL.isBot() && pMatch.matchDateEnd > curLOL.match_date_last) {
+                curLOL.match_date_last = pMatch.matchDateEnd
+                curLOL = curLOL.update()
             }
 
             lastLolsList.add(curLOL)
@@ -128,13 +116,15 @@ data class Calc_AddMatch (
             if (!curLOL.isBot() && sqlData.dataKORDLOL.get().find { tbl -> tbl.LOL_id == curLOL.id } == null)
                 arrayOtherLOLs.add(curLOL)
 
-            arrayNewParts.add(ParticipantsNew(part, pMatch, curLOL))
+            if (pMatch.isNeedCalcStats()) arrayNewParts.add(ParticipantsNew(part, pMatch, curLOL))
         }
 
         arrayOtherLOLs.removeIf { savedLOL.find { finded -> finded.id == it.id } != null }
-        val lastPartList = ParticipantsNew().addBatch(arrayNewParts, printLog = false)
 
-        calculateMMR(pMatch, lastPartList, lastLolsList, mainOrder)
+        if (pMatch.isNeedCalcStats()) {
+            val lastPartList = db.runQuery { QueryDsl.insert(tbl_participantsnew).multiple(arrayNewParts) }
+            calculateMMR(pMatch, lastPartList, lastLolsList, mainOrder)
+        }
 
         return pMatch
     }
@@ -166,13 +156,13 @@ data class Calc_AddMatch (
 
             //Присвоение ММР в LOLs
             arrayKORDmmr.forEach {
-                val text = Calc_GainMMR(it.second, it.first)
+                val text = Calc_GainMMR(it.second, it.first, sqlData)
                 writeLog(text.getTempText())
             }
             //Перезапись полей для сохранения в базу
             arrayKORDmmr.forEach {
                 it.first.update()
-                it.second.update()
+                it.second.update(showLog = false)
             }
         } else {
             textMatch = if (mainOrder) "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${lastPartList.joinToString { it.win.toString() + " lol: " + it.LOLperson_id + " " + it.championName + "\n" }}"

@@ -1,7 +1,5 @@
 package ru.descend.bot.datas
 
-import kotlinx.coroutines.runBlocking
-import org.junit.Test
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.expression.SortExpression
 import org.komapper.core.dsl.expression.WhereDeclaration
@@ -9,14 +7,9 @@ import org.komapper.core.dsl.metamodel.EntityMetamodel
 import org.komapper.core.dsl.metamodel.PropertyMetamodel
 import org.komapper.core.dsl.metamodel.getAutoIncrementProperty
 import org.komapper.core.dsl.operator.count
-import org.komapper.core.dsl.operator.desc
-import org.komapper.core.dsl.query.firstOrNull
-import org.komapper.core.dsl.query.single
 import org.komapper.core.dsl.query.singleOrNull
 import ru.descend.bot.postgre.R2DBC
-import ru.descend.bot.postgre.R2DBC.db
-import ru.descend.bot.postgre.r2dbc.model.Guilds
-import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
+import ru.descend.bot.postgre.db
 import ru.descend.bot.printLog
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.full.createInstance
@@ -27,7 +20,7 @@ fun Any.getField(name: String) = this::class.java.declaredFields.find { it.isAcc
 fun <T> calculateUpdate(before: T?, after: T?) : String {
     if (before == null) return ""
     if (after == null) return ""
-    var result = ""
+    var result = " "
     before!!::class.java.declaredFields.forEach {
         it.isAccessible = true
         val fieldbefore = it.get(before)
@@ -50,21 +43,21 @@ fun <META : EntityMetamodel<Any, Any, META>> getInstanceClassForTbl(obj: Any) : 
 }
 
 @Suppress("UNCHECKED_CAST")
-suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.update() : TYPE {
+suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.update(showLog: Boolean = true) : TYPE {
     val metaTable = getInstanceClassForTbl(this) as META
 
     val prop_id = metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int>
-    val already = R2DBC.runQuery {
+    val before = R2DBC.runQuery {
         QueryDsl.from(metaTable)
             .where { prop_id eq this@update.getField("id") as Int }
             .singleOrNull()
     }
+    if (before == this) return before as TYPE
+    if (before == null) throw IllegalArgumentException("In table for name tbl_${this::class.java.simpleName.lowercase()}) in Meta ${metaTable.javaClass.simpleName} don`t find object with id ${this@update.getField("id")}. Object: $this")
+    var result = db.runQuery { QueryDsl.update(metaTable).single(this@update) }
+    val stringUpdated = calculateUpdate(before, result)
 
-    if (already == this) return already as TYPE
-    if (already == null) throw IllegalArgumentException("In table for name tbl_${this::class.java.simpleName.lowercase()}) in Meta ${metaTable.javaClass.simpleName} don`t find object with id ${this@update.getField("id")}. Object: $this")
-
-    val result = R2DBC.runQuery { QueryDsl.update(metaTable).single(this@update) }
-    printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this {${calculateUpdate(already, result)}}")
+    if (showLog) printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this} {$stringUpdated}")
     return result as TYPE
 }
 
@@ -80,7 +73,7 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kPro
 
     if (kProperty1 != null) {
         val metaProperty = metaTable.properties().find { it.name == kProperty1.name } as PropertyMetamodel<Any, Any, META>
-        val already = R2DBC.runQuery {
+        val already = db.runQuery {
             QueryDsl.from(metaTable)
                 .where { metaProperty eq kProperty1.get(this@create) }
                 .singleOrNull()
@@ -91,7 +84,7 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kPro
         }
     }
 
-    val result = R2DBC.runQuery { QueryDsl.insert(metaTable).single(this@create) }
+    val result = db.runQuery { QueryDsl.insert(metaTable).single(this@create) }
     printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}]$appendText $result")
     return CoreResult(bit = true, result = result as TYPE)
 }
@@ -112,14 +105,6 @@ suspend fun <META : EntityMetamodel<Any, Any, META>> Any.delete() {
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getData(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : List<TYPE> {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    return if (sortExpression == null) R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr) } as List<TYPE>
-    else R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression) } as List<TYPE>
-}
-
-@Suppress("UNCHECKED_CAST")
-suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataWithoutTransaction(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : List<TYPE> {
-    val metaTable = getInstanceClassForTbl(this) as META
-    val whereExpr = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
     return if (sortExpression == null) db.runQuery { QueryDsl.from(metaTable).where(whereExpr) } as List<TYPE>
     else db.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression) } as List<TYPE>
 }
@@ -128,23 +113,15 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataWith
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataOne(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : TYPE? {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr: WhereDeclaration = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    return if (sortExpression == null) R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).firstOrNull() } as TYPE?
-    else R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression).firstOrNull() } as TYPE?
-}
-
-@Suppress("UNCHECKED_CAST")
-suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataOneWithoutTransaction(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : TYPE? {
-    val metaTable = getInstanceClassForTbl(this) as META
-    val whereExpr: WhereDeclaration = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    return if (sortExpression == null) db.runQuery { QueryDsl.from(metaTable).where(whereExpr).single() } as TYPE?
-    else db.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression).single() } as TYPE?
+    return if (sortExpression == null) db.runQuery { QueryDsl.from(metaTable).where(whereExpr).singleOrNull() } as TYPE?
+    else db.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression).singleOrNull() } as TYPE?
 }
 
 @Suppress("UNCHECKED_CAST")
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getSize(declaration: WhereDeclaration? = null) : Long {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr: WhereDeclaration = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    return R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).select(count()) }?:0L
+    return db.runQuery { QueryDsl.from(metaTable).where(whereExpr).select(count()) }?:0L
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -168,18 +145,5 @@ suspend inline fun <reified TYPE: Any, META : EntityMetamodel<Any, Any, META>> T
             if (printLog) res.forEach { printLog("\t[Batch_${TYPE::class.java.simpleName}::save] $it", false) }
         }
         resultedList
-    }
-}
-
-class CoreMethods {
-    @Test
-    fun test_Core(){
-        runBlocking {
-            val data = Guilds().getData(declaration = { tbl_guilds.id eq 2 }, sortExpression = tbl_guilds.id)
-            data.forEach {
-                println("data: $it")
-            }
-            println("SIZE: ${Guilds().getSize{tbl_guilds.id greaterEq 2}}")
-        }
     }
 }

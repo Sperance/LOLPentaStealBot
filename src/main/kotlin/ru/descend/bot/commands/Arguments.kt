@@ -47,6 +47,7 @@ import ru.descend.bot.launch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.measureBlock
 import ru.descend.bot.postgre.calculating.Calc_MMR
+import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
 import ru.descend.bot.postgre.r2dbc.model.MMRs
 import ru.descend.bot.postgre.r2dbc.model.MMRs.Companion.tbl_mmrs
@@ -528,6 +529,7 @@ fun arguments() = commands("Arguments") {
                     content = "Файл данных по матчу $matchText"
                     files.add(file.toNamedFile())
                 }
+                file.delete()
             }
         }
     }
@@ -560,6 +562,7 @@ fun arguments() = commands("Arguments") {
                     content = "Файл данных по матчу $matchText"
                     files.add(file.toNamedFile())
                 }
+                file.delete()
             }
 
             respond("Генерация ответа...")

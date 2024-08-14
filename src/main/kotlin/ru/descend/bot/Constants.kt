@@ -18,7 +18,7 @@ const val LAST_UNDEFINED_USERS_FOR_LOAD = 20
 /**
  * Количество матчей постоянно прогружаемых у сохраненных пользователей
  */
-const val LOAD_SAVED_USER_MATCHES = 50
+const val LOAD_SAVED_USER_MATCHES = 100
 
 /**
  * Каждое указанное кол-во матчей будет прогрузка таблицы ММР и Чемпионов

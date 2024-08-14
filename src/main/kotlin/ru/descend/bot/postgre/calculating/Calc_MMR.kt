@@ -75,7 +75,7 @@ class Calc_MMR(private var participant: Collection<ParticipantsNew>, val match: 
         //Топ контроля
         if (par.highestCrowdControlScore > 0) {
             mmrValue += 2.0
-            mmrValueTextLog += "\t[VALUE] highestChampionDamage: ${par.highestCrowdControlScore} result MMR: $mmrValue\n"
+            mmrValueTextLog += "\t[VALUE] highestCrowdControlScore: ${par.highestCrowdControlScore} result MMR: $mmrValue\n"
         }
     }
 
@@ -132,6 +132,9 @@ class Calc_MMR(private var participant: Collection<ParticipantsNew>, val match: 
         var localMMR = (valuePropertyParticipant / (valuePropertyMmr * mmrMatchModificator)).to1Digits()
         if (localMMR > maxMMR) {
             localMMR = maxMMR.to1Digits()
+        }
+        if (localMMR.isNaN() || localMMR < 0.01){
+            localMMR = 0.0
         }
 
         if (valuePropertyParticipant < 0.01) {

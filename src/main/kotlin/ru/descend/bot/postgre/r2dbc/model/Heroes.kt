@@ -24,6 +24,6 @@ data class Heroes(
     }
 
     override fun toString(): String {
-        return "Heroes(id=$id, name='$nameRU', key='$key')"
+        return "Heroes(id=$id, name='$nameRU', key='$key', other='$otherNames')"
     }
 }

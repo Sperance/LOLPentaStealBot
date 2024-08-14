@@ -1,16 +1,18 @@
 import java.util.Properties
 
 group = "ru.descend"
-version = "1.6.0"
+version = "2.0.0"
 description = "Unofficial Bot for League of Legends"
 
 plugins {
     application
     id("java")
-    id("com.google.devtools.ksp") version "1.9.23-1.0.19"
-
-    kotlin("jvm") version "1.9.23"
-    kotlin("plugin.serialization") version "1.9.23"
+//    id("com.google.devtools.ksp") version "1.9.23-1.0.19"
+//    kotlin("jvm") version "1.9.23"
+//    kotlin("plugin.serialization") version "1.9.23"
+    kotlin("plugin.serialization") version "2.0.0"
+    kotlin("jvm") version "2.0.0"
+    id("com.google.devtools.ksp") version "2.0.0-1.0.22"
 }
 
 repositories {
@@ -20,7 +22,7 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val komapperVersion = "1.18.0"
+val komapperVersion = "2.0.0"
 
 dependencies {
     platform("org.komapper:komapper-platform:$komapperVersion").let {

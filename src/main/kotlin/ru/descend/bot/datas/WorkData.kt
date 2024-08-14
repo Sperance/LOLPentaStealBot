@@ -13,7 +13,7 @@ class WorkData<T>(val nameObject: String) {
     }
 
     fun set(list: List<T>) {
-        listData.clear()
+        clear()
         listData.addAll(list)
     }
 
@@ -27,27 +27,10 @@ class WorkData<T>(val nameObject: String) {
 
     private fun isEmpty() = listData.isEmpty()
     suspend fun reset() {
-        val beforeCounter = listData.size
-        listData.clear()
+        clear()
         listData.addAll(bodyReset?.invoke()?: listOf())
-        val afterCounter = listData.size
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as WorkData<*>
-
-        if (listData != other.listData) return false
-        if (bodyReset != other.bodyReset) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = listData.hashCode()
-        result = 31 * result + (bodyReset?.hashCode() ?: 0)
-        return result
+        if (listData.isEmpty()) {
+            printLog("[WorkData::$nameObject] reseted to Empty list")
+        }
     }
 }

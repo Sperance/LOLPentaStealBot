@@ -35,22 +35,21 @@ import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.printLog
 
+private val connectionFactory: ConnectionFactoryOptions = ConnectionFactoryOptions.builder()
+    .option(ConnectionFactoryOptions.DRIVER, "postgresql")
+    .option(ConnectionFactoryOptions.HOST, "localhost")
+    .option(ConnectionFactoryOptions.PORT, 5432)
+    .option(ConnectionFactoryOptions.USER, "postgres")
+    .option(ConnectionFactoryOptions.PASSWORD, "22322137")
+    .option(ConnectionFactoryOptions.DATABASE, "postgres2")
+    .build()
+
+val db = R2dbcDatabase(connectionFactory, executionOptions = ExecutionOptions(queryTimeoutSeconds = 300, suppressLogging = true))
+
 /**
  * https://www.komapper.org/docs/
  */
 object R2DBC {
-
-    private val connectionFactory: ConnectionFactoryOptions = ConnectionFactoryOptions.builder()
-        .option(ConnectionFactoryOptions.DRIVER, "postgresql")
-        .option(ConnectionFactoryOptions.HOST, "localhost")
-        .option(ConnectionFactoryOptions.PORT, 5432)
-        .option(ConnectionFactoryOptions.USER, "postgres")
-        .option(ConnectionFactoryOptions.PASSWORD, "22322137")
-        .option(ConnectionFactoryOptions.DATABASE, "postgres2")
-        .build()
-
-    val db = R2dbcDatabase(connectionFactory)
-
     val stockHEROES = WorkData<Heroes>("HEROES")
     val stockMMR = WorkData<MMRs>("MMR")
 
