@@ -156,7 +156,7 @@ data class Calc_AddMatch (
 
             //Присвоение ММР в LOLs
             arrayKORDmmr.forEach {
-                val text = Calc_GainMMR(it.second, it.first, sqlData)
+                val text = Calc_GainMMR(it.second, it.first, sqlData, pMatch)
                 writeLog(text.getTempText())
             }
             //Перезапись полей для сохранения в базу

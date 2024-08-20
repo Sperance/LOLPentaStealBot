@@ -23,7 +23,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: LOLs, private var sqldata: SQLData_R2DBC) {
+class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: LOLs, private var sqldata: SQLData_R2DBC, private var match: Matches) {
 
     private var textTemp = lols.toString() + "\n"
 
@@ -118,7 +118,7 @@ class Calc_GainMMR(private var participant: ParticipantsNew, private var lols: L
         if (participant.kills5 > 0) {
             addSavedMMR += participant.kills5 * 5.0
             textTemp += "[calcSavedMMR::Пентакиллы] количество: ${participant.kills5} добавляем бонуса ${participant.kills5 * 5.0}\n"
-            sqldata.calculatePentakill(lols, participant)
+            sqldata.calculatePentakill(lols, participant, match)
         }
 
         //за каждую квадру 3 очка

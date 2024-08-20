@@ -20,26 +20,25 @@ import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.operator.desc
-import reactor.core.publisher.Hooks
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.datas.getSize
+import ru.descend.bot.datas.isCurrentDay
+import ru.descend.bot.datas.toDate
+import ru.descend.bot.datas.update
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.LeagueMainObject
-import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.postgre.R2DBC
+import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
+import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
-import ru.descend.bot.datas.update
-import ru.descend.bot.datas.isCurrentDay
-import ru.descend.bot.datas.toDate
-import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
-import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
-import ru.descend.bot.postgre.r2dbc.model.Heroes
-import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import java.awt.Color
@@ -78,6 +77,7 @@ fun main() {
             stackTraceRecovery = true
         }
         onStart {
+            firstMainInitialize()
             R2DBC.initialize()
             kord.guilds.collect {
                 val guilds = R2DBC.getGuild(it)
@@ -92,6 +92,10 @@ fun main() {
             }
         }
     }
+}
+
+private fun firstMainInitialize() {
+
 }
 
 val mapMainData = HashMap<Guild, SQLData_R2DBC>()

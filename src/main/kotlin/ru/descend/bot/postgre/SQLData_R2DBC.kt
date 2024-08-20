@@ -16,6 +16,7 @@ import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.datas.WorkData
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
+import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.toLocalDate
 import ru.descend.bot.generateAIText
@@ -112,8 +113,9 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return arraySavedParticipants
     }
 
-    fun calculatePentakill(lol: LOLs, part: ParticipantsNew) {
+    fun calculatePentakill(lol: LOLs, part: ParticipantsNew, match: Matches) {
         printLog("[calculatePentakill] lol: $lol part: $part")
+        if (!match.matchDateEnd.toDate().isCurrentDay()) return
         launch {
             val curLol = getKORDLOL_fromLOL(lol.id)
             if (curLol == null) {

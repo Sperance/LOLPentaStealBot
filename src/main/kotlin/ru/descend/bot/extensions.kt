@@ -237,11 +237,9 @@ fun writeLog(text: String?) {
     val pathFile = File("logs")
     if (!pathFile.exists()) Files.createDirectory(pathFile.toPath())
     val curDateText = Date().getStrongDate().date
-    var logFile = File(pathFile.path, "log-$curDateText.txt")
+    val logFile = File(pathFile.path, "log-$curDateText.txt")
     if (!logFile.exists()) logFile.createNewFile()
-
-    val curDTime = System.currentTimeMillis().toFormatDateTime()
-    logFile.appendText("[$curDTime] $text\n")
+    logFile.appendText("$text\n")
 }
 
 fun String.toBase64() : String {
