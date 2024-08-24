@@ -208,9 +208,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         loadArrayMatches(checkMatches, mainOrder)
     }
 
-    suspend fun loadArrayMatches(checkMatches: ArrayList<String>, mainOrder: Boolean) {
+    private suspend fun loadArrayMatches(checkMatches: ArrayList<String>, mainOrder: Boolean) {
         val listChecked = getNewMatches(checkMatches)
-        if (listChecked.size > 5) printLog("[loadArrayMatches] прогрузка ${listChecked.size} запущена")
         listChecked.sortBy { it }
         listChecked.forEach { newMatch ->
             atomicIntLoaded.incrementAndGet()
@@ -223,8 +222,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         }
     }
 
-    suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
-        var resultAra = list
+    private suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
+        val resultAra = list
         val dataAra = resultAra.joinToString(prefix = "{", postfix = "}")
         val sql = "SELECT remove_matches('$dataAra'::character varying[])"
         R2DBC.runQuery {

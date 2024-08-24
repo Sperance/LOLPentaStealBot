@@ -18,6 +18,8 @@ import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.postgre.db
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
+import ru.descend.bot.printLog
+import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormatDate
 import ru.descend.bot.writeLog
 
@@ -142,8 +144,10 @@ data class Calc_AddMatch (
             }
         }
 
-        var textMatch: String
+        val textMatch: String
         if (arrayKORDmmr.isNotEmpty() && pMatch.isNeedCalcMMR()) {
+
+            calcMMR20(arrayKORDmmr)
 
             textMatch = if (mainOrder) "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${arrayKORDmmr.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectName() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr }}\n**"
             else "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n"
@@ -158,6 +162,8 @@ data class Calc_AddMatch (
             arrayKORDmmr.forEach {
                 val text = Calc_GainMMR(it.second, it.first, sqlData, pMatch)
                 writeLog(text.getTempText())
+
+                if (it.first.match_date_last < pMatch.matchDateEnd) it.first.match_date_last = pMatch.matchDateEnd
             }
             //Перезапись полей для сохранения в базу
             arrayKORDmmr.forEach {
@@ -170,5 +176,83 @@ data class Calc_AddMatch (
         }
 
         sqlData.textNewMatches.appendLine(textMatch)
+    }
+
+    private fun calcMMR20(data: ArrayList<Pair<LOLs, ParticipantsNew>>) {
+
+        data.forEach {
+            it.second.tempTextMMR2 += "УРОН:${it.second.teamDamagePercentage * 10};"
+            it.second.tempTextMMR2value += it.second.teamDamagePercentage * 10
+
+            it.second.tempTextMMR2 += "ПОЛУЧЕНО УРОНА:${it.second.damageTakenOnTeamPercentage * 10};"
+            it.second.tempTextMMR2value += it.second.damageTakenOnTeamPercentage * 10
+        }
+
+        data.sortBy { it.second.kills }
+        data.forEachIndexed { index, pair ->
+            pair.second.tempTextMMR2 += "УБИЙСТВА:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
+        }
+
+        data.sortBy { it.second.assists }
+        data.forEachIndexed { index, pair ->
+            pair.second.tempTextMMR2 += "АССИСТОВ:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
+        }
+
+        data.sortByDescending { it.second.deathsByEnemyChamps }
+        data.forEachIndexed { index, pair ->
+            pair.second.tempTextMMR2 += "СМЕРТЕЙ:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
+        }
+
+        data.sortBy { it.second.damageSelfMitigated }
+        data.forEachIndexed { index, pair ->
+            pair.second.tempTextMMR2 += "ПРЕДОТВРАЩЕНО УРОНА ПО СЕБЕ:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
+        }
+
+        data.sortBy { it.second.skillshotsDodged }
+        data.forEachIndexed { index, pair ->
+            pair.second.tempTextMMR2 += "УКЛОНЕНИЙ:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
+        }
+
+        data.forEach {
+            it.second.tempTextMMR2value = (it.second.tempTextMMR2value / 2.0).to1Digits()
+        }
+
+        data.maxBy { it.second.tempTextMMR2value }.second.apply {
+            tempTextMMR2value += 3.0
+            tempTextMMR2 += "MVP"
+        }
+
+        data.minBy { it.second.tempTextMMR2value }.second.apply {
+            if (tempTextMMR2value >= 3.0) tempTextMMR2value -= 3.0
+            tempTextMMR2 += "LVP"
+        }
+
+        val maxRankPlayer100 = data.filter { it.second.teamId == 100 }.maxBy { thi -> thi.first.getARAMRank().rankValue }
+        val maxRankPlayer200 = data.filter { it.second.teamId == 200 }.maxBy { thi -> thi.first.getARAMRank().rankValue }
+        val minRankPlayer100 = data.filter { it.second.teamId == 100 }.minBy { thi -> thi.first.getARAMRank().rankValue }
+        val minRankPlayer200 = data.filter { it.second.teamId == 200 }.minBy { thi -> thi.first.getARAMRank().rankValue }
+
+        data.filter { it.second.win }.forEach {
+            it.second.tempTextMMR2 += "ПОБЕДА"
+            if (it.second.teamId == 100) it.second.tempTextMMR2value += 10 + maxRankPlayer200.first.getARAMRank().rankValue
+            else if (it.second.teamId == 200) it.second.tempTextMMR2value += 10 + maxRankPlayer100.first.getARAMRank().rankValue
+        }
+
+        val maxMMR = data.maxBy { it.second.tempTextMMR2value }.second.tempTextMMR2value
+
+        data.filter { !it.second.win }.forEach {
+            it.second.tempTextMMR2value = (maxMMR - it.second.tempTextMMR2value).to1Digits()
+            it.second.tempTextMMR2value = -it.second.tempTextMMR2value
+        }
+
+        printLog("MAX MATCH MMR: $maxMMR", false)
+        data.forEach {
+            printLog("DATA: ${it.first} ${it.second} win:${it.second.win} ${it.second.tempTextMMR2value} ${it.second.tempTextMMR2}", false)
+        }
     }
 }

@@ -1,5 +1,10 @@
 package ru.descend.bot.postgre
 
+import com.cjcrafter.openai.OpenAI
+import com.cjcrafter.openai.chat.ChatMessage
+import com.cjcrafter.openai.chat.ChatMessage.Companion.toUserMessage
+import com.cjcrafter.openai.chat.ChatRequest
+import com.cjcrafter.openai.chat.ChatUser
 import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,16 +21,11 @@ import org.komapper.core.dsl.query.Query
 import org.komapper.core.dsl.query.get
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.Toppartisipants
-import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.datas.create
 import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.datas.safeApiCall
-import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
-import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
-import ru.descend.bot.postgre.r2dbc.model.Matches
-import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
-import ru.descend.bot.printLog
 import ru.descend.bot.datas.toLocalDate
+import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.enums.EnumMMRRank.entries
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
@@ -33,7 +33,12 @@ import ru.descend.bot.lolapi.LeagueMainObject.dragonService
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
 import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.Heroes.Companion.tbl_heroes
+import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
+import ru.descend.bot.postgre.r2dbc.model.Matches
+import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
+import ru.descend.bot.printLog
 import ru.descend.bot.to1Digits
 import ru.gildor.coroutines.okhttp.await
 import java.io.BufferedReader
@@ -43,7 +48,7 @@ import java.net.URL
 import java.time.LocalDate
 import java.time.Period
 import java.util.Date
-import java.util.HashMap
+
 
 class PostgreTest {
 
@@ -262,6 +267,28 @@ class PostgreTest {
     }
 
     @Test
+    fun test_chatgpt() {
+        val openai = OpenAI.builder()
+            .apiKey("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")
+            .build()
+
+        val messages: MutableList<ChatMessage> = ArrayList()
+
+        // Here you can change the model's settings, add tools, and more.
+        val request = ChatRequest.builder()
+            .model("gpt-3.5-turbo")
+            .messages(messages)
+            .build()
+
+        messages.add(ChatMessage(ChatUser.USER, "How are you?"))
+        val response = openai.createChatCompletion(request)
+        println("Generating Response...")
+        println(response[0].message.content)
+        // Make sure to add the response to the messages list!
+        messages.add(response[0].message)
+    }
+
+    @Test
     fun test_proxy_older() {
         runBlocking {
 //            val url = "https://api.openai.com/v1/chat/completions"
@@ -278,37 +305,6 @@ class PostgreTest {
                 .post(body)
                 .build()
             val response = OkHttpClient().newCall(request).await()
-            println("code: ${response.code}")
-            println("message: ${response.message}")
-            println("result: ${response.body?.string()}")
-        }
-    }
-
-    /**
-     * https://infostart.ru/1c/articles/1978921/?ysclid=lxuhv65xoq53314357&ID=1978921
-     *
-     * https://huggingface.co/spaces/mangelaav/oai-proxy
-     */
-    @Test
-    fun test_free_api_proxy() {
-        runBlocking {
-//            val url = "https://descend-oai-proxy-v1.hf.space/proxy/openai/v1/chat"
-            val url = "https://descend-oai-proxy-v1.hf.space/proxy/openai/v1/chat/completions"
-
-            val requestText = "Hello? how are you?"
-            val JSON = "application/json; charset=utf-8".toMediaType()
-            val body = RequestBody.create(JSON, "{\n" +
-                    "    \"model\": \"gpt-3.5-turbo\",\n" +
-                    "    \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
-                    "  }")
-
-            val request = Request.Builder()
-                .url(url)
-                .post(body)
-                .build()
-
-            val response = OkHttpClient().newCall(request).await()
-
             println("code: ${response.code}")
             println("message: ${response.message}")
             println("result: ${response.body?.string()}")

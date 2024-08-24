@@ -158,7 +158,7 @@ object LeagueMainObject {
             statusLOLRequests = 1
             return ((1).minutes)
         }
-        return (0.1).seconds //для безопасности
+        return (0.0).seconds //для безопасности
     }
 
     private fun reloadRiotQuota() {

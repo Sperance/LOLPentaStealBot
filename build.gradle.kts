@@ -49,6 +49,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     testImplementation(kotlin("test"))
     implementation(kotlin("reflect"))
+
+    implementation("com.cjcrafter:openai:2.1.0")
 }
 
 tasks {

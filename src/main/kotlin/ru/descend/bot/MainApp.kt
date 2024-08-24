@@ -411,7 +411,7 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
 suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC){
     if (sqlData.isNeedUpdateDays) sqlData.isNeedUpdateDays = false
 
-    sqlData.generateFact()
+//    sqlData.generateFact()
 
     val query = QueryDsl
         .from(tbl_participantsnew)

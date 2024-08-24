@@ -175,8 +175,10 @@ data class ParticipantsNew(
     var gameMatchKey: String = "",
     var gameMatchMmr: Double = 0.0,
     var needCalcStats: Boolean = true,
-) {
 
+) {
+    var tempTextMMR2: String = ""
+    var tempTextMMR2value: Double = 0.0
     constructor(participant: Participant, match: Matches, LOLperson: LOLs) : this() {
         val kill5 = participant.pentaKills
         val kill4 = participant.quadraKills - kill5

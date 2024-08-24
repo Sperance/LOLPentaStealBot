@@ -9,6 +9,7 @@ import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.safeApiCall
+import ru.descend.bot.enums.EnumARAMRank
 import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.printLog
@@ -125,6 +126,8 @@ data class LOLs(
     }
 
     fun getRank() = EnumMMRRank.getMMRRank(mmrAram)
+
+    fun getARAMRank() = EnumARAMRank.getMMRRank(mmrAram)
 
     override fun toString(): String {
         return "LOLs(id=$id, riotIdName=${getCorrectName()}, region=$LOL_region, mmrAram=$mmrAram, savedAram=$mmrAramSaved)"
