@@ -521,10 +521,8 @@ fun arguments() = commands("Arguments") {
             launch {
                 val result = Calc_MMR(participants, match)
                 result.calculateMMR()
-                var resultedText = result.mmrValueTextLog
-
                 val file = File("${matchText}_ALL.txt")
-                file.writeText(resultedText)
+                file.writeText(result.mmrValueTextLog)
                 channel.createMessage {
                     content = "Файл данных по матчу $matchText"
                     files.add(file.toNamedFile())

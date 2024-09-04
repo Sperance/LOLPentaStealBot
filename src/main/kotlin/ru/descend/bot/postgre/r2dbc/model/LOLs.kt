@@ -10,7 +10,6 @@ import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.enums.EnumARAMRank
-import ru.descend.bot.enums.EnumMMRRank
 import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
@@ -38,27 +37,6 @@ data class LOLs(
 ) {
     companion object {
         val tbl_lols = Meta.loLs
-    }
-
-    /**
-     * Минимальное снятие ММР при поражении (меньше этого значения - не снимется (без учёта Тегов))
-     */
-    fun calcMinRemovedMMR() : Double {
-        return (1.0 + (getRank().rankValue / 2.0)).to1Digits()
-    }
-
-    /**
-     * Максимальное снятие ММР при поражении (больше этого значения - не снимается (без учёта Тегов))
-     */
-    fun calcMaxRemovedMMR() : Double {
-        return (getRank().rankValue + 1.0).to1Digits()
-    }
-
-    /**
-     * Минимальное значение ММР получаемое при победе (меньше получить невозможно)
-     */
-    fun calcMinGainedMMR() : Double {
-        return (1.0 + (getRank().rankValue / 2.0)).to1Digits()
     }
 
     fun removeMMRvalue(removedValue: Double) {
@@ -124,8 +102,6 @@ data class LOLs(
     fun getCorrectNameWithTag() : String {
         return getCorrectName() + "#" + LOL_riotIdTagline
     }
-
-    fun getRank() = EnumMMRRank.getMMRRank(mmrAram)
 
     fun getARAMRank() = EnumARAMRank.getMMRRank(mmrAram)
 

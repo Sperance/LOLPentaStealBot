@@ -2,7 +2,6 @@ package ru.descend.bot.postgre
 
 import com.cjcrafter.openai.OpenAI
 import com.cjcrafter.openai.chat.ChatMessage
-import com.cjcrafter.openai.chat.ChatMessage.Companion.toUserMessage
 import com.cjcrafter.openai.chat.ChatRequest
 import com.cjcrafter.openai.chat.ChatUser
 import com.google.gson.Gson
@@ -25,8 +24,7 @@ import ru.descend.bot.datas.create
 import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.datas.toLocalDate
-import ru.descend.bot.enums.EnumMMRRank
-import ru.descend.bot.enums.EnumMMRRank.entries
+import ru.descend.bot.enums.EnumARAMRank
 import ru.descend.bot.generateAIText
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.LeagueMainObject.dragonService
@@ -51,19 +49,6 @@ import java.util.Date
 
 
 class PostgreTest {
-
-    @Test
-    fun test_mmrs(){
-        printLog("MMR: ${getMMRRank(2236.3)}")
-        printLog("MMR: ${getMMRRank(124.3)}")
-        printLog("MMR: ${getMMRRank(1124.3)}")
-        printLog("MMR: ${getMMRRank(0.0)}")
-        printLog("MMR: ${getMMRRank(57.7)}")
-    }
-
-    fun getMMRRank(mmr: Double) : EnumMMRRank {
-        return entries.sortedBy { it.minMMR }.firstOrNull { it.minMMR >= mmr } ?: entries.last()
-    }
 
     private fun asyncLoadMatches(listChecked: List<String>, mainOrder: Boolean) {
         if (listChecked.size > 2) {
@@ -418,7 +403,7 @@ class PostgreTest {
 
     @Test
     fun test_birthday_parse() {
-        val dateValue = "05041900_2024"
+        val dateValue = "03091900_2023"
 
         val valueDay = dateValue.substring(0..1).toInt()
         val valueMonth = dateValue.substring(2..3).toInt()
@@ -430,16 +415,9 @@ class PostgreTest {
         printLog(curDate.monthValue)
         printLog(curDate.year)
 
-        val curSysDate = LocalDate.of(2000, LocalDate.now().monthValue, LocalDate.now().dayOfMonth)
+        val curSysDate = LocalDate.of(2000, LocalDate.now().monthValue, LocalDate.now().dayOfMonth + 1)
         if (curDate < curSysDate) printLog("low")
         if (curDate > curSysDate) printLog("great")
         if (curDate == curSysDate) printLog("eq")
-    }
-
-    @Test
-    fun checkMatchContains() {
-        EnumMMRRank.entries.forEach {
-            printLog("${it.nameRank} - ${it.ordinal} - ${((it.ordinal / 10.0) * 2.0) + 1.0}")
-        }
     }
 }

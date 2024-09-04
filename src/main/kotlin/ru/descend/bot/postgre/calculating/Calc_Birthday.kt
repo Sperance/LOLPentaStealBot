@@ -7,7 +7,7 @@ import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.datas.update
-import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
+import ru.descend.bot.generateAIText
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.sendMessage
@@ -20,7 +20,7 @@ data class Calc_Birthday(private var sqlData: SQLData_R2DBC, var dataList: List<
     suspend fun calculate() {
         dataList.filter { isBirthday(it.date_birthday) }.forEach {
             var textMessage = ""
-            if (textMessage.isEmpty()) textMessage = "**Поздравляем призывателя ${it.asUser(sqlData.guild).lowDescriptor()} с Днём Рождения!!!\nОт всего сервера желаем счастья, здоровья, любви, ласки, заботы, деняк, побольше арамов и хорошего настроения**"
+            if (textMessage.isEmpty()) textMessage = generateAIText("Напиши интересное с долей смеха поздравление пользователю ${it.asUser(sqlData.guild).lowDescriptor()} с Днём Рождения на сервере Discord посвященному игре Лиге Легенд")
             sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, textMessage)
             writeLog(textMessage)
             val currentTextBirthday = it.date_birthday
@@ -31,7 +31,7 @@ data class Calc_Birthday(private var sqlData: SQLData_R2DBC, var dataList: List<
             if (kordlol != null) {
                 val listLols = LOLs().getData({ tbl_lols.id.eq(kordlol.LOL_id) })
                 listLols.forEach { lol ->
-                    lol.mmrAramSaved += (10.0 + lol.getRank().rankValue)
+                    lol.mmrAramSaved += (10.0 + lol.getARAMRank().rankValue)
                     lol.update()
                 }
             }

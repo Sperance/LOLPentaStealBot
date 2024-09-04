@@ -48,7 +48,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     var isHaveLastARAM = false
     var isNeedUpdateDays = false
-    var updatesBeforeLoadUsersMatch = 0
     var textNewMatches = TextDicrordLimit()
     var olderDateLong = Date().time.toLocalDate().minusDays(DAYS_MIN_IN_LOAD).toDate().time
     var currentDateLong = Date().time
@@ -165,10 +164,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         R2DBC.runTransaction {
             val newMatch = Calc_AddMatch(this@SQLData_R2DBC, match)
             newMatch.calculate(mainOrder)
-            if (mainOrder) {
-                val othersLOLS = newMatch.arrayOtherLOLs
-                loadMatches(othersLOLS, LOAD_MATCHES_ON_SAVED_UNDEFINED, false)
-            }
+//            if (mainOrder) {
+//                val othersLOLS = newMatch.arrayOtherLOLs
+//                loadMatches(othersLOLS, LOAD_MATCHES_ON_SAVED_UNDEFINED, false)
+//            }
         }
     }
 
@@ -223,21 +222,20 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     private suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
-        val resultAra = list
-        val dataAra = resultAra.joinToString(prefix = "{", postfix = "}")
+        val dataAra = list.joinToString(prefix = "{", postfix = "}")
         val sql = "SELECT remove_matches('$dataAra'::character varying[])"
         R2DBC.runQuery {
             QueryDsl.fromTemplate(sql).select {
                 val data = it.get<Array<String>>(0)
-                if (data == null) resultAra.clear()
-                else resultAra.removeAll(data.toSet())
+                if (data == null) list.clear()
+                else list.removeAll(data.toSet())
             }
         }
-        return resultAra
+        return list
     }
 
     suspend fun generateFact() {
-        val generatedText = generateAIText("Напиши интересный факт про игру League of Legends")
+        val generatedText = generateAIText("Напиши интересный но необычный факт про игру League of Legends, про какую-то скрытую механику или историю персонажа или сочетании предметов")
         val resultedText = "**Рубрика: интересные факты**\n\n$generatedText"
         sendMessage(guildSQL.messageIdStatus, resultedText)
     }

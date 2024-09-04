@@ -20,8 +20,6 @@ import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.operator.desc
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
@@ -29,7 +27,7 @@ import ru.descend.bot.datas.getSize
 import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.update
-import ru.descend.bot.enums.EnumMMRRank
+import ru.descend.bot.enums.EnumARAMRank
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.postgre.R2DBC
@@ -77,7 +75,6 @@ fun main() {
             stackTraceRecovery = true
         }
         onStart {
-            firstMainInitialize()
             R2DBC.initialize()
             kord.guilds.collect {
                 val guilds = R2DBC.getGuild(it)
@@ -92,10 +89,6 @@ fun main() {
             }
         }
     }
-}
-
-private fun firstMainInitialize() {
-
 }
 
 val mapMainData = HashMap<Guild, SQLData_R2DBC>()
@@ -241,18 +234,8 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
 
     measureBlock(EnumMeasures.BLOCK, "showLeagueHistory Matches") {
         launch {
-            sqlData.updatesBeforeLoadUsersMatch++
             val arraySaveds = sqlData.dataSavedLOL.get()
-            if (sqlData.updatesBeforeLoadUsersMatch == 1) {
-                printLog("[showLeagueHistory start launch loading main matches]")
-                sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES, true)
-                printLog("[showLeagueHistory end launch loading main matches]")
-            } else if (sqlData.updatesBeforeLoadUsersMatch >= EVERY_N_TICK_LOAD_MATCH) {
-                sqlData.updatesBeforeLoadUsersMatch = 0
-            }
-            printLog("[showLeagueHistory loaded: ${sqlData.atomicIntLoaded.get()}][updates: ${sqlData.updatesBeforeLoadUsersMatch}]")
-            loadingLastMatches(sqlData)
-
+            sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES, true)
             sqlData.textNewMatches.getAllText().forEach {str ->
                 sqlData.sendMessage(sqlData.guildSQL.messageIdDebug, str)
                 delay(1000)
@@ -411,7 +394,7 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
 suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC){
     if (sqlData.isNeedUpdateDays) sqlData.isNeedUpdateDays = false
 
-//    sqlData.generateFact()
+    sqlData.generateFact()
 
     val query = QueryDsl
         .from(tbl_participantsnew)
@@ -580,7 +563,7 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
 
     val mainDataList1 = (aramData.map {
         val textBold = if (it.bold) "**" else ""
-        textBold + formatInt(it.kordLOL?.showCode, 2) + "| " + EnumMMRRank.getMMRRank(it.mmr_aram).nameRank + textBold
+        textBold + formatInt(it.kordLOL?.showCode, 2) + "| " + EnumARAMRank.getMMRRank(it.mmr_aram).nameRank + textBold
     })
     val mainDataList2 = (aramData.map {
         val textBold = if (it.bold) "**" else ""

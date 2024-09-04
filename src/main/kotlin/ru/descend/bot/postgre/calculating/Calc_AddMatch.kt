@@ -22,6 +22,7 @@ import ru.descend.bot.printLog
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormatDate
 import ru.descend.bot.writeLog
+import kotlin.math.abs
 
 data class Calc_AddMatch (
     val sqlData: SQLData_R2DBC,
@@ -147,28 +148,25 @@ data class Calc_AddMatch (
         val textMatch: String
         if (arrayKORDmmr.isNotEmpty() && pMatch.isNeedCalcMMR()) {
 
-            calcMMR20(arrayKORDmmr)
+            textMatch = calcMMR20(pMatch, arrayKORDmmr)
 
-            textMatch = if (mainOrder) "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${arrayKORDmmr.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectName() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr }}\n**"
-            else "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n"
-
-            arrayKORDmmr.sortBy { it.second.gameMatchMmr }
-
-            //Обработка MVP LVP и всей жижи которая потом обработается в Calc_GainMMR
-            arrayKORDmmr.first().second.gameMatchKey = LVP_TAG
-            arrayKORDmmr.last().second.gameMatchKey = MVP_TAG
-
-            //Присвоение ММР в LOLs
-            arrayKORDmmr.forEach {
-                val text = Calc_GainMMR(it.second, it.first, sqlData, pMatch)
-                writeLog(text.getTempText())
-
-                if (it.first.match_date_last < pMatch.matchDateEnd) it.first.match_date_last = pMatch.matchDateEnd
-            }
-            //Перезапись полей для сохранения в базу
+//            arrayKORDmmr.sortBy { it.second.gameMatchMmr }
+//
+//            //Обработка MVP LVP и всей жижи которая потом обработается в Calc_GainMMR
+//            arrayKORDmmr.first().second.gameMatchKey = LVP_TAG
+//            arrayKORDmmr.last().second.gameMatchKey = MVP_TAG
+//
+//            //Присвоение ММР в LOLs
+//            arrayKORDmmr.forEach {
+//                val text = Calc_GainMMR(it.second, it.first, sqlData, pMatch)
+//                writeLog(text.getTempText())
+//
+//                if (it.first.match_date_last < pMatch.matchDateEnd) it.first.match_date_last = pMatch.matchDateEnd
+//            }
+//            //Перезапись полей для сохранения в базу
             arrayKORDmmr.forEach {
                 it.first.update()
-                it.second.update(showLog = false)
+                it.second.update()
             }
         } else {
             textMatch = if (mainOrder) "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${lastPartList.joinToString { it.win.toString() + " lol: " + it.LOLperson_id + " " + it.championName + "\n" }}"
@@ -178,58 +176,69 @@ data class Calc_AddMatch (
         sqlData.textNewMatches.appendLine(textMatch)
     }
 
-    private fun calcMMR20(data: ArrayList<Pair<LOLs, ParticipantsNew>>) {
+    private fun calcMMR20(pMatch: Matches, data: ArrayList<Pair<LOLs, ParticipantsNew>>) : String {
 
         data.forEach {
-            it.second.tempTextMMR2 += "УРОН:${it.second.teamDamagePercentage * 10};"
-            it.second.tempTextMMR2value += it.second.teamDamagePercentage * 10
+            it.second.tempTextMMR2 += ";teamDamage:${it.second.teamDamagePercentage * 10};"
+            it.second.tempTextMMR2value += it.second.teamDamagePercentage * 10.0
 
-            it.second.tempTextMMR2 += "ПОЛУЧЕНО УРОНА:${it.second.damageTakenOnTeamPercentage * 10};"
-            it.second.tempTextMMR2value += it.second.damageTakenOnTeamPercentage * 10
+            it.second.tempTextMMR2 += ";damageTaken:${it.second.damageTakenOnTeamPercentage * 10};"
+            it.second.tempTextMMR2value += it.second.damageTakenOnTeamPercentage * 10.0
+
+            it.second.tempTextMMR2 += it.second.saveAllyFromDeath * 2.0
         }
 
         data.sortBy { it.second.kills }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += "УБИЙСТВА:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";kills:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortBy { it.second.assists }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += "АССИСТОВ:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";assists:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortByDescending { it.second.deathsByEnemyChamps }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += "СМЕРТЕЙ:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";deaths:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortBy { it.second.damageSelfMitigated }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += "ПРЕДОТВРАЩЕНО УРОНА ПО СЕБЕ:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";damageSelfMitigated:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortBy { it.second.skillshotsDodged }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += "УКЛОНЕНИЙ:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";skillshotsDodged:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
+        }
+
+        data.sortBy { it.second.longestTimeSpentLiving }
+        data.forEachIndexed { index, pair ->
+            pair.second.tempTextMMR2 += ";longestTimeSpentLiving:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.forEach {
             it.second.tempTextMMR2value = (it.second.tempTextMMR2value / 2.0).to1Digits()
+            it.second.tempTextMMR2 += ";AFTER_REMOVE:${it.second.tempTextMMR2value}"
         }
 
         data.maxBy { it.second.tempTextMMR2value }.second.apply {
-            tempTextMMR2value += 3.0
-            tempTextMMR2 += "MVP"
+            tempTextMMR2value += 5.0
+            tempTextMMR2 += ";MVP"
+            gameMatchKey = MVP_TAG
         }
 
         data.minBy { it.second.tempTextMMR2value }.second.apply {
-            if (tempTextMMR2value >= 3.0) tempTextMMR2value -= 3.0
-            tempTextMMR2 += "LVP"
+            tempTextMMR2value += 5.0
+            tempTextMMR2 += ";LVP"
+            gameMatchKey = LVP_TAG
         }
 
         val maxRankPlayer100 = data.filter { it.second.teamId == 100 }.maxBy { thi -> thi.first.getARAMRank().rankValue }
@@ -237,22 +246,51 @@ data class Calc_AddMatch (
         val minRankPlayer100 = data.filter { it.second.teamId == 100 }.minBy { thi -> thi.first.getARAMRank().rankValue }
         val minRankPlayer200 = data.filter { it.second.teamId == 200 }.minBy { thi -> thi.first.getARAMRank().rankValue }
 
+        val maxMMR = data.maxBy { it.second.tempTextMMR2value }.second.tempTextMMR2value
+
         data.filter { it.second.win }.forEach {
-            it.second.tempTextMMR2 += "ПОБЕДА"
+            it.second.tempTextMMR2 += ";ПОБЕДА"
             if (it.second.teamId == 100) it.second.tempTextMMR2value += 10 + maxRankPlayer200.first.getARAMRank().rankValue
             else if (it.second.teamId == 200) it.second.tempTextMMR2value += 10 + maxRankPlayer100.first.getARAMRank().rankValue
         }
 
-        val maxMMR = data.maxBy { it.second.tempTextMMR2value }.second.tempTextMMR2value
-
         data.filter { !it.second.win }.forEach {
+            it.second.tempTextMMR2 += ";ПОРАЖЕНИЕ"
+            it.second.tempTextMMR2 += ";before_loose:${it.second.tempTextMMR2value}"
             it.second.tempTextMMR2value = (maxMMR - it.second.tempTextMMR2value).to1Digits()
-            it.second.tempTextMMR2value = -it.second.tempTextMMR2value
+            it.second.tempTextMMR2 += ";after_loose:${it.second.tempTextMMR2value}"
         }
 
-        printLog("MAX MATCH MMR: $maxMMR", false)
+        //Бонусные ММР
         data.forEach {
-            printLog("DATA: ${it.first} ${it.second} win:${it.second.win} ${it.second.tempTextMMR2value} ${it.second.tempTextMMR2}", false)
+            var additionalMMR = 0.0
+            additionalMMR += it.second.kills5 * 10.0
+            additionalMMR += it.second.kills4 * 6.0
+            additionalMMR += it.second.tookLargeDamageSurvived * 3.0
+            if (it.second.win) additionalMMR += 2.0
+            if (additionalMMR > 20.0) additionalMMR = 20.0
+
+            it.first.mmrAramSaved += additionalMMR
+
+            it.second.tempTextMMR2 += ";ADD_MMR:$additionalMMR"
         }
+
+        //Сохранение в поля
+        data.forEach {
+            if (it.second.win) {
+                it.first.mmrAram += it.second.tempTextMMR2value
+            } else {
+                it.first.removeMMRvalue(abs(it.second.tempTextMMR2value))
+            }
+            it.second.gameMatchMmr = it.second.tempTextMMR2value
+        }
+
+        printLog("MAX MATCH MMR: $maxMMR")
+        data.forEach {
+            printLog("DATA: ${it.first} ${it.second} win:${it.second.win} ${it.second.tempTextMMR2value} ${it.second.tempTextMMR2}")
+        }
+
+        val textMatch = "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${data.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectNameWithTag() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr + " DATA: " + it.second.tempTextMMR2 }}\n**"
+        return textMatch
     }
 }

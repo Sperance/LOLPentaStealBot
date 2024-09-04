@@ -1,7 +1,7 @@
 package ru.descend.bot.enums
 
 private const val modRank = 150.0
-private const val modTitle = 200.0
+private const val modTitle = 150.0
 
 enum class EnumARAMRank(val nameRank: String, val minMMR: Double, val rankValue: Int) {
     UNRANKED("Нет ранга", 0.0, 0),

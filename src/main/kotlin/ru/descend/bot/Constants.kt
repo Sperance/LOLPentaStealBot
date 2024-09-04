@@ -28,7 +28,7 @@ const val LOAD_MMR_HEROES_MATCHES = 5000
 /**
  * Сколько матчей будет загружено по каждому неизвестному пользователю когда загружен матч по известному
  */
-const val LOAD_MATCHES_ON_SAVED_UNDEFINED = 5
+const val LOAD_MATCHES_ON_SAVED_UNDEFINED = 1
 
 const val MVP_TAG = "MVP"
 /**
