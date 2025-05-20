@@ -10,7 +10,9 @@ import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
+import ru.descend.bot.lolapi.dto.matchDto.Info
 import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
+import ru.descend.bot.lolapi.dto.matchDto.Metadata
 import ru.descend.bot.postgre.PostgreTest.ChampionsDTOsample
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Heroes
@@ -52,7 +54,9 @@ object LeagueMainObject {
         result.data.forEach { (_, any2) ->
             val dataChamp = Gson().fromJson(Gson().toJson(any2), InterfaceChampionBase::class.java)
             if (heroes.find { hero -> hero.key == dataChamp.key } == null) {
-                Heroes(nameEN = dataChamp.id, nameRU = dataChamp.name, key = dataChamp.key).create(Heroes::key)
+                printLog("Create new champion: $dataChamp")
+                val resultHero = Heroes(nameEN = dataChamp.id, nameRU = dataChamp.name, key = dataChamp.key).create(Heroes::key)
+                R2DBC.stockHEROES.add(resultHero.result)
             }
         }
 
@@ -99,29 +103,16 @@ object LeagueMainObject {
         }
     }
 
-//    suspend fun catchActiveGame(encryptedPUUID: String) : CurrentGameInfo? {
-//        globalLOLRequests++
-//        delay(checkRiotQuota())
-//        printLog("[catchActiveGame::$globalLOLRequests] started with encryptedPUUID: $encryptedPUUID")
-//        return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getActiveGame(encryptedPUUID) }){
-//            is Result.Success -> { res.data }
-//            is Result.Error -> {
-//                null
-//            }
-//        }
-//    }
-
     suspend fun catchMatch(matchId: String, agained: Boolean = false) : MatchDTO? {
         globalLOLRequests++
         delay(checkRiotQuota())
-//        printLog("[catchMatch::$globalLOLRequests] started with matchId: $matchId")
         return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchInfo(matchId) }){
             is Result.Success -> { res.data }
             is Result.Error -> {
                 val messageError = "catchMatch failure: ${res.message} with matchId: $matchId"
                 printLog(messageError)
 
-                if (res.errorCode == 404 || agained) null
+                if ((res.errorCode == 403 || res.errorCode == 404 || res.errorCode == 429) || agained) null
                 else {
                     statusLOLRequests = 1
                     catchMatch(matchId)

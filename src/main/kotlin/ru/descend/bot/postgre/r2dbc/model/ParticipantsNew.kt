@@ -114,7 +114,7 @@ data class ParticipantsNew(
     var abilityUses: Int = 0,
     var alliedJungleMonsterKills: Double = 0.0,
     var baronTakedowns: Int = 0,
-    var bountyGold: Int = 0,
+    var bountyGold: Double = 0.0,
     var buffsStolen: Int = 0,
     var controlWardsPlaced: Int = 0,
     var damagePerMinute: Double = 0.0,
@@ -285,7 +285,7 @@ data class ParticipantsNew(
             this.abilityUses = participant.challenges.abilityUses
             this.alliedJungleMonsterKills = participant.challenges.alliedJungleMonsterKills.to1Digits()
             this.baronTakedowns = participant.challenges.baronTakedowns
-            this.bountyGold = participant.challenges.bountyGold
+            this.bountyGold = participant.challenges.bountyGold.to1Digits()
             this.buffsStolen = participant.challenges.buffsStolen
             this.controlWardsPlaced = participant.challenges.controlWardsPlaced
             this.damagePerMinute = participant.challenges.damagePerMinute.to1Digits()

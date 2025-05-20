@@ -20,7 +20,7 @@ fun listeners() = listeners {
         val memberUser = member.asUser().descriptor()
 
         val generatedText = generateAIText("Напиши необычное, но с юмором приветственное сообщение пользователю ${member.asUser().lowDescriptor()} который зашел на Discord сервер, посвященному игре League of Legends")
-        val addedText = "\nТак же для получения Плюшек не забудь сообщить Модераторам день/месяц рождения и предпочтительную Роль на сервере. Спасибо."
+        val addedText = "\nНе забудь изучить правила сервера на канале #правила.\n Так же для получения Плюшек не забудь сообщить Модераторам день/месяц рождения и предпочтительную Роль на сервере. Спасибо."
 
         printLog(getGuild(), "{Зашел на сервер} $memberUser\n$generatedText")
         getGuild().sendMessage(R2DBC.getGuild(getGuild()).messageIdDebug, "{Зашел на сервер} ${member.asUser().descriptor()}\n$generatedText")

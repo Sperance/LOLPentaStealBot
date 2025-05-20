@@ -147,23 +147,7 @@ data class Calc_AddMatch (
 
         val textMatch: String
         if (arrayKORDmmr.isNotEmpty() && pMatch.isNeedCalcMMR()) {
-
             textMatch = calcMMR20(pMatch, arrayKORDmmr)
-
-//            arrayKORDmmr.sortBy { it.second.gameMatchMmr }
-//
-//            //Обработка MVP LVP и всей жижи которая потом обработается в Calc_GainMMR
-//            arrayKORDmmr.first().second.gameMatchKey = LVP_TAG
-//            arrayKORDmmr.last().second.gameMatchKey = MVP_TAG
-//
-//            //Присвоение ММР в LOLs
-//            arrayKORDmmr.forEach {
-//                val text = Calc_GainMMR(it.second, it.first, sqlData, pMatch)
-//                writeLog(text.getTempText())
-//
-//                if (it.first.match_date_last < pMatch.matchDateEnd) it.first.match_date_last = pMatch.matchDateEnd
-//            }
-//            //Перезапись полей для сохранения в базу
             arrayKORDmmr.forEach {
                 it.first.update()
                 it.second.update()
@@ -179,10 +163,10 @@ data class Calc_AddMatch (
     private fun calcMMR20(pMatch: Matches, data: ArrayList<Pair<LOLs, ParticipantsNew>>) : String {
 
         data.forEach {
-            it.second.tempTextMMR2 += ";teamDamage:${it.second.teamDamagePercentage * 10};"
+            it.second.tempTextMMR2 += ";tD:${it.second.teamDamagePercentage * 10};"
             it.second.tempTextMMR2value += it.second.teamDamagePercentage * 10.0
 
-            it.second.tempTextMMR2 += ";damageTaken:${it.second.damageTakenOnTeamPercentage * 10};"
+            it.second.tempTextMMR2 += ";dT:${it.second.damageTakenOnTeamPercentage * 10};"
             it.second.tempTextMMR2value += it.second.damageTakenOnTeamPercentage * 10.0
 
             it.second.tempTextMMR2 += it.second.saveAllyFromDeath * 2.0
@@ -190,43 +174,43 @@ data class Calc_AddMatch (
 
         data.sortBy { it.second.kills }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += ";kills:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";kill:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortBy { it.second.assists }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += ";assists:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";assist:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortByDescending { it.second.deathsByEnemyChamps }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += ";deaths:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";death:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortBy { it.second.damageSelfMitigated }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += ";damageSelfMitigated:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";dSM:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortBy { it.second.skillshotsDodged }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += ";skillshotsDodged:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";ssD:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.sortBy { it.second.longestTimeSpentLiving }
         data.forEachIndexed { index, pair ->
-            pair.second.tempTextMMR2 += ";longestTimeSpentLiving:${((index + 1) / 2.0).to1Digits()};"
+            pair.second.tempTextMMR2 += ";lTSL:${((index + 1) / 2.0).to1Digits()};"
             pair.second.tempTextMMR2value += ((index + 1) / 2.0).to1Digits()
         }
 
         data.forEach {
             it.second.tempTextMMR2value = (it.second.tempTextMMR2value / 2.0).to1Digits()
-            it.second.tempTextMMR2 += ";AFTER_REMOVE:${it.second.tempTextMMR2value}"
+            it.second.tempTextMMR2 += ";AFTER_R:${it.second.tempTextMMR2value}"
         }
 
         data.maxBy { it.second.tempTextMMR2value }.second.apply {
@@ -236,41 +220,36 @@ data class Calc_AddMatch (
         }
 
         data.minBy { it.second.tempTextMMR2value }.second.apply {
-            tempTextMMR2value += 5.0
+            tempTextMMR2value -= 5.0
             tempTextMMR2 += ";LVP"
             gameMatchKey = LVP_TAG
         }
 
-        val maxRankPlayer100 = data.filter { it.second.teamId == 100 }.maxBy { thi -> thi.first.getARAMRank().rankValue }
-        val maxRankPlayer200 = data.filter { it.second.teamId == 200 }.maxBy { thi -> thi.first.getARAMRank().rankValue }
-        val minRankPlayer100 = data.filter { it.second.teamId == 100 }.minBy { thi -> thi.first.getARAMRank().rankValue }
-        val minRankPlayer200 = data.filter { it.second.teamId == 200 }.minBy { thi -> thi.first.getARAMRank().rankValue }
+        data.filter { it.second.win }.forEach {
+            it.second.tempTextMMR2 += ";ПОБЕДА"
+            it.second.tempTextMMR2value += 10
+        }
 
         val maxMMR = data.maxBy { it.second.tempTextMMR2value }.second.tempTextMMR2value
 
-        data.filter { it.second.win }.forEach {
-            it.second.tempTextMMR2 += ";ПОБЕДА"
-            if (it.second.teamId == 100) it.second.tempTextMMR2value += 10 + maxRankPlayer200.first.getARAMRank().rankValue
-            else if (it.second.teamId == 200) it.second.tempTextMMR2value += 10 + maxRankPlayer100.first.getARAMRank().rankValue
-        }
-
         data.filter { !it.second.win }.forEach {
-            it.second.tempTextMMR2 += ";ПОРАЖЕНИЕ"
-            it.second.tempTextMMR2 += ";before_loose:${it.second.tempTextMMR2value}"
+            it.second.tempTextMMR2 += ";bef_l:${it.second.tempTextMMR2value}"
             it.second.tempTextMMR2value = (maxMMR - it.second.tempTextMMR2value).to1Digits()
-            it.second.tempTextMMR2 += ";after_loose:${it.second.tempTextMMR2value}"
+            it.second.tempTextMMR2value = -it.second.tempTextMMR2value
+            it.second.tempTextMMR2 += ";aft_l:${it.second.tempTextMMR2value}"
         }
 
         //Бонусные ММР
         data.forEach {
             var additionalMMR = 0.0
+            sqlData.calculatePentakill(it.first, it.second, pMatch)
             additionalMMR += it.second.kills5 * 10.0
             additionalMMR += it.second.kills4 * 6.0
             additionalMMR += it.second.tookLargeDamageSurvived * 3.0
             if (it.second.win) additionalMMR += 2.0
             if (additionalMMR > 20.0) additionalMMR = 20.0
 
-            it.first.mmrAramSaved += additionalMMR
+            it.first.mmrAramSaved = (it.first.mmrAramSaved + additionalMMR).to1Digits()
 
             it.second.tempTextMMR2 += ";ADD_MMR:$additionalMMR"
         }
@@ -278,11 +257,11 @@ data class Calc_AddMatch (
         //Сохранение в поля
         data.forEach {
             if (it.second.win) {
-                it.first.mmrAram += it.second.tempTextMMR2value
+                it.first.mmrAram = (it.first.mmrAram + it.second.tempTextMMR2value).to1Digits()
             } else {
-                it.first.removeMMRvalue(abs(it.second.tempTextMMR2value))
+                it.first.removeMMRvalue(abs(it.second.tempTextMMR2value.to1Digits()))
             }
-            it.second.gameMatchMmr = it.second.tempTextMMR2value
+            it.second.gameMatchMmr = it.second.tempTextMMR2value.to1Digits()
         }
 
         printLog("MAX MATCH MMR: $maxMMR")
@@ -290,7 +269,6 @@ data class Calc_AddMatch (
             printLog("DATA: ${it.first} ${it.second} win:${it.second.win} ${it.second.tempTextMMR2value} ${it.second.tempTextMMR2}")
         }
 
-        val textMatch = "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${data.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectNameWithTag() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr + " DATA: " + it.second.tempTextMMR2 }}\n**"
-        return textMatch
+        return "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${data.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectNameWithTag() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr + " DATA: " + it.second.tempTextMMR2 }}\n**"
     }
 }

@@ -124,26 +124,26 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getSize(dec
     return db.runQuery { QueryDsl.from(metaTable).where(whereExpr).select(count()) }?:0L
 }
 
-@Suppress("UNCHECKED_CAST")
-suspend inline fun <reified TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.addBatch(list: List<TYPE>, batchSize: Int = 100, printLog: Boolean = true) : List<TYPE> {
-    val metaTable = getInstanceClassForTbl(this) as META
-    return db.withTransaction {
-        val miniList = ArrayList<TYPE>()
-        val resultedList = ArrayList<TYPE>()
-        list.forEach { value ->
-            miniList.add(value)
-            if (miniList.size == batchSize) {
-                val res = db.runQuery { QueryDsl.insert(metaTable).multiple(miniList) } as List<TYPE>
-                resultedList.addAll(res)
-                if (printLog) res.forEach { printLog("\t[Batch_${TYPE::class.java.simpleName}::save] $it", false) }
-                miniList.clear()
-            }
-        }
-        if (miniList.isNotEmpty()) {
-            val res = db.runQuery { QueryDsl.insert(metaTable).multiple(miniList) } as List<TYPE>
-            resultedList.addAll(res)
-            if (printLog) res.forEach { printLog("\t[Batch_${TYPE::class.java.simpleName}::save] $it", false) }
-        }
-        resultedList
-    }
-}
+//@Suppress("UNCHECKED_CAST")
+//suspend inline fun <reified TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.addBatch(list: List<TYPE>, batchSize: Int = 100, printLog: Boolean = true) : List<TYPE> {
+//    val metaTable = getInstanceClassForTbl(this) as META
+//    return db.withTransaction {
+//        val miniList = ArrayList<TYPE>()
+//        val resultedList = ArrayList<TYPE>()
+//        list.forEach { value ->
+//            miniList.add(value)
+//            if (miniList.size == batchSize) {
+//                val res = db.runQuery { QueryDsl.insert(metaTable).multiple(miniList) } as List<TYPE>
+//                resultedList.addAll(res)
+//                if (printLog) res.forEach { printLog("\t[Batch_${TYPE::class.java.simpleName}::save] $it", false) }
+//                miniList.clear()
+//            }
+//        }
+//        if (miniList.isNotEmpty()) {
+//            val res = db.runQuery { QueryDsl.insert(metaTable).multiple(miniList) } as List<TYPE>
+//            resultedList.addAll(res)
+//            if (printLog) res.forEach { printLog("\t[Batch_${TYPE::class.java.simpleName}::save] $it", false) }
+//        }
+//        resultedList
+//    }
+//}

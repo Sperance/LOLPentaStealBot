@@ -25,6 +25,7 @@ import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
 import ru.descend.bot.lowDescriptor
 import ru.descend.bot.measureBlock
 import ru.descend.bot.postgre.r2dbc.model.Guilds
+import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -40,6 +41,7 @@ import ru.descend.bot.toFormatDateTime
 import java.util.Date
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.random.Random
 
 data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
 data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var champion_id: Int?, var mmr: Double?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?)
@@ -113,6 +115,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     fun calculatePentakill(lol: LOLs, part: ParticipantsNew, match: Matches) {
+        if (part.kills5 <= 0) return
         printLog("[calculatePentakill] lol: $lol part: $part")
         if (!match.matchDateEnd.toDate().isCurrentDay()) return
         launch {
@@ -235,7 +238,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun generateFact() {
-        val generatedText = generateAIText("Напиши интересный но необычный факт про игру League of Legends, про какую-то скрытую механику или историю персонажа или сочетании предметов")
+        val championName = R2DBC.stockHEROES.get().random(Random(System.currentTimeMillis()))
+        val generatedText = generateAIText("Напиши интересный факт или механику о чемпионе $championName из игры League of Legends")
         val resultedText = "**Рубрика: интересные факты**\n\n$generatedText"
         sendMessage(guildSQL.messageIdStatus, resultedText)
     }

@@ -8,7 +8,7 @@ data class Challenges(
     val alliedJungleMonsterKills: Double,
     val baronTakedowns: Int,
     val blastConeOppositeOpponentCount: Int,
-    val bountyGold: Int,
+    val bountyGold: Double,
     val buffsStolen: Int,
     val earliestBaron: Double,
     val baronBuffGoldAdvantageOverThreshold: Int,

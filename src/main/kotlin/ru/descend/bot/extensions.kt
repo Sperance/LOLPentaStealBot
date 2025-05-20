@@ -26,7 +26,7 @@ import ru.descend.bot.datas.decrypt
 import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.postgre.SQLData_R2DBC
-import ru.descend.bot.postgre.openapi.AIResponse
+import ru.descend.bot.postgre.openapi.RootAI
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.gildor.coroutines.okhttp.await
 import java.io.File
@@ -214,7 +214,7 @@ suspend fun generateAIText(requestText: String) : String {
     val url = "https://api.proxyapi.ru/openai/v1/chat/completions"
     val JSON = "application/json; charset=utf-8".toMediaType()
     val body = ("{\n" +
-            "        \"model\": \"gpt-3.5-turbo-0613\",\n" +
+            "        \"model\": \"o1-mini\",\n" +
             "        \"messages\": [{\"role\": \"user\", \"content\": \"$requestText\"}]\n" +
             "    }").toRequestBody(JSON)
     val request = Request.Builder()
@@ -226,9 +226,11 @@ suspend fun generateAIText(requestText: String) : String {
     return try {
         val response = OkHttpClient().newCall(request).await()
         val resultString = response.body?.string()
-        val forecast = GsonBuilder().create().fromJson(resultString, AIResponse::class.java)
+        printLog("res: $resultString")
+        val forecast = GsonBuilder().create().fromJson(resultString, RootAI::class.java)
         forecast.choices.first().message.content
     } catch (e: Exception) {
+        printLog("error with AI response: " + e.localizedMessage)
         ""
     }
 }

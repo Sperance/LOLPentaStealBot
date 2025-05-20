@@ -1,16 +1,16 @@
 package ru.descend.bot.lolapi.dto.matchDto
 
 data class Missions(
-    val playerScore0: Int,
-    val playerScore1: Int,
-    val playerScore10: Int,
-    val playerScore11: Int,
-    val playerScore2: Int,
-    val playerScore3: Int,
-    val playerScore4: Int,
-    val playerScore5: Int,
-    val playerScore6: Int,
-    val playerScore7: Int,
-    val playerScore8: Int,
-    val playerScore9: Int
+    val playerScore0: Double,
+    val playerScore1: Double,
+    val playerScore10: Double,
+    val playerScore11: Double,
+    val playerScore2: Double,
+    val playerScore3: Double,
+    val playerScore4: Double,
+    val playerScore5: Double,
+    val playerScore6: Double,
+    val playerScore7: Double,
+    val playerScore8: Double,
+    val playerScore9: Double
 )
