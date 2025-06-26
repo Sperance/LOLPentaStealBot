@@ -66,7 +66,7 @@ suspend fun <T> measureBlock(enum: EnumMeasures, text: String, block: suspend ()
     val start = System.currentTimeMillis()
     val resT = block()
     val result = System.currentTimeMillis() - start
-    var addText = when (enum) {
+    val addText = when (enum) {
         EnumMeasures.METHOD -> "[{METHOD} "
         EnumMeasures.QUERY -> "\t[{QUERY} "
         EnumMeasures.BLOCK -> "["
@@ -106,6 +106,7 @@ suspend fun SQLData_R2DBC?.sendMessage(messageId: String, message: String, after
     if (message.isEmpty()) return
     launch {
         try {
+            printLog(guild, "[SEND MESSAGE] $message")
             val channelText = guild.getChannelOf<TextChannel>(Snowflake(messageId))
             channelText.createMessage {
                 content = message
@@ -159,7 +160,7 @@ fun Long.toFormatDate() : String {
 }
 
 fun Long.toDate() : Date {
-    var calendar = Calendar.getInstance()
+    val calendar = Calendar.getInstance()
     calendar.timeInMillis = this
     return calendar.time
 }

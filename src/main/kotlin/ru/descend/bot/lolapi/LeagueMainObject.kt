@@ -33,6 +33,7 @@ object LeagueMainObject {
 
     suspend fun catchHeroNames() {
 
+        printLog("[catchHeroNames] catch versions")
         val versions = when (val res = safeApiCall { dragonService.getVersions() }){
             is Result.Success -> res.data
             is Result.Error -> {
@@ -41,6 +42,7 @@ object LeagueMainObject {
             }
         }
 
+        printLog("[catchHeroNames] catch champions. version: ${versions.first()}")
         val champions = when (val res = safeApiCall { dragonService.getChampions(versions.first(), "ru_RU") }){
             is Result.Success -> res.data
             is Result.Error -> {

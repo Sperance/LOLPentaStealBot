@@ -4,6 +4,7 @@ import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.LOAD_MMR_HEROES_MATCHES
 import ru.descend.bot.LVP_TAG
 import ru.descend.bot.MVP_TAG
+import ru.descend.bot.asyncLaunch
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.R2DBC
@@ -19,20 +20,16 @@ import ru.descend.bot.postgre.db
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.printLog
+import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormatDate
-import ru.descend.bot.writeLog
 import kotlin.math.abs
 
 data class Calc_AddMatch (
     val sqlData: SQLData_R2DBC,
     val match: MatchDTO
 ) {
-
-    val arrayOtherLOLs = ArrayList<LOLs>()
-
-    suspend fun calculate(mainOrder: Boolean) : Matches {
-        arrayOtherLOLs.clear()
+    suspend fun calculate() : Matches {
         var isBots = false
         var isSurrender = false
         var isAborted = false
@@ -70,7 +67,7 @@ data class Calc_AddMatch (
         if (!pMatchResult.bit) return pMatchResult.result
         val pMatch = pMatchResult.result
 
-        if (pMatch.matchMode == "ARAM" && mainOrder) sqlData.isHaveLastARAM = true
+        if (pMatch.matchMode == "ARAM") sqlData.isHaveLastARAM = true
 
         if (pMatch.id % LOAD_MMR_HEROES_MATCHES == 0){
             R2DBC.executeProcedure("call \"GetAVGs\"()")
@@ -79,10 +76,15 @@ data class Calc_AddMatch (
 
         val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->
+            //Скипуем матчи если хотя бы 1 чел афк
+            if ((part.kills == 0 && part.deaths == 0 && part.assists == 0) || (part.itemsPurchased <= 1)) {
+                printLog(sqlData.guild, "[ADDMTACH] match ${pMatch.matchId} skipped for AFK or Troll. Participant: $part")
+                return pMatch
+            }
+
             arrayHeroName.add(part)
         }
 
-        val savedLOL = sqlData.dataSavedLOL.get()
         val curLOLs = LOLs().getData({ tbl_lols.LOL_puuid.inList(arrayHeroName.map { it.puuid }) })
         val arrayNewParts = ArrayList<ParticipantsNew>()
         val lastLolsList = ArrayList<LOLs>()
@@ -115,52 +117,48 @@ data class Calc_AddMatch (
             }
 
             lastLolsList.add(curLOL)
-
-            if (!curLOL.isBot() && sqlData.dataKORDLOL.get().find { tbl -> tbl.LOL_id == curLOL.id } == null)
-                arrayOtherLOLs.add(curLOL)
-
             if (pMatch.isNeedCalcStats()) arrayNewParts.add(ParticipantsNew(part, pMatch, curLOL))
         }
 
-        arrayOtherLOLs.removeIf { savedLOL.find { finded -> finded.id == it.id } != null }
-
         if (pMatch.isNeedCalcStats()) {
             val lastPartList = db.runQuery { QueryDsl.insert(tbl_participantsnew).multiple(arrayNewParts) }
-            calculateMMR(pMatch, lastPartList, lastLolsList, mainOrder)
+            calculateMMR(pMatch, lastPartList, lastLolsList)
         }
 
         return pMatch
     }
 
-    private suspend fun calculateMMR(pMatch: Matches, lastPartList: List<ParticipantsNew>, lastLolsList: List<LOLs>, mainOrder: Boolean) {
+    private suspend fun calculateMMR(pMatch: Matches, lastPartList: List<ParticipantsNew>, lastLolsList: List<LOLs>) {
+        val calcv3 = Calc_MMRv3()
         val arrayKORDmmr = ArrayList<Pair<LOLs, ParticipantsNew>>()
         if (pMatch.isNeedCalcMMR()) {
-            val data = Calc_MMR(lastPartList, pMatch)
-            data.calculateMMR()
+//            val data = Calc_MMR(lastPartList, pMatch)
+//            data.calculateMMR()
             lastLolsList.forEach {
                 val finededPart = lastPartList.find { par -> par.LOLperson_id == it.id }
                 if (finededPart != null) {
                     arrayKORDmmr.add(Pair(it, finededPart))
                 }
             }
-        }
-
-        val textMatch: String
-        if (arrayKORDmmr.isNotEmpty() && pMatch.isNeedCalcMMR()) {
-            textMatch = calcMMR20(pMatch, arrayKORDmmr)
+            calcMMR20(pMatch, arrayKORDmmr)
             arrayKORDmmr.forEach {
                 it.first.update()
                 it.second.update()
-            }
-        } else {
-            textMatch = if (mainOrder) "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${lastPartList.joinToString { it.win.toString() + " lol: " + it.LOLperson_id + " " + it.championName + "\n" }}"
-            else "${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n"
-        }
 
-        sqlData.textNewMatches.appendLine(textMatch)
+                val veResult = calcv3.calculateNewMMR(it.second, 0.0, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win, 100)
+                printLog("""
+                    Новый MMR: ${veResult.newMMR.to1Digits()} (${if (veResult.mmrChange >= 0) "+" else ""}${veResult.mmrChange.to1Digits()})
+                    Ранг: ${veResult.rank}
+                    Оценка за матч: ${veResult.matchGrade}
+                    Performance Score: ${"%.2f".format(veResult.performanceScore)}
+                    Определенная роль: ${veResult.detectedRole}
+                    Корректировки весов: ${veResult.adjustedWeights}
+                """.trimIndent())
+            }
+        }
     }
 
-    private fun calcMMR20(pMatch: Matches, data: ArrayList<Pair<LOLs, ParticipantsNew>>) : String {
+    private fun calcMMR20(pMatch: Matches, data: ArrayList<Pair<LOLs, ParticipantsNew>>) {
 
         data.forEach {
             it.second.tempTextMMR2 += ";tD:${it.second.teamDamagePercentage * 10};"
@@ -227,7 +225,7 @@ data class Calc_AddMatch (
 
         data.filter { it.second.win }.forEach {
             it.second.tempTextMMR2 += ";ПОБЕДА"
-            it.second.tempTextMMR2value += 10
+            it.second.tempTextMMR2value += 5
         }
 
         val maxMMR = data.maxBy { it.second.tempTextMMR2value }.second.tempTextMMR2value
@@ -244,9 +242,9 @@ data class Calc_AddMatch (
             var additionalMMR = 0.0
             sqlData.calculatePentakill(it.first, it.second, pMatch)
             additionalMMR += it.second.kills5 * 10.0
-            additionalMMR += it.second.kills4 * 6.0
-            additionalMMR += it.second.tookLargeDamageSurvived * 3.0
-            if (it.second.win) additionalMMR += 2.0
+            additionalMMR += it.second.kills4 * 5.0
+//            additionalMMR += it.second.tookLargeDamageSurvived * 3.0
+//            if (it.second.win) additionalMMR += 2.0
             if (additionalMMR > 20.0) additionalMMR = 20.0
 
             it.first.mmrAramSaved = (it.first.mmrAramSaved + additionalMMR).to1Digits()
@@ -269,6 +267,9 @@ data class Calc_AddMatch (
             printLog("DATA: ${it.first} ${it.second} win:${it.second.win} ${it.second.tempTextMMR2value} ${it.second.tempTextMMR2}")
         }
 
-        return "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${data.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectNameWithTag() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr + " DATA: " + it.second.tempTextMMR2 }}\n**"
+        val textMatchResult = "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${data.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectNameWithTag() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr + " DATA: " + it.second.tempTextMMR2 }}\n**"
+        asyncLaunch {
+            sqlData.sendMessage(messageId = "", message = textMatchResult)
+        }
     }
 }

@@ -16,6 +16,7 @@ import ru.descend.bot.postgre.calculating.Calc_Birthday
 import ru.descend.bot.datas.WorkData
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
+import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.toLocalDate
@@ -37,6 +38,7 @@ import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.printLog
 import ru.descend.bot.sendMessage
+import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDateTime
 import java.util.Date
 import java.util.concurrent.atomic.AtomicBoolean
@@ -50,9 +52,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     var isHaveLastARAM = false
     var isNeedUpdateDays = false
-    var textNewMatches = TextDicrordLimit()
     var olderDateLong = Date().time.toLocalDate().minusDays(DAYS_MIN_IN_LOAD).toDate().time
-    var currentDateLong = Date().time
+    private var currentDateLong = Date().time
     val atomicIntLoaded = AtomicInteger()
     val atomicNeedUpdateTables = AtomicBoolean(true)
 
@@ -78,7 +79,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     fun clearTempData() {
-        textNewMatches.clear()
         atomicIntLoaded.set(0)
         olderDateLong = Date().time.toLocalDate().minusDays(DAYS_MIN_IN_LOAD).toDate().time
         currentDateLong = Date().time
@@ -117,7 +117,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     fun calculatePentakill(lol: LOLs, part: ParticipantsNew, match: Matches) {
         if (part.kills5 <= 0) return
         printLog("[calculatePentakill] lol: $lol part: $part")
-        if (!match.matchDateEnd.toDate().isCurrentDay()) return
+        if (!match.matchDateEnd.toDate().isCurrentDay()) {
+            printLog("[calculatePentakill] lol: $lol part: $part - matchDate(${match.matchDateEnd.toDate().getStrongDate().date}) is not current date(${System.currentTimeMillis().toDate().getStrongDate().date})")
+            return
+        }
         launch {
             val curLol = getKORDLOL_fromLOL(lol.id)
             if (curLol == null) {
@@ -125,11 +128,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 return@launch
             }
             val championName = part.getHeroNameRU()
-            val match = Matches().getDataOne({ tbl_matches.id eq part.match_id })
-            if (match == null) {
-                printLog("Match does not exists: ${part.match_id}")
-                return@launch
-            }
             val textPentasCount = if (part.kills5 == 1) "" else "(${part.kills5})"
             val generatedText = generateAIText("Напиши прикольное поздравление в шуточном стиле пользователю ${curLol.asUser(this@SQLData_R2DBC).lowDescriptor()} за то, что он сделал Пентакилл в игре League of Legends за чемпиона $championName в режиме ${match.matchMode}")
             val resultText = "Поздравляем!!!\n${curLol.asUser(this@SQLData_R2DBC).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName\nМатч: ${match.matchId} Дата: ${match.matchDateEnd.toFormatDateTime()}\n\n$generatedText"
@@ -163,14 +161,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         Calc_Birthday(this, dataKORD.get()).calculate()
     }
 
-    private suspend fun addMatch(match: MatchDTO, mainOrder: Boolean) {
+    private suspend fun addMatch(match: MatchDTO) {
         R2DBC.runTransaction {
             val newMatch = Calc_AddMatch(this@SQLData_R2DBC, match)
-            newMatch.calculate(mainOrder)
-//            if (mainOrder) {
-//                val othersLOLS = newMatch.arrayOtherLOLs
-//                loadMatches(othersLOLS, LOAD_MATCHES_ON_SAVED_UNDEFINED, false)
-//            }
+            newMatch.calculate()
         }
     }
 
@@ -193,7 +187,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         return tempMapWinStreak
     }
 
-    suspend fun loadMatches(lols: Collection<LOLs>, count: Int, mainOrder: Boolean) {
+    suspend fun loadMatches(lols: Collection<LOLs>, count: Int) {
         val checkMatches = ArrayList<String>()
         lols.forEach {
             if (it.LOL_puuid == "") return@forEach
@@ -207,19 +201,19 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
-        loadArrayMatches(checkMatches, mainOrder)
+        loadArrayMatches(checkMatches)
     }
 
-    private suspend fun loadArrayMatches(checkMatches: ArrayList<String>, mainOrder: Boolean) {
+    private suspend fun loadArrayMatches(checkMatches: ArrayList<String>) {
         val listChecked = getNewMatches(checkMatches)
         listChecked.sortBy { it }
         listChecked.forEach { newMatch ->
             atomicIntLoaded.incrementAndGet()
-            if (mainOrder && !atomicNeedUpdateTables.get()) {
+            if (!atomicNeedUpdateTables.get()) {
                 atomicNeedUpdateTables.set(true)
             }
             LeagueMainObject.catchMatch(newMatch)?.let { match ->
-                addMatch(match, mainOrder)
+                addMatch(match)
             }
         }
     }

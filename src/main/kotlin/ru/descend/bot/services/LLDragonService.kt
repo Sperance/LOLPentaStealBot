@@ -10,7 +10,7 @@ interface LLDragonService {
     @GET("https://ddragon.leagueoflegends.com/api/versions.json")
     suspend fun getVersions() : Response<List<String>>
 
-    @GET("http://ddragon.leagueoflegends.com/cdn/{version}/data/{locale}/champion.json")
+    @GET("https://ddragon.leagueoflegends.com/cdn/{version}/data/{locale}/champion.json")
     suspend fun getChampions(@Path("version") version: String, @Path("locale") locale: String) : Response<ChampionsDTO>
 
 }

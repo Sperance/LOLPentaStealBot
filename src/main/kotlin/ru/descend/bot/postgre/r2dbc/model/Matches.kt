@@ -33,6 +33,7 @@ data class Matches(
         if (bots) return false
         if (surrender) return false
         if (aborted) return false
+        if (matchDuration < (60 * 8)) return false
         return true
     }
 

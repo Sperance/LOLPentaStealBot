@@ -131,115 +131,13 @@ suspend fun removeMessage(guild: Guild) {
 var globalLOLRequests = 0
 var statusLOLRequests = 0
 
-//suspend fun showRealtimeHistory(sqlData: SQLData_R2DBC) {
-//    val channel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(1225762638735085620))
-//    val arrayActives = ArrayList<LolActiveGame>()
-//    sqlData.dataSavedLOL.get().forEach {
-//        if (it.LOL_puuid.isEmpty()) return@forEach
-//        if (arrayActives.find { ara -> ara.part.puuid == it.LOL_puuid } != null) return@forEach
-//        val kordlol = sqlData.getKORDLOL().firstOrNull { kd -> kd.LOL_id == it.id && kd.guild_id == sqlData.guildSQL.id }
-//        val gameInfo = LeagueMainObject.catchActiveGame(it.LOL_puuid)
-//        if (gameInfo != null) {
-//            gameInfo.participants.forEach { part ->
-//                val tmpLol = LOLs().getDataOne(declaration = {tbl_lols.LOL_puuid eq part.puuid})
-//                if (tmpLol != null) {
-//                    val tmpKordLOL = sqlData.getKORDLOL().find { kl -> kl.LOL_id == tmpLol.id }
-//                    arrayActives.add(LolActiveGame(
-//                        lol = tmpLol,
-//                        kordlol = tmpKordLOL,
-//                        part = part,
-//                        matchId = gameInfo.gameId)
-//                    )
-//                } else {
-//                    arrayActives.add(LolActiveGame(
-//                        part = part,
-//                        matchId = gameInfo.gameId)
-//                    )
-//                }
-//            }
-//
-//            val mainDataList1 = (arrayActives.map { dat ->
-//                if (dat.kordlol != null) "**" + dat.part.riotId + " / " + R2DBC.getHeroFromKey(dat.part.championId.toString())?.nameRU + " / " + dat.part.teamId + "**"
-//                else dat.part.riotId + " / " + R2DBC.getHeroFromKey(dat.part.championId.toString())?.nameRU + " / " + dat.part.teamId
-//            })
-//            val mainDataList2 = (arrayActives.map { gameInfo.gameMode })
-//
-//            val message = channel.createMessage {
-//                content = "Match game ID: ${gameInfo.gameId}"
-//                embed {
-//                    field {
-//                        name = "User/Hero/Team"
-//                        value = mainDataList1.joinToString(separator = "\n")
-//                        inline = true
-//                    }
-//                    field {
-//                        name = "Match"
-//                        value = mainDataList2.joinToString(separator = "\n")
-//                        inline = true
-//                    }
-//                }
-//            }
-//
-//            if (kordlol?.realtime_match_message != message.id.value.toString()) {
-//                kordlol?.realtime_match_message = message.id.value.toString()
-//                kordlol?.update()
-//            }
-//
-//        } else {
-//            if (kordlol?.realtime_match_message != "") {
-//                kordlol?.realtime_match_message = ""
-//                kordlol?.update()
-//            }
-//        }
-//        arrayActives.clear()
-//    }
-//}
-
-private suspend fun getLastLOLs(sqlData: SQLData_R2DBC, region: String, size: Int) : List<LOLs> {
-    return measureBlock(EnumMeasures.METHOD, "getLastLOLs") {
-        val query = QueryDsl
-            .from(tbl_lols)
-            .where {
-                tbl_lols.last_loaded.less(sqlData.olderDateLong)
-                tbl_lols.LOL_region.eq(region)
-                tbl_lols.LOL_summonerLevel.greaterEq(50)
-            }
-            .orderBy(tbl_lols.match_date_last.desc(), tbl_lols.id.desc())
-            .limit(size)
-
-        R2DBC.runQuery { query }
-    }
-}
-/**
- * Загружаем 10 матчей по последнему пользователю по которому еще не было загрузки матчей
- */
-suspend fun loadingLastMatches(sqlData: SQLData_R2DBC) {
-    if (sqlData.atomicIntLoaded.get() >= (98 - LOAD_MATCHES_IN_USER)) return
-
-    val resultedList = ArrayList<LOLs>()
-    LOLs().getDataOne({ tbl_lols.LOL_region eq "EUW1" ; tbl_lols.last_loaded.less(sqlData.olderDateLong) }, tbl_lols.id.desc())?.let { resultedList.add(it) }
-    resultedList.addAll(getLastLOLs(sqlData, "RU", LAST_UNDEFINED_USERS_FOR_LOAD))
-    resultedList.forEach {lastLOLObj ->
-        if (sqlData.atomicIntLoaded.get() >= (98 - LOAD_MATCHES_IN_USER)) return@forEach
-        R2DBC.runTransaction {
-            lastLOLObj.last_loaded = sqlData.currentDateLong
-            lastLOLObj.update()
-        }
-        sqlData.loadMatches(listOf(lastLOLObj), LOAD_MATCHES_IN_USER, false)
-    }
-}
-
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.onCalculateTimer()
 
     measureBlock(EnumMeasures.BLOCK, "showLeagueHistory Matches") {
         launch {
             val arraySaveds = sqlData.dataSavedLOL.get()
-            sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES, true)
-            sqlData.textNewMatches.getAllText().forEach {str ->
-                sqlData.sendMessage(sqlData.guildSQL.messageIdDebug, str)
-                delay(1000)
-            }
+            sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES)
             sqlData.clearTempData()
         }.join()
     }

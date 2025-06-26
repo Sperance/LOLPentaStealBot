@@ -10,22 +10,16 @@ import ru.descend.bot.printLog
 import ru.descend.bot.to1Digits
 import kotlin.reflect.KMutableProperty1
 
-class Calc_MMR(private var participant: Collection<ParticipantsNew>, val match: Matches) {
+class Calc_MMR(private var participant: Collection<ParticipantsNew>, private val match: Matches) {
 
-    var mmrValue = 0.0
+    private var mmrValue = 0.0
     var mmrValueTextLog = ""
     private var mmrMatchModificator = 1.0
     private var stockGainMMR = 0.0
     private var maxMMRforLoose: Double = 0.0
 
     suspend fun calculateMMR() {
-        participant.filter { it.win }.forEach { par ->
-            val mmrTable = R2DBC.getMMRforChampion(par.championName)
-            if (mmrTable != null) {
-                calculateSingleParticipant(par, mmrTable)
-            }
-        }
-        participant.filter { !it.win }.forEach { par ->
+        participant.forEach { par ->
             val mmrTable = R2DBC.getMMRforChampion(par.championName)
             if (mmrTable != null) {
                 calculateSingleParticipant(par, mmrTable)
@@ -102,7 +96,7 @@ class Calc_MMR(private var participant: Collection<ParticipantsNew>, val match: 
         val tempMaxMMR = maxMMRforLoose + ADD_MMR_FOR_LOOSE_ARAM_CALC
 
         val lolObj = par.LOLpersonObj()
-        var mod = if (lolObj != null) 0.8 + (lolObj.getARAMRank().rankValue / 10.0) else 1.0
+        val mod = if (lolObj != null) 0.8 + (lolObj.getARAMRank().rankValue / 10.0) else 1.0
 
         value = if (tempMaxMMR > mmrValue) {
             (tempMaxMMR - mmrValue) * mod
