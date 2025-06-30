@@ -134,51 +134,66 @@ var statusLOLRequests = 0
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.onCalculateTimer()
 
+    printLog("showLeagueHistory --- start")
     measureBlock(EnumMeasures.BLOCK, "showLeagueHistory Matches") {
         launch {
             val arraySaveds = sqlData.dataSavedLOL.get()
             sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES)
             sqlData.clearTempData()
+            printLog("showLeagueHistory --- cleared team")
         }.join()
     }
+    printLog("showLeagueHistory --- completed")
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     launch {
         //Таблица Главная - ID никнейм серияпобед
+        printLog("MessageMainDataContent --- start")
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
             editMessageMainDataContent(it, sqlData)
         }) {
             createMessageMainData(channelText, sqlData)
         }
+        printLog("MessageMainDataContent --- end")
+        printLog("MessageAramMMRDataContent --- start")
         //Таблица ММР - все про ММР арама
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, "MessageAramMMRDataContent", {
             editMessageAramMMRDataContent(it, sqlData)
         }) {
             createMessageAramMMRData(channelText, sqlData)
         }
+        printLog("MessageAramMMRDataContent --- end")
+        printLog("MessageGlobalStatisticContent --- start")
         //Таблица по играм\винрейту\сериям убийств
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, "MessageGlobalStatisticContent", {
             editMessageGlobalStatisticContent(it, sqlData)
         }) {
             createMessageGlobalStatistic(channelText, sqlData)
         }
+        printLog("MessageGlobalStatisticContent --- end")
         //Таблица по Мастерству ТОП3 чемпионов каждого игрока
         if (isNeedUpdateMasteries(channelText, sqlData)) {
+            printLog("MessageMasteriesContent --- start")
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, "MessageMasteriesContent", {
                 editMessageMasteriesContent(it, sqlData)
             }) {
                 createMessageMasteries(channelText, sqlData)
             }
+            printLog("MessageMasteriesContent --- end")
         }
         //Таблица по ТОП чемпионам сервера
         if (isNeedUpdateTop(channelText, sqlData)) {
+            printLog("MessageTopContent --- start")
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, "MessageTopContent", {
                 editMessageTopContent(it, sqlData)
             }) {
                 createMessageTop(channelText, sqlData)
             }
+            printLog("MessageTopContent --- end")
         }
     }.join()
+
+    printLog("LeagueHistory --- end")
 
     sqlData.dataKORDLOL.clear()
     sqlData.dataKORD.clear()
@@ -210,6 +225,7 @@ suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, measu
             createBody.invoke()
         } else {
             val message = channelText.getMessageOrNull(Snowflake(messageId))
+            printLog("[MessageGlobalStatisticContent] finded message: ${message?.id}")
             message?.edit { editBody.invoke(this) } ?: createBody.invoke()
         }
     }
@@ -263,18 +279,22 @@ suspend fun createMessageTop(channelText: TextChannel, sqlData: SQLData_R2DBC) {
 
 suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
 
+    printLog("editMessageGlobalStatisticContent 1")
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
 
     if (!sqlData.atomicNeedUpdateTables.get()) return
 
     val charStr = " / "
+    printLog("editMessageGlobalStatisticContent 2")
     val savedParts = sqlData.getSavedParticipants()
+    printLog("editMessageGlobalStatisticContent 3")
 
     savedParts.sortBy { it.kordLOL?.showCode }
 
     val mainDataList1 = (savedParts.map { formatInt(it.kordLOL?.showCode, 2) + "| " + formatInt(it.games, 3) + charStr + formatInt(it.win, 3) + charStr + ((it.win.toDouble() / it.games.toDouble()) * 100.0).to1Digits() + "%" })
     val mainDataList2 = (savedParts.map {  it.kill.toFormatK() + charStr + formatInt(it.kill3, 3) + charStr + formatInt(it.kill4, 3) + charStr + formatInt(it.kill5, 2) })
 
+    printLog("editMessageGlobalStatisticContent 4")
     builder.embed {
         field {
             name = "Game/Win/WinRate"
@@ -287,6 +307,7 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
             inline = true
         }
     }
+    printLog("editMessageGlobalStatisticContent 5")
 }
 
 suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC){
@@ -350,7 +371,6 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
     statClass.getResults(sqlData).forEach {
         resultText += "* $it\n"
     }
-    printLog("size: ${resultText.length}")
     builder.content = "**ТОП сервера по параметрам (за матч)**\nОбновлено: ${TimeStamp.now()}\n" + resultText
 
     sqlData.guildSQL.messageIdTopUpdated = System.currentTimeMillis()
@@ -405,13 +425,13 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
     val sizeMatches = Matches().getSize()
     val sizeLOLs = LOLs().getSize()
-    val sizeParticipants = ParticipantsNew().getSize()
+//    val sizeParticipants = ParticipantsNew().getSize()
     val sizeHeroes = R2DBC.stockHEROES.get().size
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
     contentText += "* Матчей: $sizeMatches\n"
     contentText += "* Игроков: $sizeLOLs\n"
-    contentText += "* Данных (строк): ~${sizeParticipants + sizeMatches + sizeLOLs}\n"
+//    contentText += "* Данных (строк): ~${sizeParticipants + sizeMatches + sizeLOLs}\n"
     contentText += "* Чемпионов: $sizeHeroes\n"
     contentText += "* Версия игры: ${LeagueMainObject.LOL_VERSION}\n"
     builder.content = contentText

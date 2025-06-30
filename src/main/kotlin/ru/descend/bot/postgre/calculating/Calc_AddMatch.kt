@@ -20,6 +20,7 @@ import ru.descend.bot.postgre.db
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.printLog
+import ru.descend.bot.printLogMMR
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormatDate
@@ -129,7 +130,7 @@ data class Calc_AddMatch (
     }
 
     private suspend fun calculateMMR(pMatch: Matches, lastPartList: List<ParticipantsNew>, lastLolsList: List<LOLs>) {
-        val calcv3 = Calc_MMRv3()
+        val calcv3 = Calc_MMRv3(pMatch)
         val arrayKORDmmr = ArrayList<Pair<LOLs, ParticipantsNew>>()
         if (pMatch.isNeedCalcMMR()) {
 //            val data = Calc_MMR(lastPartList, pMatch)
@@ -141,19 +142,14 @@ data class Calc_AddMatch (
                 }
             }
             calcMMR20(pMatch, arrayKORDmmr)
+            calcv3.calculateTOPstats(arrayKORDmmr.map { it.second })
             arrayKORDmmr.forEach {
                 it.first.update()
                 it.second.update()
 
-                val veResult = calcv3.calculateNewMMR(it.second, 0.0, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win, 100)
-                printLog("""
-                    Новый MMR: ${veResult.newMMR.to1Digits()} (${if (veResult.mmrChange >= 0) "+" else ""}${veResult.mmrChange.to1Digits()})
-                    Ранг: ${veResult.rank}
-                    Оценка за матч: ${veResult.matchGrade}
-                    Performance Score: ${"%.2f".format(veResult.performanceScore)}
-                    Определенная роль: ${veResult.detectedRole}
-                    Корректировки весов: ${veResult.adjustedWeights}
-                """.trimIndent())
+                val veResult = calcv3.calculateNewMMR(it.second, 0.0, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win, pMatch)
+                printLog("Результат: $veResult")
+                printLogMMR("Результат: $veResult")
             }
         }
     }

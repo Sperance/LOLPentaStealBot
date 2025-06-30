@@ -14,6 +14,7 @@ import org.komapper.core.dsl.query.firstOrNull
 import org.komapper.r2dbc.R2dbcDatabase
 import org.komapper.tx.core.CoroutineTransactionOperator
 import org.komapper.tx.core.TransactionAttribute
+import org.komapper.tx.core.TransactionProperty
 import ru.descend.bot.datas.WorkData
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
@@ -34,6 +35,8 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.bot.printLog
+import java.time.Duration
+import kotlin.time.Duration.Companion.minutes
 
 private val connectionFactory: ConnectionFactoryOptions = ConnectionFactoryOptions.builder()
     .option(ConnectionFactoryOptions.DRIVER, "postgresql")
@@ -58,7 +61,10 @@ object R2DBC {
 
     suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
     suspend fun <T> runQuery(block: QueryScope.() -> Query<T>) =
-        db.withTransaction {
+        db.withTransaction(
+            transactionAttribute = TransactionAttribute.REQUIRED,
+            transactionProperty = TransactionProperty.LockWaitTime(Duration.ofMinutes(2))
+        ) { tx ->
             val query = block(QueryScope)
             runQuery(query)
         }

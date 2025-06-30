@@ -177,6 +177,15 @@ data class ParticipantsNew(
     var needCalcStats: Boolean = true,
 
 ) {
+    var top_damagePerMinute = false
+    var top_damageMitigated = false
+    var top_kda = false
+    var top_cc = false
+    var top_creeps = false
+    var top_healTeammates = false
+    var top_goldPerMinute = false
+    var top_accuracy = false
+
     var tempTextMMR2: String = ""
     var tempTextMMR2value: Double = 0.0
     constructor(participant: Participant, match: Matches, LOLperson: LOLs) : this() {

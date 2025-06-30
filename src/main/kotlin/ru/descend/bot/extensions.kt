@@ -52,6 +52,13 @@ fun printLog(message: Any, writeToFile: Boolean = true){
     if (writeToFile) writeLog(lastText)
 }
 
+fun printLogMMR(message: Any, writeToFile: Boolean = true){
+    val curDTime = System.currentTimeMillis().toFormatDateTime()
+    val lastText = "[$curDTime] $message"
+    println(lastText)
+    if (writeToFile) writeTempLog(lastText)
+}
+
 enum class EnumMeasures {
     METHOD,
     QUERY,
@@ -135,7 +142,7 @@ fun printLog(guild: Guild, message: Any){
 fun <T, E> Map<T, E>.toStringMap() : String {
     var block = ""
     forEach { (t, e) ->
-        block += "{$t:$e}"
+        block += "\n\t{$t:$e}"
     }
     return block
 }
@@ -241,6 +248,15 @@ fun writeLog(text: String?) {
     if (!pathFile.exists()) Files.createDirectory(pathFile.toPath())
     val curDateText = Date().getStrongDate().date
     val logFile = File(pathFile.path, "log-$curDateText.txt")
+    if (!logFile.exists()) logFile.createNewFile()
+    logFile.appendText("$text\n")
+}
+
+fun writeTempLog(text: String?) {
+    val pathFile = File("logsMMR")
+    if (!pathFile.exists()) Files.createDirectory(pathFile.toPath())
+    val curDateText = Date().getStrongDate().date
+    val logFile = File(pathFile.path, "logsMMR-$curDateText.txt")
     if (!logFile.exists()) logFile.createNewFile()
     logFile.appendText("$text\n")
 }

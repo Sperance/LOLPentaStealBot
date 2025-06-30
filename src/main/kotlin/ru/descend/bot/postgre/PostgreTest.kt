@@ -334,7 +334,6 @@ class PostgreTest {
             statClass.getResults().forEach {
                 resultText += "* $it\n"
             }
-            printLog("size: ${resultText.length}")
         }
     }
 

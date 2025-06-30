@@ -94,8 +94,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     suspend fun getSavedParticipants() : ArrayList<statMainTemp_r2> {
         val arraySavedParticipants = ArrayList<statMainTemp_r2>()
         measureBlock(EnumMeasures.QUERY, "get_player_stats_param") {
+            printLog("editMessageGlobalStatisticContent 10")
             R2DBC.runQuery {
-                QueryDsl.fromTemplate("SELECT * FROM get_player_stats_param(${guildSQL.id})").select {
+                printLog("editMessageGlobalStatisticContent 11")
+                QueryDsl.fromTemplate("SELECT * FROM get_player_stats_param()").select {
                     val id = it.int("id")?:0
                     val games = it.int("games")?:0
                     val win = it.int("win")?:0
@@ -139,7 +141,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         val arrayAramMMRData = ArrayList<statAramDataTemp_r2>()
         measureBlock(EnumMeasures.QUERY, "get_aram_data_param") {
             R2DBC.runQuery {
-                QueryDsl.fromTemplate("SELECT * FROM get_aram_data_param(${guildSQL.id})").select { row ->
+                QueryDsl.fromTemplate("SELECT * FROM get_aram_data_param()").select { row ->
                     val id = row.int("id")
                     val mmr_aram = row.double("mmr_aram")
                     val mmr_aram_saved = row.double("mmr_aram_saved")
@@ -172,7 +174,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
         val tempMapWinStreak = HashMap<Int, Int>()
         measureBlock(EnumMeasures.QUERY, "get_streak_results_param") {
             R2DBC.runQuery {
-                QueryDsl.fromTemplate("SELECT * FROM get_streak_results_param(${guildSQL.id})").select { row ->
+                QueryDsl.fromTemplate("SELECT * FROM get_streak_results_param()").select { row ->
                     val pers = row.int("PERS")?:-1
                     val res = row.int("RES")?:0
                     val ZN = row.string("ZN")?:""
@@ -206,6 +208,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     private suspend fun loadArrayMatches(checkMatches: ArrayList<String>) {
         val listChecked = getNewMatches(checkMatches)
+        printLog("[loadArrayMatches] count: ${listChecked.size}")
         listChecked.sortBy { it }
         listChecked.forEach { newMatch ->
             atomicIntLoaded.incrementAndGet()
