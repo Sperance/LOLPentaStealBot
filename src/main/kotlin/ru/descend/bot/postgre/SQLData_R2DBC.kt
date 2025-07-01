@@ -86,10 +86,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
-    suspend fun getKORDLOL(id: Int?) = getKORDLOL().find { it.id == id }
-    suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
+    private suspend fun getKORDLOL(id: Int?) = getKORDLOL().find { it.id == id }
+    private suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
     suspend fun getKORD(id: Int?) = getKORD().find { it.id == id }
-    suspend fun getKORDLOL_fromLOL(lolid: Int) = getKORDLOL().find { it.LOL_id == lolid }
+    private suspend fun getKORDLOL_fromLOL(lolid: Int) = getKORDLOL().find { it.LOL_id == lolid }
 
     suspend fun getSavedParticipants() : ArrayList<statMainTemp_r2> {
         val arraySavedParticipants = ArrayList<statMainTemp_r2>()

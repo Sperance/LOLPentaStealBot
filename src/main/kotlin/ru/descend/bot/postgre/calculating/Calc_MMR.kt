@@ -60,22 +60,7 @@ class Calc_MMR(private var participant: Collection<ParticipantsNew>, private val
         mmrValueTextLog += "\nstockGainMMR:$stockGainMMR, mmrValue:$mmrValue, mmrMatchModificator:$mmrMatchModificator\n"
     }
 
-    private fun calculateAdditionalFields(par: ParticipantsNew) {
-        //Топ урона
-        if (par.highestChampionDamage > 0) {
-            mmrValue += 2.0
-            mmrValueTextLog += "\t[VALUE] highestChampionDamage: ${par.highestChampionDamage} result MMR: $mmrValue\n"
-        }
-        //Топ контроля
-        if (par.highestCrowdControlScore > 0) {
-            mmrValue += 2.0
-            mmrValueTextLog += "\t[VALUE] highestCrowdControlScore: ${par.highestCrowdControlScore} result MMR: $mmrValue\n"
-        }
-    }
-
     private suspend fun calculateMMRaram(par: ParticipantsNew) {
-        calculateAdditionalFields(par)
-
         if (par.win) {
             stockGainMMR = mmrValue.to1Digits()
         } else {

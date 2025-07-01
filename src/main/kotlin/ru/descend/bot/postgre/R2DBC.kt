@@ -62,9 +62,9 @@ object R2DBC {
     suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
     suspend fun <T> runQuery(block: QueryScope.() -> Query<T>) =
         db.withTransaction(
-            transactionAttribute = TransactionAttribute.REQUIRED,
-            transactionProperty = TransactionProperty.LockWaitTime(Duration.ofMinutes(2))
-        ) { tx ->
+//            transactionAttribute = TransactionAttribute.REQUIRED,
+//            transactionProperty = TransactionProperty.LockWaitTime(Duration.ofMinutes(2))
+        ) {
             val query = block(QueryScope)
             runQuery(query)
         }

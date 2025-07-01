@@ -96,7 +96,7 @@ data class Calc_AddMatch (
             if (curLOL == null || curLOL.id == 0) {
                 curLOL = LOLs(LOL_puuid = part.puuid,
                     LOL_summonerId = part.summonerId,
-                    LOL_riotIdName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName,
+                    LOL_riotIdName = part.riotIdGameName,
                     LOL_riotIdTagline = part.riotIdTagline,
                     LOL_summonerLevel = part.summonerLevel,
                     LOL_region = pMatch.getRegionValue(),
@@ -106,7 +106,7 @@ data class Calc_AddMatch (
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
                 curLOL.LOL_region = pMatch.getRegionValue()
                 curLOL.LOL_summonerId = part.summonerId
-                val newName = if (part.riotIdGameName == "null") part.summonerName else part.riotIdGameName
+                val newName = part.riotIdGameName
                 if (newName != "null") curLOL.LOL_riotIdName = newName
                 curLOL.LOL_summonerLevel = part.summonerLevel
                 curLOL.profile_icon = part.profileIcon
@@ -133,21 +133,23 @@ data class Calc_AddMatch (
         val calcv3 = Calc_MMRv3(pMatch)
         val arrayKORDmmr = ArrayList<Pair<LOLs, ParticipantsNew>>()
         if (pMatch.isNeedCalcMMR()) {
-//            val data = Calc_MMR(lastPartList, pMatch)
-//            data.calculateMMR()
             lastLolsList.forEach {
                 val finededPart = lastPartList.find { par -> par.LOLperson_id == it.id }
                 if (finededPart != null) {
                     arrayKORDmmr.add(Pair(it, finededPart))
                 }
             }
+//            printLog("arrayKORDmmr1: ${arrayKORDmmr.joinToString("\n")}")
             calcMMR20(pMatch, arrayKORDmmr)
+//            printLog("arrayKORDmmr2: ${arrayKORDmmr.joinToString("\n")}")
             calcv3.calculateTOPstats(arrayKORDmmr.map { it.second })
+//            printLog("arrayKORDmmr3: ${arrayKORDmmr.joinToString("\n")}")
             arrayKORDmmr.forEach {
+                val veResult = calcv3.calculateNewMMR(it.second, 0.0, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win, pMatch)
+
                 it.first.update()
                 it.second.update()
 
-                val veResult = calcv3.calculateNewMMR(it.second, 0.0, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win, pMatch)
                 printLog("Результат: $veResult")
                 printLogMMR("Результат: $veResult")
             }

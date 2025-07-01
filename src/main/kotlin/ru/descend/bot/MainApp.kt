@@ -19,11 +19,8 @@ import kotlinx.coroutines.delay
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
 import org.komapper.core.dsl.QueryDsl
-import org.komapper.core.dsl.operator.desc
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.datas.getData
-import ru.descend.bot.datas.getDataOne
-import ru.descend.bot.datas.getSize
 import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.update
@@ -35,9 +32,7 @@ import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
-import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
-import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import java.awt.Color
 import kotlin.time.Duration
@@ -75,6 +70,9 @@ fun main() {
             stackTraceRecovery = true
         }
         onStart {
+
+            System.setProperty("logging.level.io.r2dbc.postgresql.client.ReactorNettyClient", "OFF")
+
             R2DBC.initialize()
             kord.guilds.collect {
                 val guilds = R2DBC.getGuild(it)
@@ -134,66 +132,76 @@ var statusLOLRequests = 0
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.onCalculateTimer()
 
-    printLog("showLeagueHistory --- start")
+    printLog("showLeagueHistory --- start", false)
     measureBlock(EnumMeasures.BLOCK, "showLeagueHistory Matches") {
         launch {
             val arraySaveds = sqlData.dataSavedLOL.get()
             sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES)
             sqlData.clearTempData()
-            printLog("showLeagueHistory --- cleared team")
+            printLog("showLeagueHistory --- cleared team", false)
         }.join()
     }
-    printLog("showLeagueHistory --- completed")
+    printLog("showLeagueHistory --- completed", false)
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     launch {
         //Таблица Главная - ID никнейм серияпобед
-        printLog("MessageMainDataContent --- start")
-        editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
-            editMessageMainDataContent(it, sqlData)
-        }) {
-            createMessageMainData(channelText, sqlData)
-        }
-        printLog("MessageMainDataContent --- end")
-        printLog("MessageAramMMRDataContent --- start")
+        printLog("MessageMainDataContent --- start", false)
+        launch {
+            editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
+                printLog("MessageMainDataContent --- in1", false)
+                editMessageMainDataContent(it, sqlData)
+                printLog("MessageMainDataContent --- in2", false)
+            }) {
+                printLog("MessageMainDataContent --- out1", false)
+                createMessageMainData(channelText, sqlData)
+                printLog("MessageMainDataContent --- out2", false)
+            }
+        }.join()
+        printLog("MessageMainDataContent --- end", false)
+        printLog("MessageAramMMRDataContent --- start", false)
         //Таблица ММР - все про ММР арама
-        editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, "MessageAramMMRDataContent", {
-            editMessageAramMMRDataContent(it, sqlData)
-        }) {
-            createMessageAramMMRData(channelText, sqlData)
-        }
-        printLog("MessageAramMMRDataContent --- end")
-        printLog("MessageGlobalStatisticContent --- start")
+        launch {
+            editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, "MessageAramMMRDataContent", {
+                editMessageAramMMRDataContent(it, sqlData)
+            }) {
+                createMessageAramMMRData(channelText, sqlData)
+            }
+        }.join()
+        printLog("MessageAramMMRDataContent --- end", false)
+        printLog("MessageGlobalStatisticContent --- start", false)
         //Таблица по играм\винрейту\сериям убийств
-        editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, "MessageGlobalStatisticContent", {
-            editMessageGlobalStatisticContent(it, sqlData)
-        }) {
-            createMessageGlobalStatistic(channelText, sqlData)
-        }
-        printLog("MessageGlobalStatisticContent --- end")
+        launch {
+            editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, "MessageGlobalStatisticContent", {
+                editMessageGlobalStatisticContent(it, sqlData)
+            }) {
+                createMessageGlobalStatistic(channelText, sqlData)
+            }
+        }.join()
+        printLog("MessageGlobalStatisticContent --- end", false)
         //Таблица по Мастерству ТОП3 чемпионов каждого игрока
         if (isNeedUpdateMasteries(channelText, sqlData)) {
-            printLog("MessageMasteriesContent --- start")
+            printLog("MessageMasteriesContent --- start", false)
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, "MessageMasteriesContent", {
                 editMessageMasteriesContent(it, sqlData)
             }) {
                 createMessageMasteries(channelText, sqlData)
             }
-            printLog("MessageMasteriesContent --- end")
+            printLog("MessageMasteriesContent --- end", false)
         }
         //Таблица по ТОП чемпионам сервера
         if (isNeedUpdateTop(channelText, sqlData)) {
-            printLog("MessageTopContent --- start")
+            printLog("MessageTopContent --- start", false)
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, "MessageTopContent", {
                 editMessageTopContent(it, sqlData)
             }) {
                 createMessageTop(channelText, sqlData)
             }
-            printLog("MessageTopContent --- end")
+            printLog("MessageTopContent --- end", false)
         }
     }.join()
 
-    printLog("LeagueHistory --- end")
+    printLog("LeagueHistory --- end", false)
 
     sqlData.dataKORDLOL.clear()
     sqlData.dataKORD.clear()
@@ -225,7 +233,7 @@ suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, measu
             createBody.invoke()
         } else {
             val message = channelText.getMessageOrNull(Snowflake(messageId))
-            printLog("[MessageGlobalStatisticContent] finded message: ${message?.id}")
+            printLog("[$measuredText] finded message: ${message?.id}", false)
             message?.edit { editBody.invoke(this) } ?: createBody.invoke()
         }
     }
@@ -278,23 +286,18 @@ suspend fun createMessageTop(channelText: TextChannel, sqlData: SQLData_R2DBC) {
 }
 
 suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
-
-    printLog("editMessageGlobalStatisticContent 1")
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
 
     if (!sqlData.atomicNeedUpdateTables.get()) return
 
     val charStr = " / "
-    printLog("editMessageGlobalStatisticContent 2")
     val savedParts = sqlData.getSavedParticipants()
-    printLog("editMessageGlobalStatisticContent 3")
 
     savedParts.sortBy { it.kordLOL?.showCode }
 
     val mainDataList1 = (savedParts.map { formatInt(it.kordLOL?.showCode, 2) + "| " + formatInt(it.games, 3) + charStr + formatInt(it.win, 3) + charStr + ((it.win.toDouble() / it.games.toDouble()) * 100.0).to1Digits() + "%" })
     val mainDataList2 = (savedParts.map {  it.kill.toFormatK() + charStr + formatInt(it.kill3, 3) + charStr + formatInt(it.kill4, 3) + charStr + formatInt(it.kill5, 2) })
 
-    printLog("editMessageGlobalStatisticContent 4")
     builder.embed {
         field {
             name = "Game/Win/WinRate"
@@ -307,7 +310,6 @@ suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder,
             inline = true
         }
     }
-    printLog("editMessageGlobalStatisticContent 5")
 }
 
 suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC){
@@ -330,12 +332,6 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         statClass.calculateField(it, "Смертей", it.deaths.toDouble())
         statClass.calculateField(it, "Ассистов", it.assists.toDouble())
         statClass.calculateField(it, "KDA", it.kda)
-//        statClass.calculateField(it, "ММР за АРАМ", it.gameMatchMmr)
-//        statClass.calculateField(it, "Убито Баронов", it.baronKills.toDouble())
-//        statClass.calculateField(it, "Убито Драконов", it.dragonKills.toDouble())
-//        statClass.calculateField(it, "Установлено вардов", it.wardsPlaced.toDouble())
-//        statClass.calculateField(it, "Уничтожено вардов", it.wardsKilled.toDouble())
-//        statClass.calculateField(it, "Уничтожено 'плит' у вышек", it.turretPlatesTaken.toDouble())
         statClass.calculateField(it, "Пентакиллов", it.kills5.toDouble())
         statClass.calculateField(it, "Квадракиллов", it.kills4.toDouble())
         statClass.calculateField(it, "Трипплкиллов", it.kills3.toDouble())
@@ -353,18 +349,11 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         statClass.calculateField(it, "Физического урона чемпионам", it.physicalDamageDealtToChampions.toDouble())
         statClass.calculateField(it, "Чистого урона чемпионам", it.trueDamageDealtToChampions.toDouble())
         statClass.calculateField(it, "Убито миньонов", it.totalMinionsKilled.toDouble())
-//        statClass.calculateField(it, "Использовано заклинаний", it.calcSkillShots().toDouble())
-//        statClass.calculateField(it, "Уклонений от заклинаний", it.skillshotsDodged.toDouble())
-//        statClass.calculateField(it, "Попаданий заклинаниями", it.skillshotsHit.toDouble())
         statClass.calculateField(it, "Попаданий снежками", it.snowballsHit.toDouble())
         statClass.calculateField(it, "Наложено щитов союзникам", it.totalDamageShieldedOnTeammates.toDouble())
         statClass.calculateField(it, "Получено урона", it.totalDamageTaken.toDouble())
         statClass.calculateField(it, "Нанесено урона чемпионам", it.totalDamageDealtToChampions.toDouble())
         statClass.calculateField(it, "Лечение союзников", it.totalHealsOnTeammates.toDouble())
-//        statClass.calculateField(it, "Времени жизни (сек)", it.longestTimeSpentLiving.toDouble())
-//        statClass.calculateField(it, "Времени на экране смерти (сек)", it.totalTimeSpentDead.toDouble())
-//        statClass.calculateField(it, "Получил урона и выжил (за Файт)", it.tookLargeDamageSurvived.toDouble())
-//        statClass.calculateField(it, "Смертей не от чемпионов", it.deaths.toDouble() - it.deathsByEnemyChamps.toDouble())
     }
 
     var resultText = ""
@@ -423,14 +412,14 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 }
 
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
-    val sizeMatches = Matches().getSize()
-    val sizeLOLs = LOLs().getSize()
+//    val sizeMatches = Matches().getSize()
+//    val sizeLOLs = LOLs().getSize()
 //    val sizeParticipants = ParticipantsNew().getSize()
     val sizeHeroes = R2DBC.stockHEROES.get().size
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
-    contentText += "* Матчей: $sizeMatches\n"
-    contentText += "* Игроков: $sizeLOLs\n"
+//    contentText += "* Матчей: $sizeMatches\n"
+//    contentText += "* Игроков: $sizeLOLs\n"
 //    contentText += "* Данных (строк): ~${sizeParticipants + sizeMatches + sizeLOLs}\n"
     contentText += "* Чемпионов: $sizeHeroes\n"
     contentText += "* Версия игры: ${LeagueMainObject.LOL_VERSION}\n"

@@ -132,7 +132,6 @@ data class Challenges(
     val twoWardsOneSweeperCount: Int,
     val unseenRecalls: Int,
     val visionScoreAdvantageLaneOpponent: Double,
-    val visionScorePerMinute: Double,
     val voidMonsterKill: Int,
     val wardTakedowns: Int,
     val wardTakedownsBefore20M: Int,

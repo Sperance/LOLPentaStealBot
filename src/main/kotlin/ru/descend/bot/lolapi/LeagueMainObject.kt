@@ -10,10 +10,7 @@ import ru.descend.bot.globalLOLRequests
 import ru.descend.bot.lolapi.dto.InterfaceChampionBase
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
-import ru.descend.bot.lolapi.dto.matchDto.Info
 import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
-import ru.descend.bot.lolapi.dto.matchDto.Metadata
-import ru.descend.bot.postgre.PostgreTest.ChampionsDTOsample
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Heroes
 import ru.descend.bot.postgre.r2dbc.model.LOLs
@@ -22,6 +19,13 @@ import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.writeLog
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
+data class ChampionsDTOsample(
+    val type: String,
+    val format: String,
+    val version: String,
+    val data: HashMap<Any, Any>,
+)
 
 object LeagueMainObject {
 
