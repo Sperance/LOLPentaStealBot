@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <!-- Отключаем логи R2DBC и Netty -->
-    <logger name="io.r2dbc.postgresql" level="OFF"/>
+<!--    <logger name="io.r2dbc.postgresql" level="OFF"/>-->
     <logger name="reactor.netty" level="OFF"/>
-
-    <!-- Можно оставить только важные логи Spring -->
-    <logger name="org.springframework" level="INFO"/>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>

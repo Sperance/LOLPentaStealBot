@@ -19,7 +19,7 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val komapperVersion = "2.2.0"
+val komapperVersion = "5.4.0"
 
 dependencies {
     platform("org.komapper:komapper-platform:$komapperVersion").let {

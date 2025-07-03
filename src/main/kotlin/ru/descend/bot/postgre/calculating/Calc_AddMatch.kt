@@ -5,6 +5,7 @@ import ru.descend.bot.LOAD_MMR_HEROES_MATCHES
 import ru.descend.bot.LVP_TAG
 import ru.descend.bot.MVP_TAG
 import ru.descend.bot.asyncLaunch
+import ru.descend.bot.atomicIntLoaded
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.R2DBC
@@ -64,7 +65,7 @@ data class Calc_AddMatch (
             aborted = isAborted,
             mapId = match.info.mapId,
             gameType = match.info.gameType
-        ).create(Matches::matchId, "[atom:${sqlData.atomicIntLoaded.get()}]")
+        ).create(Matches::matchId, "[atom:${atomicIntLoaded.get()}]")
 
         if (!pMatchResult.bit) return pMatchResult.result
         val pMatch = pMatchResult.result
@@ -80,7 +81,7 @@ data class Calc_AddMatch (
         match.info.participants.forEach {part ->
             //Скипуем матчи если хотя бы 1 чел афк
             if ((part.kills == 0 && part.deaths == 0 && part.assists == 0) || (part.itemsPurchased <= 1)) {
-                printLog(sqlData.guild, "[ADDMTACH] match ${pMatch.matchId} skipped for AFK or Troll. Participant: $part")
+                printLog("[ADDMTACH] match ${pMatch.matchId} skipped for AFK or Troll.")
                 return pMatch
             }
 

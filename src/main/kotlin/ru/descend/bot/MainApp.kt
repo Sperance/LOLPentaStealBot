@@ -6,7 +6,6 @@ import dev.kord.common.entity.PresenceStatus
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.getChannelOf
-import dev.kord.core.entity.Guild
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
@@ -32,6 +31,8 @@ import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.postgre.calculating.Calc_LoadMAtches
+import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
@@ -44,7 +45,11 @@ import ru.descend.kotlintelegrambot.handlers.handleButtons
 import ru.descend.kotlintelegrambot.handlers.handleCommands
 import ru.descend.kotlintelegrambot.handlers.handleMMRstat
 import ru.descend.kotlintelegrambot.handlers.handleOthers
+import ru.descend.kotlintelegrambot.handlers.last_date_loaded_matches
 import java.awt.Color
+import java.util.Date
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -60,18 +65,42 @@ fun main() {
     }
 
     scope.launch {
+        printLog("startLoadingMatches")
+        startLoadingMatches()
+    }
+
+    scope.launch {
         printLog("startTelegramBot")
         startTelegramBot()
     }
 
-    // Добавляем обработчик завершения (например, по Ctrl+C)
     Runtime.getRuntime().addShutdownHook(Thread {
         scope.cancel("server shutdown")
         printLog("server shutdown")
     })
 
-    // Блокируем основной поток
     Thread.currentThread().join()
+}
+
+lateinit var sqlData: SQLData_R2DBC
+val atomicIntLoaded = AtomicInteger()
+val atomicNeedUpdateTables = AtomicBoolean(true)
+var sql_data_initialized = false
+
+private fun startLoadingMatches() = launch {
+    while (true) {
+        if (sql_data_initialized) {
+            val kordLol_lol_id = KORDLOLs().getData().map { it.LOL_id }
+            val savedLols = R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
+            val loaderMatches = Calc_LoadMAtches()
+            loaderMatches.loadMatches(savedLols, LOAD_SAVED_USER_MATCHES)
+            loaderMatches.clearTempData()
+            last_date_loaded_matches = Date()
+        } else {
+            printLog("[sql_data not initialized]")
+        }
+        delay((2).minutes)
+    }
 }
 
 @OptIn(PrivilegedIntent::class)
@@ -106,14 +135,16 @@ private fun startDiscordBot() {
         onStart {
             R2DBC.initialize()
             kord.guilds.collect {
-                val guilds = R2DBC.getGuild(it)
-                mapMainData[it] = SQLData_R2DBC(it, guilds)
-                mapMainData[it]?.initialize()
+                if (it.name == "АрамоЛолево") {
+                    val guilds = Guilds().getData().first()
+                    sqlData = SQLData_R2DBC(it, guilds)
+                    sqlData.initialize()
+                    sql_data_initialized = true
+                    removeMessage()
 
-                removeMessage(it)
-
-                timerRequestReset((2).minutes)
-                timerMainInformation(it, (121).seconds)
+                    timerRequestReset((2).minutes)
+                    timerMainInformation((121).seconds)
+                }
             }
         }
     }
@@ -138,8 +169,6 @@ private fun startTelegramBot() {
     telegram_bot.startPolling()
 }
 
-val mapMainData = HashMap<Guild, SQLData_R2DBC>()
-
 fun timerRequestReset(duration: Duration) = launch {
     while (true) {
         globalLOLRequests = 0
@@ -147,12 +176,12 @@ fun timerRequestReset(duration: Duration) = launch {
     }
 }
 
-fun timerMainInformation(guild: Guild, duration: Duration, skipFirst: Boolean = false) = launch {
+fun timerMainInformation(duration: Duration, skipFirst: Boolean = false) = launch {
     var skipped = skipFirst
     while (true) {
-        if (mapMainData[guild]!!.guildSQL.botChannelId.isNotEmpty()) {
+        if (sqlData.guildSQL.botChannelId.isNotEmpty()) {
             if (!skipped) {
-                showLeagueHistory(mapMainData[guild]!!)
+                showLeagueHistory(sqlData)
                 garbaceCollect()
                 printMemoryUsage()
             } else {
@@ -163,10 +192,10 @@ fun timerMainInformation(guild: Guild, duration: Duration, skipFirst: Boolean = 
     }
 }
 
-suspend fun removeMessage(guild: Guild) {
-    if (mapMainData[guild]!!.guildSQL.botChannelId.isNotEmpty()){
-        guild.getChannelOf<TextChannel>(Snowflake(mapMainData[guild]!!.guildSQL.botChannelId)).messages.collect {
-            if (it.id.value.toString() in listOf(mapMainData[guild]!!.guildSQL.messageIdGlobalStatisticData, mapMainData[guild]!!.guildSQL.messageIdMain, mapMainData[guild]!!.guildSQL.messageIdArammmr, mapMainData[guild]!!.guildSQL.messageIdMasteries, mapMainData[guild]!!.guildSQL.messageIdTop)) {
+suspend fun removeMessage() {
+    if (sqlData.guildSQL.botChannelId.isNotEmpty()){
+        sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId)).messages.collect {
+            if (it.id.value.toString() in listOf(sqlData.guildSQL.messageIdGlobalStatisticData, sqlData.guildSQL.messageIdMain, sqlData.guildSQL.messageIdArammmr, sqlData.guildSQL.messageIdMasteries, sqlData.guildSQL.messageIdTop)) {
                 Unit
             } else {
                 it.delete()
@@ -180,14 +209,6 @@ var statusLOLRequests = 0
 
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.onCalculateTimer()
-
-    measureBlock(EnumMeasures.BLOCK, "showLeagueHistory Matches") {
-        launch {
-            val arraySaveds = sqlData.dataSavedLOL.get()
-            sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES)
-            sqlData.clearTempData()
-        }.join()
-    }
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     launch {
@@ -237,7 +258,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.dataKORD.clear()
     sqlData.dataSavedLOL.clear()
 
-    sqlData.atomicNeedUpdateTables.set(false)
+    atomicNeedUpdateTables.set(false)
     sqlData.isHaveLastARAM = false
 }
 
@@ -317,7 +338,7 @@ suspend fun createMessageTop(channelText: TextChannel, sqlData: SQLData_R2DBC) {
 suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
 
-    if (!sqlData.atomicNeedUpdateTables.get()) return
+    if (!atomicNeedUpdateTables.get()) return
 
     val charStr = " / "
     val savedParts = sqlData.getSavedParticipants()
@@ -483,7 +504,7 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
 
     builder.content = "**Статистика ММР**\nОбновлено: ${TimeStamp.now()}\n"
 
-    if (!sqlData.atomicNeedUpdateTables.get()) return
+    if (!atomicNeedUpdateTables.get()) return
     if (!sqlData.isHaveLastARAM) return
 
     val charStr = " / "

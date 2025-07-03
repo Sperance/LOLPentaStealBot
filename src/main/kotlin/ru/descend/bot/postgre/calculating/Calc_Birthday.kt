@@ -20,7 +20,7 @@ data class Calc_Birthday(private var sqlData: SQLData_R2DBC, var dataList: List<
     suspend fun calculate() {
         dataList.filter { isBirthday(it.date_birthday) }.forEach {
             var textMessage = ""
-            if (textMessage.isEmpty()) textMessage = generateAIText("Напиши интересное с долей смеха поздравление пользователю ${it.asUser(sqlData.guild).lowDescriptor()} с Днём Рождения на сервере Discord посвященному игре Лиге Легенд")
+            if (textMessage.isEmpty()) textMessage = generateAIText("Напиши интересное с долей смеха поздравление пользователю ${it.asUser(sqlData.guild!!).lowDescriptor()} с Днём Рождения на сервере Discord посвященному игре Лиге Легенд")
             sqlData.sendMessage(sqlData.guildSQL.messageIdStatus, textMessage)
             writeLog(textMessage)
             val currentTextBirthday = it.date_birthday

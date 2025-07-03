@@ -10,19 +10,21 @@ import ru.descend.bot.printLog
 import ru.descend.kotlintelegrambot.dispatcher.Dispatcher
 import ru.descend.kotlintelegrambot.dispatcher.command
 import ru.descend.kotlintelegrambot.entities.ChatId
+import java.util.Date
 import kotlin.time.Duration.Companion.minutes
 
 private var global_listening_counter = 0
 private var global_listeting_chat = -1L
 private var listeningJob: Job? = null
 val listening_data_array = ArrayList<String>()
+var last_date_loaded_matches: Date? = null
 
 fun Dispatcher.handleMMRstat() {
     command("testListening") {
         listening_data_array.add("TestStr ${System.currentTimeMillis()}")
     }
     command("listeningStatus") {
-        bot.sendMessage(ChatId.fromId(message.chat.id), "Статус: $global_listening_counter. Job: ${listeningJob?.isActive}")
+        bot.sendMessage(ChatId.fromId(message.chat.id), "Статус: $global_listening_counter. Job: ${listeningJob?.isActive}. Last loaded: $last_date_loaded_matches")
     }
     command("startListening") {
         if (global_listening_counter != 0) {
@@ -57,6 +59,7 @@ fun Dispatcher.handleMMRstat() {
             global_listening_counter--
             listeningJob?.cancel()
             global_listeting_chat = -1L
+            last_date_loaded_matches = null
             bot.sendMessage(ChatId.fromId(message.chat.id), "Слушатель матчей успешно завершен")
         } else {
             bot.sendMessage(ChatId.fromId(message.chat.id), "Слушатель матчей не запущен. Нечего завершать")

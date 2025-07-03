@@ -7,7 +7,7 @@
     </Appenders>
     <Loggers>
         <!-- Отключаем логи R2DBC и Netty -->
-        <Logger name="io.r2dbc.postgresql" level="OFF" additivity="false"/>
+<!--        <Logger name="io.r2dbc.postgresql" level="OFF" additivity="false"/>-->
         <Logger name="reactor.netty" level="OFF" additivity="false"/>
 
         <Root level="INFO">

@@ -52,19 +52,10 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     var isHaveLastARAM = false
     var isNeedUpdateDays = false
-    private var olderDateLong = Date().time.toLocalDate().minusDays(DAYS_MIN_IN_LOAD).toDate().time
-    private var currentDateLong = Date().time
-    val atomicIntLoaded = AtomicInteger()
-    val atomicNeedUpdateTables = AtomicBoolean(true)
 
     val dataKORDLOL = WorkData<KORDLOLs>("KORDLOL")
     val dataKORD = WorkData<KORDs>("KORD")
     val dataSavedLOL = WorkData<LOLs>("SavedLOL")
-
-    /**
-     * На момент пакетной прогрузки матчей - если по ноунейм Персонажу уже была прогрузка - повторную не делаем
-     */
-    private val lastLoadedLOLsPUUID = ArrayList<Int>()
 
     fun initialize() {
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { KORDLOLs().getData({ tbl_kordlols.guild_id eq guildSQL.id }) }
@@ -76,13 +67,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                 R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
             }
         }
-    }
-
-    fun clearTempData() {
-        atomicIntLoaded.set(0)
-        olderDateLong = Date().time.toLocalDate().minusDays(DAYS_MIN_IN_LOAD).toDate().time
-        currentDateLong = Date().time
-        lastLoadedLOLsPUUID.clear()
     }
 
     suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
@@ -159,64 +143,5 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     suspend fun onCalculateTimer() {
         Calc_Birthday(this, dataKORD.get()).calculate()
-    }
-
-    private suspend fun addMatch(match: MatchDTO) {
-        R2DBC.runTransaction {
-            val newMatch = Calc_AddMatch(this@SQLData_R2DBC, match)
-            newMatch.calculate()
-        }
-    }
-
-    suspend fun loadMatches(lols: Collection<LOLs>, count: Int) {
-        val checkMatches = ArrayList<String>()
-        lols.forEach {
-            if (it.LOL_puuid == "") return@forEach
-            if (lastLoadedLOLsPUUID.contains(it.id)) {
-                printLog("[loadMatches] LOL with id ${it.id} skipped. Skipp array containts this id (skip array size: ${lastLoadedLOLsPUUID.size})")
-                return@forEach
-            }
-            if (getKORDLOL_fromLOL(it.id) == null) lastLoadedLOLsPUUID.add(it.id)
-            atomicIntLoaded.incrementAndGet()
-            LeagueMainObject.catchMatchID(it, 0, count).forEach ff@{ matchId ->
-                if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
-            }
-        }
-        loadArrayMatches(checkMatches)
-    }
-
-    private suspend fun loadArrayMatches(checkMatches: ArrayList<String>) {
-        val listChecked = getNewMatches(checkMatches)
-        printLog("[loadArrayMatches] count: ${listChecked.size}")
-        listChecked.sortBy { it }
-        listChecked.forEach { newMatch ->
-            atomicIntLoaded.incrementAndGet()
-            if (!atomicNeedUpdateTables.get()) {
-                atomicNeedUpdateTables.set(true)
-            }
-            LeagueMainObject.catchMatch(newMatch)?.let { match ->
-                addMatch(match)
-            }
-        }
-    }
-
-    private suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
-        val dataAra = list.joinToString(prefix = "{", postfix = "}")
-        val sql = "SELECT remove_matches('$dataAra'::character varying[])"
-        R2DBC.runQuery {
-            QueryDsl.fromTemplate(sql).select {
-                val data = it.get<Array<String>>(0)
-                if (data == null) list.clear()
-                else list.removeAll(data.toSet())
-            }
-        }
-        return list
-    }
-
-    suspend fun generateFact() {
-        val championName = R2DBC.stockHEROES.get().random(Random(System.currentTimeMillis()))
-        val generatedText = generateAIText("Напиши интересный факт или механику о чемпионе $championName из игры League of Legends")
-        val resultedText = "**Рубрика: интересные факты**\n\n$generatedText"
-        sendMessage(guildSQL.messageIdStatus, resultedText)
     }
 }

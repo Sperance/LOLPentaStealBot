@@ -1,5 +1,6 @@
 package ru.descend.bot.postgre.calculating
 
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.to1Digits
@@ -135,16 +136,16 @@ class Calc_MMRv3(private val match: Matches) {
         list.maxByOrNull { it.skillshotsHit.toDouble() - it.skillshotsDodged }!!.top_accuracy = true
     }
 
-    private fun getTopsFromParticipant(part: ParticipantsNew): Int {
-        var countTop = 0
-        if (part.top_damagePerMinute) countTop++
-        if (part.top_damageMitigated) countTop++
-        if (part.top_kda) countTop++
-        if (part.top_cc) countTop++
-        if (part.top_creeps) countTop++
-        if (part.top_healTeammates) countTop++
-        if (part.top_goldPerMinute) countTop++
-        if (part.top_accuracy) countTop++
+    private fun getTopsFromParticipant(part: ParticipantsNew): String {
+        var countTop = ""
+        if (part.top_damagePerMinute) countTop += "top_damagePerMinute;"
+        if (part.top_damageMitigated) countTop += "top_damageMitigated;"
+        if (part.top_kda) countTop += "top_kda;"
+        if (part.top_cc) countTop += "top_cc;"
+        if (part.top_creeps) countTop += "top_creeps;"
+        if (part.top_healTeammates) countTop += "top_healTeammates;"
+        if (part.top_goldPerMinute) countTop += "top_goldPerMinute;"
+        if (part.top_accuracy) countTop += "top_accuracy;"
         return countTop
     }
 
@@ -179,7 +180,7 @@ class Calc_MMRv3(private val match: Matches) {
         textAllResult += "[topStats]:{$topStats}; "
 
         // Расчет Performance Score
-        var performanceScore = (calculatePerformanceScore(player, allBaseWeight) + topStats * 0.3).to1Digits()
+        var performanceScore = (calculatePerformanceScore(player, allBaseWeight) + topStats.count { it == ';' } * 0.3).to1Digits()
         if (detectedRole == "USELESS") performanceScore -= 1.0
 
         val oldRank = determineRank(currentMMR)
@@ -190,6 +191,7 @@ class Calc_MMRv3(private val match: Matches) {
             performanceScore -= 1.0
             oldRank.loseModifier
         }
+        performanceScore = performanceScore.to1Digits()
 
         val (expectedWin, actualResult) = calculateWinProbability(teamMMR, enemyTeamMMR, matchResult)
         textAllResult += "[expectedWin, actualResult]:{$expectedWin, $actualResult}; "
@@ -377,17 +379,15 @@ data class AramMatchResult(
                 "textResult='${textResult.split(";").joinToString("\t\n")}')"
     }
 
-    fun toStringLow(): String {
-        return "AramMatchResult(" +
-                "newMMR=$newMMR, " +
-                "mmrChange=$mmrChange, " +
-                "performanceScore=$performanceScore, " +
-                "matchGrade='$matchGrade', " +
-                "rank='$rank', " +
-                "detectedRole='$detectedRole', " +
-                "gameLength=$gameLength, " +
-                "matchId=${match.matchId}, " +
-                "lolName=$lolName, " +
-                "lolChampion=$lolChampion)\n\n"
+    suspend fun toStringLow(): String {
+        return "\n-----\n\tMMR=$mmrChange" +
+                "\n  Очков=$performanceScore" +
+                "\n  Оценка='$matchGrade'" +
+                "\n  Ранг='$rank'" +
+                "\n  Роль='$detectedRole'" +
+                "\n  ДлительностьИгры=$gameLength" +
+                "\n  ID Игры=${match.matchId}" +
+                "\n  Игрок=$lolName" +
+                "\n  Чемпион=${R2DBC.getHeroFromNameEN(lolChampion)?.nameRU?:""}"
     }
 }

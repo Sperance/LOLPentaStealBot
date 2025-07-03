@@ -28,6 +28,7 @@ import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.openapi.RootAI
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
+import ru.descend.kotlintelegrambot.handlers.last_date_loaded_matches
 import ru.gildor.coroutines.okhttp.await
 import java.io.File
 import java.math.RoundingMode
@@ -109,13 +110,13 @@ suspend fun SQLData_R2DBC?.sendMessage(messageId: String, message: String, after
     if (message.isEmpty()) return
     launch {
         try {
-            printLog(guild, "[SEND MESSAGE] $message")
-            val channelText = guild.getChannelOf<TextChannel>(Snowflake(messageId))
+            printLog("[SEND MESSAGE] $message")
+            val channelText = sqlData.guild!!.getChannelOf<TextChannel>(Snowflake(messageId))
             channelText.createMessage {
                 content = message
             }
         }catch (e: Exception) {
-            printLog(guild, "Not sended message $message for channel $messageId. Error: ${e.message}")
+            printLog("Not sended message $message for channel $messageId. Error: ${e.message}")
         }
     }.invokeOnCompletion {
         afterLaunchBody?.invoke()
