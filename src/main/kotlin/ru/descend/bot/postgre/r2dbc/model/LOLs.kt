@@ -32,8 +32,7 @@ data class LOLs(
     var profile_icon: Int = 0,
     var last_loaded: Long = 0,
     var mmrAram: Double = 0.0,
-    var mmrAramSaved: Double = 0.0,
-    var match_date_last: Long = 0,
+    var mmrAramSaved: Double = 0.0
 ) {
     companion object {
         val tbl_lols = Meta.loLs
@@ -72,16 +71,6 @@ data class LOLs(
     }
 
     fun isBot() = LOL_puuid.trim() == "BOT" || LOL_summonerId == "BOT" || LOL_puuid.length < 10
-
-    fun isNeedUpdate(match: Matches, parts: Participant) : Boolean {
-        if (match_date_last != 0L && match_date_last < match.matchDateEnd) {
-            return isSameFields(match, parts)
-        }
-        if (match_date_last <= match.matchDateEnd && LOL_summonerLevel <= parts.summonerLevel) {
-            return isSameFields(match, parts)
-        }
-        return false
-    }
 
     private fun isSameFields(match: Matches, parts: Participant) : Boolean {
         return (LOL_region != match.getRegionValue() ||

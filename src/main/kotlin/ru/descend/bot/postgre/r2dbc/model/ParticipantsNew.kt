@@ -117,7 +117,6 @@ data class ParticipantsNew(
     var kills3: Int = 0,
     var kills2: Int = 0,
 
-    var matchDateEnd: Long = 0,
     var gameMatchKey: String = "",
     var gameMatchMmr: Double = 0.0,
     var needCalcStats: Boolean = true,
@@ -142,7 +141,6 @@ data class ParticipantsNew(
 
         this.match_id = match.id
         this.LOLperson_id = LOLperson.id
-        this.matchDateEnd = match.matchDateEnd
 
         this.assists = participant.assists
         this.championId = participant.championId

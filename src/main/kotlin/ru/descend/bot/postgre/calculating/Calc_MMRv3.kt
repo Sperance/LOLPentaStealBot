@@ -27,72 +27,102 @@ enum class PlayerRank(
     }
 }
 
-class Calc_MMRv3(match: Matches) {
+data class BaseWeight(val name: String, var needValue: Double, var mod: Double)
+class AllBaseWeight {
+    private val arrayWeights = ArrayList<BaseWeight>()
 
-    companion object {
-        private const val GAME_DURATION_THRESHOLD = 22.0 //Средняя продолжительность матча
+    init {
+        arrayWeights.add(BaseWeight("kda", 6.0, 1.0))
+        arrayWeights.add(BaseWeight("multiKills", 1.0, 1.0))
+        arrayWeights.add(BaseWeight("damagePerMinute",1400.0, 1.0))
+        arrayWeights.add(BaseWeight("damageSelfMitigated", 30000.0, 1.0))
+        arrayWeights.add(BaseWeight("killParticipation", 1.0, 1.0))
+        arrayWeights.add(BaseWeight("totalHealsOnTeammates", 10000.0, 1.0))
+        arrayWeights.add(BaseWeight("timeCCingOthers", 50.0,  1.0))
+        arrayWeights.add(BaseWeight("goldPerMinute", 1100.0, 1.0))
+        arrayWeights.add(BaseWeight("minionsKilled", 30.0, 1.0))
+        arrayWeights.add(BaseWeight("survivedLowHP", 2.0, 1.0))
+        arrayWeights.add(BaseWeight("skillAccuracy", 30.0, 1.0))
+        arrayWeights.add(BaseWeight("outnumberedFights", 4.0, 1.0))
+        arrayWeights.add(BaseWeight("saveAllyFromDeath", 5.0, 1.0))
+        arrayWeights.add(BaseWeight("bountyGold", 500.0, 1.0))
     }
+
+    fun changeByRole(role: String) {
+        when (role) {
+            "DAMAGE" -> {
+                changeStat("damagePerMinute", needV = 2200.0, modV = 0.9)
+                changeStat("timeCCingOthers", needV = 40.0, modV = 1.2)
+                changeStat("minionsKilled", needV = 50.0, modV = 0.7)
+                changeStat("skillAccuracy", needV = 20.0)
+            }
+            "TANK" -> {
+                changeStat("damagePerMinute", modV = 1.6)
+                changeStat("timeCCingOthers", needV = 70.0, modV = 1.4)
+                changeStat("survivedLowHP", modV = 1.4)
+                changeStat("damageSelfMitigated", needV = 80000.0, modV = 0.8)
+                changeStat("skillAccuracy", needV = 10.0)
+            }
+            "SUPPORT" -> {
+                changeStat("kda", needV = 8.0, modV = 0.6)
+                changeStat("damagePerMinute", needV = 1100.0, modV = 1.2)
+                changeStat("timeCCingOthers", needV = 60.0, modV = 1.4)
+                changeStat("skillAccuracy", needV = 30.0, modV = 0.8)
+                changeStat("minionsKilled", modV = 1.2)
+                changeStat("totalHealsOnTeammates", needV = 20000.0, modV = 1.2)
+            }
+            "BROUSER" -> {
+                changeStat("kda", modV = 1.2)
+                changeStat("damagePerMinute", needV = 2000.0, modV = 1.2)
+                changeStat("timeCCingOthers", needV = 40.0, modV = 1.8)
+                changeStat("skillAccuracy", needV = 1.0, modV = 0.8)
+                changeStat("minionsKilled", needV = 40.0, modV = 1.2)
+            }
+            "HYBRID" -> {
+                changeStat("damagePerMinute", needV = 1600.0, modV = 1.1)
+                changeStat("timeCCingOthers", modV = 1.1)
+            }
+            else -> Unit
+        }
+    }
+
+    private fun getWeightByName(name: String): BaseWeight? {
+        return arrayWeights.firstOrNull { it.name == name }
+    }
+
+    fun getModByName(name: String): Double {
+        return getWeightByName(name)?.mod!!
+    }
+
+    fun getMaxByName(name: String): Double {
+        return getWeightByName(name)?.needValue!!
+    }
+
+    private fun changeStat(name: String, needV: Double? = null, modV: Double? = null) {
+        arrayWeights.firstOrNull { it.name == name }?.apply {
+            if (needV != null) needValue = needV
+            if (modV != null) mod = modV
+        }
+    }
+}
+
+class Calc_MMRv3(private val match: Matches) {
 
     // Настройки системы MMR
     private val baseKFactor = 20.0
     private val performanceImpact = 0.25
+    private val allBaseWeight = AllBaseWeight()
     private var textAllResult = ""
     private val matchMinutes = (match.matchDuration / 60.0).to1Digits()
-    private val timeFactor = (matchMinutes / GAME_DURATION_THRESHOLD).to1Digits()
-
-    // Базовые веса параметров
-    private val baseWeights = mapOf(
-        "kda" to 1.0,
-        "multiKills" to 1.0,
-        "damagePerMinute" to 1.0,
-        "damageSelfMitigated" to 1.0,
-        "killParticipation" to 1.0,
-        "totalHealsOnTeammates" to 1.0,
-        "timeCCingOthers" to 1.0,
-        "goldPerMinute" to 1.0,
-        "turretTakedowns" to 1.0,
-        "minionsKilled" to 1.0,
-        "survivedLowHP" to 1.0,
-        "skillAccuracy" to 1.0,
-        "outnumberedFights" to 1.0,
-        "saveAllyFromDeath" to 1.0,
-        "bountyGold" to 1.0,
-    )
-
-    // Модификаторы весов для разных ролей
-    private val roleModifiers = mapOf(
-        "DAMAGE" to mapOf(
-            "damagePerMinute" to 1.4,
-            "timeCCingOthers" to 0.7,
-            "minionsKilled" to 0.8,
-            "survivedLowHP" to 1.4,
-        ),
-        "TANK" to mapOf(
-            "damagePerMinute" to 0.8,
-            "timeCCingOthers" to 1.4,
-            "survivedLowHP" to 1.2,
-            "damageSelfMitigated" to 1.2
-        ),
-        "SUPPORT" to mapOf(
-            "kda" to 0.6,
-            "damagePerMinute" to 0.6,
-            "timeCCingOthers" to 1.4,
-            "skillAccuracy" to 0.8,
-            "minionsKilled" to 1.2
-        ),
-        "BROUSER" to mapOf(
-            "kda" to 1.2,
-            "damagePerMinute" to 1.2,
-            "timeCCingOthers" to 1.8,
-            "skillAccuracy" to 0.8,
-            "minionsKilled" to 1.2
-        ),
-        "HYBRID" to mapOf(
-            "damagePerMinute" to 1.1,
-            "timeCCingOthers" to 1.1,
-            "minionsKilled" to 1.2
-        )
-    )
+    private val timeFactor = when {
+        matchMinutes > 30.0 -> 1.5
+        matchMinutes > 25.0 -> 1.2
+        matchMinutes > 20.0 -> 1.0
+        matchMinutes > 15.0 -> 0.8
+        matchMinutes > 10.0 -> 0.7
+        matchMinutes > 5.0 -> 0.5
+        else -> 1.0
+    }
 
     fun calculateTOPstats(list: List<ParticipantsNew>) {
         list.maxByOrNull { it.damagePerMinute }!!.top_damagePerMinute = true
@@ -133,27 +163,33 @@ class Calc_MMRv3(match: Matches) {
         currentMMR: Double,
         teamMMR: List<Double>,
         enemyTeamMMR: List<Double>,
-        matchResult: Boolean,
-        matchObj: Matches
+        matchResult: Boolean
     ): AramMatchResult {
 
-        textAllResult = ""
-
-        textAllResult += "[timeFactor]:{$timeFactor}; "
+        textAllResult = ";[timeFactor]:{$timeFactor}; "
+        textAllResult += "[matchMinutes]:{$matchMinutes}; "
+        textAllResult += "[matchId]:{${match.matchId}}; "
 
         val detectedRole = detectRoleByStats(player)
 
         // Получение весов с учетом роли
-        val roleWeights = getWeightsForRole(detectedRole)
+        allBaseWeight.changeByRole(detectedRole)
 
         val topStats = getTopsFromParticipant(player)
         textAllResult += "[topStats]:{$topStats}; "
 
         // Расчет Performance Score
-        val performanceScore = (calculatePerformanceScore(player, roleWeights) + topStats * 0.3).to1Digits()
+        var performanceScore = (calculatePerformanceScore(player, allBaseWeight) + topStats * 0.3).to1Digits()
+        if (detectedRole == "USELESS") performanceScore -= 1.0
 
         val oldRank = determineRank(currentMMR)
-        val rankModifier = if (matchResult) oldRank.winModifier else oldRank.loseModifier
+        val rankModifier = if (matchResult) {
+            performanceScore += 1.0
+            oldRank.winModifier
+        } else {
+            performanceScore -= 1.0
+            oldRank.loseModifier
+        }
 
         val (expectedWin, actualResult) = calculateWinProbability(teamMMR, enemyTeamMMR, matchResult)
         textAllResult += "[expectedWin, actualResult]:{$expectedWin, $actualResult}; "
@@ -165,7 +201,7 @@ class Calc_MMRv3(match: Matches) {
         val rank = determineRank(newMMR)
         val matchGrade = calculateMatchGrade(performanceScore)
 
-        player.gameMatchKey += "[$matchGrade:$performanceScore]"
+        player.gameMatchKey += "[$matchGrade:$performanceScore:$detectedRole]"
 
         return AramMatchResult(
             newMMR = newMMR,
@@ -177,8 +213,9 @@ class Calc_MMRv3(match: Matches) {
             detectedRole = detectedRole,
             lolName = player.riotIdGameName,
             lolChampion = player.championName,
+            match = match,
             textResult = textAllResult,
-            gameLength = matchObj.matchDuration
+            gameLength = match.matchDuration
         )
     }
 
@@ -187,94 +224,77 @@ class Calc_MMRv3(match: Matches) {
      */
     private fun detectRoleByStats(player: ParticipantsNew): String {
 
-        textAllResult += "[detectRoleByStats]; "
         val damageRatio = player.damagePerMinute.to1Digits() / timeFactor
-        textAllResult += "[damageRatio]:{${damageRatio}}; "
+        textAllResult += "[damageRatio]:{${damageRatio}, stock: ${player.damagePerMinute.to1Digits()}}; "
 
         val healRatioSelf = player.totalHeal.toDouble().to1Digits() / timeFactor
-        textAllResult += "[healRatioSelf]:{${healRatioSelf}}; "
+        textAllResult += "[healRatioSelf]:{${healRatioSelf}, stock: ${player.totalHeal}}; "
 
         val healRatioTeam = player.totalHealsOnTeammates.toDouble().to1Digits() / timeFactor
-        textAllResult += "[healRatioTeam]:{${healRatioTeam}}; "
+        textAllResult += "[healRatioTeam]:{${healRatioTeam}, stock: ${player.totalHealsOnTeammates}}; "
 
         val healTotal = (healRatioSelf + healRatioTeam).to1Digits()
 
         val ccRatio = player.timeCCingOthers.toDouble().to1Digits() / timeFactor
-        textAllResult += "[ccRatio]:{${ccRatio}}; "
+        textAllResult += "[ccRatio]:{${ccRatio}, stock: ${player.timeCCingOthers}}; "
 
         val damageMitidatedRatio = player.damageSelfMitigated.toDouble().to1Digits() / timeFactor
-        textAllResult += "[damageMitidatedRatio]:{${damageMitidatedRatio}}; "
+        textAllResult += "[damageMitidatedRatio]:{${damageMitidatedRatio}, stock: ${player.damageSelfMitigated}}; "
 
         val skillAccuracyRatio = (player.skillshotsHit.toDouble() - player.skillshotsDodged).toInt()
         textAllResult += "[skillAccuracyRatio]:{${skillAccuracyRatio}}; "
 
         return when {
-            // Танк - много CC и выживаний
-            ccRatio > 50 && damageMitidatedRatio > 10000 && skillAccuracyRatio < 50 -> "TANK"
-            // Саппорт - много хила и CC
-            damageRatio < 1100 && healTotal > 12000 && ccRatio > 30 && skillAccuracyRatio > 20 -> "SUPPORT"
-            // Дамагер - высокий урон, мало хила
-            damageRatio > 2000 && healRatioTeam < 5000 && damageMitidatedRatio < 10000 && skillAccuracyRatio > 1 -> "DAMAGE"
-            // Дамагер - высокий урон, мало хила
-            damageRatio > 2000 && damageMitidatedRatio > 15000 -> "BROUSER"
-            // Бесполезный - мало всего
-            damageRatio < 1000 && ccRatio < 10 && healTotal < 10000 -> "USUSLESS"
-            // Гибрид - баланс урона и хила
+            damageRatio > 2200 && damageMitidatedRatio > 15000 && skillAccuracyRatio < 20 -> "BROUSER"
+            (damageMitidatedRatio > 20000 && ccRatio > 20) || damageMitidatedRatio > 50000 -> "TANK"
+            damageRatio < 1200 && healRatioTeam > 15000 && skillAccuracyRatio > 20 -> "SUPPORT"
+            damageRatio > 1000 && damageMitidatedRatio < 20000 && healRatioTeam < 5000 -> "DAMAGE"
+            damageRatio < 1000 && ccRatio < 10 && healTotal < 10000 -> "USELESS"
             else -> "HYBRID"
-        }
-    }
-
-    /**
-     * Возвращает веса параметров с учетом роли.
-     */
-    private fun getWeightsForRole(role: String): Map<String, Double> {
-        return baseWeights.mapValues { (key, baseWeight) ->
-            baseWeight * (roleModifiers[role]?.get(key) ?: 1.0)
         }
     }
 
     /**
      * Рассчитывает Performance Score (0.5-1.5) на основе статистики и весов.
      */
-    private fun calculatePerformanceScore(player: ParticipantsNew, weights: Map<String, Double>): Double {
-        val kda = normalizeParameter("kda", player.kda, 6.0)
-        val multiKills = normalizeParameter("multiKills", player.kills4 * 0.4 + player.kills5, 1.0)
-        val damagePerMinute = normalizeParameter("damagePerMinute", player.damagePerMinute, 2000 * timeFactor)
-        val damageSelfMitigated = normalizeParameter("damageSelfMitigated", player.damageSelfMitigated, 60000 * timeFactor)
-        val killParticipation = normalizeParameter("killParticipation", player.killParticipation, 1.0)
-        val totalHealsOnTeammates = normalizeParameter("totalHealsOnTeammates", player.totalHealsOnTeammates, 15000 * timeFactor)
-        val timeCCingOthers = normalizeParameter("timeCCingOthers", player.timeCCingOthers, 60 * timeFactor)
-        val goldPerMinute = normalizeParameter("goldPerMinute", player.goldPerMinute, 1000 * timeFactor)
-        val turretTakedowns = normalizeParameter("turretTakedowns", player.turretTakedowns, 2.0)
-        val minionsKilled = normalizeParameter("minionsKilled", player.totalMinionsKilled, 30 * timeFactor)
-        val survivedLowHP = normalizeParameter("survivedLowHP", player.survivedSingleDigitHpCount + player.tookLargeDamageSurvived, 2 * timeFactor)
-        val skillAccuracy = normalizeParameter("skillAccuracy", player.skillshotsHit - player.skillshotsDodged, 30 * timeFactor)
-        val outnumberedFights = normalizeParameter("outnumberedFights", player.outnumberedKills * 1.5 + player.soloKills * 0.3, 4 * timeFactor)
-        val saveAllyFromDeath = normalizeParameter("saveAllyFromDeath", player.saveAllyFromDeath, 3 * timeFactor)
-        val bountyGold = normalizeParameter("bountyGold", player.bountyGold, 400 * timeFactor)
+    private fun calculatePerformanceScore(player: ParticipantsNew, weights: AllBaseWeight): Double {
+        val kda = normalizeParameter("kda", player.kda, false)
+        val multiKills = normalizeParameter("multiKills", player.kills4 * 0.4 + player.kills5, false)
+        val damagePerMinute = normalizeParameter("damagePerMinute", player.damagePerMinute, true)
+        val damageSelfMitigated = normalizeParameter("damageSelfMitigated", player.damageSelfMitigated, true)
+        val killParticipation = normalizeParameter("killParticipation", player.killParticipation, false)
+        val totalHealsOnTeammates = normalizeParameter("totalHealsOnTeammates", player.totalHealsOnTeammates, true)
+        val timeCCingOthers = normalizeParameter("timeCCingOthers", player.timeCCingOthers, true)
+        val goldPerMinute = normalizeParameter("goldPerMinute", player.goldPerMinute, true)
+        val minionsKilled = normalizeParameter("minionsKilled", player.totalMinionsKilled, true)
+        val survivedLowHP = normalizeParameter("survivedLowHP", player.survivedSingleDigitHpCount + player.tookLargeDamageSurvived, true)
+        val skillAccuracy = normalizeParameter("skillAccuracy", player.skillshotsHit - player.skillshotsDodged, true)
+        val outnumberedFights = normalizeParameter("outnumberedFights", player.outnumberedKills * 1.5 + player.soloKills * 0.3, true)
+        val saveAllyFromDeath = normalizeParameter("saveAllyFromDeath", player.saveAllyFromDeath, true)
+        val bountyGold = normalizeParameter("bountyGold", player.bountyGold, true)
 
         // Взвешенная сумма всех параметров
-        return (kda * weights["kda"]!! +
-                multiKills * weights["multiKills"]!! +
-                damagePerMinute * weights["damagePerMinute"]!! +
-                damageSelfMitigated * weights["damageSelfMitigated"]!! +
-                killParticipation * weights["killParticipation"]!! +
-                totalHealsOnTeammates * weights["totalHealsOnTeammates"]!! +
-                timeCCingOthers * weights["timeCCingOthers"]!! +
-                goldPerMinute * weights["goldPerMinute"]!! +
-                turretTakedowns * weights["turretTakedowns"]!! +
-                minionsKilled * weights["minionsKilled"]!! +
-                survivedLowHP * weights["survivedLowHP"]!! +
-                skillAccuracy * weights["skillAccuracy"]!! +
-                outnumberedFights * weights["outnumberedFights"]!! +
-                saveAllyFromDeath * weights["saveAllyFromDeath"]!! +
-                bountyGold * weights["bountyGold"]!!
+        return (kda * weights.getModByName("kda") +
+                multiKills * weights.getModByName("multiKills") +
+                damagePerMinute * weights.getModByName("damagePerMinute") +
+                damageSelfMitigated * weights.getModByName("damageSelfMitigated") +
+                killParticipation * weights.getModByName("killParticipation") +
+                totalHealsOnTeammates * weights.getModByName("totalHealsOnTeammates") +
+                timeCCingOthers * weights.getModByName("timeCCingOthers") +
+                goldPerMinute * weights.getModByName("goldPerMinute") +
+                minionsKilled * weights.getModByName("minionsKilled") +
+                survivedLowHP * weights.getModByName("survivedLowHP") +
+                skillAccuracy * weights.getModByName("skillAccuracy") +
+                outnumberedFights * weights.getModByName("outnumberedFights") +
+                saveAllyFromDeath * weights.getModByName("saveAllyFromDeath") +
+                bountyGold * weights.getModByName("bountyGold")
                 )
     }
 
-    private fun normalizeParameter(paramName: String, paramValue: Number, maxValue: Double): Double {
-        val normalStat = normalize(paramValue.toDouble().to1Digits(), maxValue.to1Digits()).to1Digits()
-        textAllResult += "[$paramName]:{normalized: $normalStat, stock: ${paramValue.toDouble().to1Digits()}, need:${maxValue.to1Digits()}}; "
+    private fun normalizeParameter(paramName: String, paramValue: Number, needTimeFactor: Boolean): Double {
+        val factor = if (needTimeFactor) timeFactor else 1.0
+        val normalStat = normalize(paramValue.toDouble().to1Digits(), allBaseWeight.getMaxByName(paramName) * factor).to1Digits()
+        textAllResult += "[$paramName]:{normalized: $normalStat, stock: ${paramValue.toDouble().to1Digits()}, need:${(allBaseWeight.getMaxByName(paramName) * factor).to1Digits()}}; "
         return normalStat
     }
 
@@ -290,10 +310,12 @@ class Calc_MMRv3(match: Matches) {
      */
     private fun calculateMatchGrade(performanceScore: Double): String {
         return when {
-            performanceScore >= 9 -> "S+"
-            performanceScore >= 8 -> "S"
-            performanceScore >= 7 -> "S-"
-            performanceScore >= 6 -> "A"
+            performanceScore >= 11 -> "S+"
+            performanceScore >= 10 -> "S"
+            performanceScore >= 9 -> "S-"
+            performanceScore >= 8 -> "A+"
+            performanceScore >= 7 -> "A"
+            performanceScore >= 6 -> "A-"
             performanceScore >= 5 -> "B"
             performanceScore >= 4 -> "C"
             else -> "D"
@@ -337,6 +359,7 @@ data class AramMatchResult(
     val gameLength: Int,                                // Продолжительность игры
     val lolName: String,
     val lolChampion: String,
+    val match: Matches,
     val textResult: String,                             // Результат всех вычислений как текст
 ) {
     override fun toString(): String {
@@ -348,8 +371,23 @@ data class AramMatchResult(
                 "rank='$rank', " +
                 "detectedRole='$detectedRole', " +
                 "gameLength=$gameLength, " +
+                "matchId=${match.matchId}, " +
                 "lolName=$lolName, " +
                 "lolChampion=$lolChampion, " +
                 "textResult='${textResult.split(";").joinToString("\t\n")}')"
+    }
+
+    fun toStringLow(): String {
+        return "AramMatchResult(" +
+                "newMMR=$newMMR, " +
+                "mmrChange=$mmrChange, " +
+                "performanceScore=$performanceScore, " +
+                "matchGrade='$matchGrade', " +
+                "rank='$rank', " +
+                "detectedRole='$detectedRole', " +
+                "gameLength=$gameLength, " +
+                "matchId=${match.matchId}, " +
+                "lolName=$lolName, " +
+                "lolChampion=$lolChampion)\n\n"
     }
 }

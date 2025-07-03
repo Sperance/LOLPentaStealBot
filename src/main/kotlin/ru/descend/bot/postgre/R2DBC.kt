@@ -47,7 +47,7 @@ private val connectionFactory: ConnectionFactoryOptions = ConnectionFactoryOptio
     .option(ConnectionFactoryOptions.DATABASE, "postgres2")
     .build()
 
-val db = R2dbcDatabase(connectionFactory, executionOptions = ExecutionOptions(queryTimeoutSeconds = 300, suppressLogging = true))
+val db = R2dbcDatabase(connectionFactory, executionOptions = ExecutionOptions(queryTimeoutSeconds = 180, suppressLogging = true))
 
 /**
  * https://www.komapper.org/docs/
@@ -56,13 +56,12 @@ object R2DBC {
     val stockHEROES = WorkData<Heroes>("HEROES")
     val stockMMR = WorkData<MMRs>("MMR")
 
-    suspend fun runTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction { body.invoke(it) }
-    suspend fun runStrongTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction(transactionAttribute = TransactionAttribute.REQUIRES_NEW) { body.invoke(it) }
+    suspend fun runTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction(transactionAttribute = TransactionAttribute.REQUIRES_NEW) { body.invoke(it) }
 
-    suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
+    suspend fun <T> runQuery(query: Query<T>) = db.withTransaction(transactionAttribute = TransactionAttribute.REQUIRES_NEW) { db.runQuery { query } }
     suspend fun <T> runQuery(block: QueryScope.() -> Query<T>) =
         db.withTransaction(
-//            transactionAttribute = TransactionAttribute.REQUIRED,
+            transactionAttribute = TransactionAttribute.REQUIRES_NEW,
 //            transactionProperty = TransactionProperty.LockWaitTime(Duration.ofMinutes(2))
         ) {
             val query = block(QueryScope)

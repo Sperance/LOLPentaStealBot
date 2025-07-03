@@ -1,7 +1,7 @@
 import java.util.Properties
 
 group = "ru.descend"
-version = "2.1.0"
+version = "3.0.0"
 description = "Unofficial Bot for League of Legends"
 
 plugins {

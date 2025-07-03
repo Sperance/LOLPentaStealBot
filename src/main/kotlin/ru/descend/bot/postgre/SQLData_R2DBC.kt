@@ -52,7 +52,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     var isHaveLastARAM = false
     var isNeedUpdateDays = false
-    var olderDateLong = Date().time.toLocalDate().minusDays(DAYS_MIN_IN_LOAD).toDate().time
+    private var olderDateLong = Date().time.toLocalDate().minusDays(DAYS_MIN_IN_LOAD).toDate().time
     private var currentDateLong = Date().time
     val atomicIntLoaded = AtomicInteger()
     val atomicNeedUpdateTables = AtomicBoolean(true)
@@ -94,9 +94,7 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     suspend fun getSavedParticipants() : ArrayList<statMainTemp_r2> {
         val arraySavedParticipants = ArrayList<statMainTemp_r2>()
         measureBlock(EnumMeasures.QUERY, "get_player_stats_param") {
-            printLog("editMessageGlobalStatisticContent 10")
             R2DBC.runQuery {
-                printLog("editMessageGlobalStatisticContent 11")
                 QueryDsl.fromTemplate("SELECT * FROM get_player_stats_param()").select {
                     val id = it.int("id")?:0
                     val games = it.int("games")?:0
@@ -168,25 +166,6 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             val newMatch = Calc_AddMatch(this@SQLData_R2DBC, match)
             newMatch.calculate()
         }
-    }
-
-    suspend fun getWinStreak() : HashMap<Int, Int> {
-        val tempMapWinStreak = HashMap<Int, Int>()
-        measureBlock(EnumMeasures.QUERY, "get_streak_results_param") {
-            R2DBC.runQuery {
-                QueryDsl.fromTemplate("SELECT * FROM get_streak_results_param()").select { row ->
-                    val pers = row.int("PERS")?:-1
-                    val res = row.int("RES")?:0
-                    val ZN = row.string("ZN")?:""
-                    when (ZN) {
-                        "+" -> tempMapWinStreak[pers] = res
-                        "-" -> tempMapWinStreak[pers] = -res
-                        else -> Unit
-                    }
-                }
-            }
-        }
-        return tempMapWinStreak
     }
 
     suspend fun loadMatches(lols: Collection<LOLs>, count: Int) {

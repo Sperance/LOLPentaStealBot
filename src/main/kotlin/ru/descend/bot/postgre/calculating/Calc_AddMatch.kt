@@ -24,6 +24,7 @@ import ru.descend.bot.printLogMMR
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormatDate
+import ru.descend.kotlintelegrambot.handlers.listening_data_array
 import kotlin.math.abs
 
 data class Calc_AddMatch (
@@ -100,9 +101,8 @@ data class Calc_AddMatch (
                     LOL_riotIdTagline = part.riotIdTagline,
                     LOL_summonerLevel = part.summonerLevel,
                     LOL_region = pMatch.getRegionValue(),
-                    profile_icon = part.profileIcon,
-                    match_date_last = pMatch.matchDateEnd).create(LOLs::LOL_puuid).result
-            } else if (!curLOL.isBot() && curLOL.isNeedUpdate(pMatch, part)) {
+                    profile_icon = part.profileIcon).create(LOLs::LOL_puuid).result
+            } else if (!curLOL.isBot()) {
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
                 curLOL.LOL_region = pMatch.getRegionValue()
                 curLOL.LOL_summonerId = part.summonerId
@@ -110,15 +110,12 @@ data class Calc_AddMatch (
                 if (newName != "null") curLOL.LOL_riotIdName = newName
                 curLOL.LOL_summonerLevel = part.summonerLevel
                 curLOL.profile_icon = part.profileIcon
-                curLOL.match_date_last = pMatch.matchDateEnd
-                curLOL = curLOL.update()
-            } else if (!curLOL.isBot() && pMatch.matchDateEnd > curLOL.match_date_last) {
-                curLOL.match_date_last = pMatch.matchDateEnd
                 curLOL = curLOL.update()
             }
 
             lastLolsList.add(curLOL)
-            if (pMatch.isNeedCalcStats()) arrayNewParts.add(ParticipantsNew(part, pMatch, curLOL))
+            if (pMatch.isNeedCalcStats() && sqlData.getKORDLOL().find { kl -> kl.LOL_id == curLOL.id } != null)
+                arrayNewParts.add(ParticipantsNew(part, pMatch, curLOL))
         }
 
         if (pMatch.isNeedCalcStats()) {
@@ -132,28 +129,24 @@ data class Calc_AddMatch (
     private suspend fun calculateMMR(pMatch: Matches, lastPartList: List<ParticipantsNew>, lastLolsList: List<LOLs>) {
         val calcv3 = Calc_MMRv3(pMatch)
         val arrayKORDmmr = ArrayList<Pair<LOLs, ParticipantsNew>>()
-        if (pMatch.isNeedCalcMMR()) {
-            lastLolsList.forEach {
-                val finededPart = lastPartList.find { par -> par.LOLperson_id == it.id }
-                if (finededPart != null) {
-                    arrayKORDmmr.add(Pair(it, finededPart))
-                }
-            }
-//            printLog("arrayKORDmmr1: ${arrayKORDmmr.joinToString("\n")}")
-            calcMMR20(pMatch, arrayKORDmmr)
-//            printLog("arrayKORDmmr2: ${arrayKORDmmr.joinToString("\n")}")
-            calcv3.calculateTOPstats(arrayKORDmmr.map { it.second })
-//            printLog("arrayKORDmmr3: ${arrayKORDmmr.joinToString("\n")}")
-            arrayKORDmmr.forEach {
-                val veResult = calcv3.calculateNewMMR(it.second, 0.0, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win, pMatch)
-
-                it.first.update()
-                it.second.update()
-
-                printLog("Результат: $veResult")
-                printLogMMR("Результат: $veResult")
+        lastLolsList.forEach {
+            val finededPart = lastPartList.find { par -> par.LOLperson_id == it.id }
+            if (finededPart != null) {
+                arrayKORDmmr.add(Pair(it, finededPart))
             }
         }
+        calcMMR20(pMatch, arrayKORDmmr)
+        calcv3.calculateTOPstats(arrayKORDmmr.map { it.second })
+        var strToTelegram = ""
+        arrayKORDmmr.forEach {
+            val veResult = calcv3.calculateNewMMR(it.second, 0.0, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win)
+            it.first.update()
+            it.second.update()
+            strToTelegram += veResult.toStringLow()
+            printLogMMR("Результат: $veResult")
+        }
+        listening_data_array.add(strToTelegram)
+        printLog("DATA SIZE: ${listening_data_array.size} Last len: ${listening_data_array.last().length}")
     }
 
     private fun calcMMR20(pMatch: Matches, data: ArrayList<Pair<LOLs, ParticipantsNew>>) {

@@ -1,6 +1,5 @@
 package ru.descend.bot
 
-import dev.kord.common.annotation.KordPreview
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions
 import dev.kord.common.entity.PresenceStatus
@@ -9,13 +8,17 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.getChannelOf
 import dev.kord.core.entity.Guild
 import dev.kord.core.entity.channel.TextChannel
-import dev.kord.gateway.ALL
+import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.builder.message.embed
 import dev.kord.rest.builder.message.modify.UserMessageModifyBuilder
 import dev.kord.x.emoji.Emojis
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
 import org.komapper.core.dsl.QueryDsl
@@ -34,14 +37,45 @@ import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
+import ru.descend.kotlintelegrambot.Bot
+import ru.descend.kotlintelegrambot.dispatch
+import ru.descend.kotlintelegrambot.dispatcher.telegramError
+import ru.descend.kotlintelegrambot.handlers.handleButtons
+import ru.descend.kotlintelegrambot.handlers.handleCommands
+import ru.descend.kotlintelegrambot.handlers.handleMMRstat
+import ru.descend.kotlintelegrambot.handlers.handleOthers
 import java.awt.Color
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(PrivilegedIntent::class)
-@KordPreview
 fun main() {
+    printLog("server start")
+
+    val scope = CoroutineScope(Dispatchers.IO)
+
+    scope.launch {
+        printLog("startDiscordBot")
+        startDiscordBot()
+    }
+
+    scope.launch {
+        printLog("startTelegramBot")
+        startTelegramBot()
+    }
+
+    // Добавляем обработчик завершения (например, по Ctrl+C)
+    Runtime.getRuntime().addShutdownHook(Thread {
+        scope.cancel("server shutdown")
+        printLog("server shutdown")
+    })
+
+    // Блокируем основной поток
+    Thread.currentThread().join()
+}
+
+@OptIn(PrivilegedIntent::class)
+private fun startDiscordBot() {
     bot(catchToken()[0]) {
         prefix {
             "ll."
@@ -54,8 +88,8 @@ fun main() {
             deleteInvocation = true
             dualRegistry = true
             commandReaction = Emojis.adult
+            intents = Intents(Intent.GuildMembers, Intent.GuildModeration, Intent.Guilds)
             theme = Color(0x00B92F)
-            intents = Intents.ALL
             defaultPermissions = Permissions(Permission.UseApplicationCommands)
         }
         onException {
@@ -70,9 +104,6 @@ fun main() {
             stackTraceRecovery = true
         }
         onStart {
-
-            System.setProperty("logging.level.io.r2dbc.postgresql.client.ReactorNettyClient", "OFF")
-
             R2DBC.initialize()
             kord.guilds.collect {
                 val guilds = R2DBC.getGuild(it)
@@ -83,10 +114,28 @@ fun main() {
 
                 timerRequestReset((2).minutes)
                 timerMainInformation(it, (121).seconds)
-//                timerRealtimeInformation(it, (5).minutes, skipFirst = true)
             }
         }
     }
+}
+
+lateinit var telegram_bot: Bot
+
+private fun startTelegramBot() {
+    telegram_bot = ru.descend.kotlintelegrambot.bot {
+        timeout = 60
+        dispatch {
+            handleButtons()
+            handleCommands()
+            handleOthers()
+            handleMMRstat()
+
+            telegramError {
+                printLog("Telegram error: " + error.getErrorMessage())
+            }
+        }
+    }
+    telegram_bot.startPolling()
 }
 
 val mapMainData = HashMap<Guild, SQLData_R2DBC>()
@@ -132,34 +181,24 @@ var statusLOLRequests = 0
 suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.onCalculateTimer()
 
-    printLog("showLeagueHistory --- start", false)
     measureBlock(EnumMeasures.BLOCK, "showLeagueHistory Matches") {
         launch {
             val arraySaveds = sqlData.dataSavedLOL.get()
             sqlData.loadMatches(arraySaveds, LOAD_SAVED_USER_MATCHES)
             sqlData.clearTempData()
-            printLog("showLeagueHistory --- cleared team", false)
         }.join()
     }
-    printLog("showLeagueHistory --- completed", false)
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
     launch {
         //Таблица Главная - ID никнейм серияпобед
-        printLog("MessageMainDataContent --- start", false)
         launch {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
-                printLog("MessageMainDataContent --- in1", false)
                 editMessageMainDataContent(it, sqlData)
-                printLog("MessageMainDataContent --- in2", false)
             }) {
-                printLog("MessageMainDataContent --- out1", false)
                 createMessageMainData(channelText, sqlData)
-                printLog("MessageMainDataContent --- out2", false)
             }
         }.join()
-        printLog("MessageMainDataContent --- end", false)
-        printLog("MessageAramMMRDataContent --- start", false)
         //Таблица ММР - все про ММР арама
         launch {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, "MessageAramMMRDataContent", {
@@ -168,8 +207,6 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
                 createMessageAramMMRData(channelText, sqlData)
             }
         }.join()
-        printLog("MessageAramMMRDataContent --- end", false)
-        printLog("MessageGlobalStatisticContent --- start", false)
         //Таблица по играм\винрейту\сериям убийств
         launch {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, "MessageGlobalStatisticContent", {
@@ -178,30 +215,23 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
                 createMessageGlobalStatistic(channelText, sqlData)
             }
         }.join()
-        printLog("MessageGlobalStatisticContent --- end", false)
         //Таблица по Мастерству ТОП3 чемпионов каждого игрока
         if (isNeedUpdateMasteries(channelText, sqlData)) {
-            printLog("MessageMasteriesContent --- start", false)
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, "MessageMasteriesContent", {
                 editMessageMasteriesContent(it, sqlData)
             }) {
                 createMessageMasteries(channelText, sqlData)
             }
-            printLog("MessageMasteriesContent --- end", false)
         }
         //Таблица по ТОП чемпионам сервера
         if (isNeedUpdateTop(channelText, sqlData)) {
-            printLog("MessageTopContent --- start", false)
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, "MessageTopContent", {
                 editMessageTopContent(it, sqlData)
             }) {
                 createMessageTop(channelText, sqlData)
             }
-            printLog("MessageTopContent --- end", false)
         }
     }.join()
-
-    printLog("LeagueHistory --- end", false)
 
     sqlData.dataKORDLOL.clear()
     sqlData.dataKORD.clear()
@@ -233,7 +263,6 @@ suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, measu
             createBody.invoke()
         } else {
             val message = channelText.getMessageOrNull(Snowflake(messageId))
-            printLog("[$measuredText] finded message: ${message?.id}", false)
             message?.edit { editBody.invoke(this) } ?: createBody.invoke()
         }
     }
@@ -415,6 +444,7 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
 //    val sizeMatches = Matches().getSize()
 //    val sizeLOLs = LOLs().getSize()
 //    val sizeParticipants = ParticipantsNew().getSize()
+    printLog("start EDITMAINMESSAGE")
     val sizeHeroes = R2DBC.stockHEROES.get().size
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
@@ -425,18 +455,16 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
     contentText += "* Версия игры: ${LeagueMainObject.LOL_VERSION}\n"
     builder.content = contentText
 
-    if (!sqlData.atomicNeedUpdateTables.get()) return
-
+    printLog("start GETKORDLOL")
     val data = sqlData.getKORDLOL()
     data.sortBy { it.showCode }
 
     val charStr = "/"
-    val wStreak = sqlData.getWinStreak()
     val curLOLlist = LOLs().getData({ tbl_lols.id.inList(data.map { dat -> dat.LOL_id }) })
 
     val mainDataList1 = (data.map { formatInt(it.showCode, 2) + charStr + it.asUser(sqlData).lowDescriptor() })
     val mainDataList2 = (data.map { curLOLlist.find { lol -> lol.id == it.LOL_id }?.getCorrectNameWithTag()?.toMaxSymbols(18, "..") })
-    val mainDataList3 = (data.map { wStreak[it.LOL_id] })
+
     builder.embed {
         field {
             name = "ID/User"
@@ -446,11 +474,6 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
         field {
             name = "Nickname"
             value = mainDataList2.joinToString(separator = "\n")
-            inline = true
-        }
-        field {
-            name = "WinStreak"
-            value = mainDataList3.joinToString(separator = "\n")
             inline = true
         }
     }

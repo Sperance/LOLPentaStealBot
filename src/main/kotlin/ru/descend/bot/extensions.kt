@@ -71,15 +71,11 @@ suspend fun <T> measureBlock(enum: EnumMeasures, text: String, block: suspend ()
         callsInPlace(block, InvocationKind.EXACTLY_ONCE)
     }
     val start = System.currentTimeMillis()
+    printLog("[measureBlock::${enum.name}]START - $text")
     val resT = block()
     val result = System.currentTimeMillis() - start
-    val addText = when (enum) {
-        EnumMeasures.METHOD -> "[{METHOD} "
-        EnumMeasures.QUERY -> "\t[{QUERY} "
-        EnumMeasures.BLOCK -> "["
-    }
+    printLog("[measureBlock::${enum.name}]END - $text :: ${result.milliseconds}")
 
-    printLog("$addText$text :: ${result.milliseconds}]")
     return resT
 }
 
