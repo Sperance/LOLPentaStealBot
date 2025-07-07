@@ -9,7 +9,6 @@ import org.komapper.core.dsl.metamodel.getAutoIncrementProperty
 import org.komapper.core.dsl.operator.count
 import org.komapper.core.dsl.query.singleOrNull
 import ru.descend.bot.postgre.R2DBC
-import ru.descend.bot.postgre.db
 import ru.descend.bot.printLog
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.full.createInstance
@@ -55,7 +54,7 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.update(show
     if (before == this) return before as TYPE
     if (before == null) return this@update.create(null) as TYPE
 
-    val result = db.runQuery { QueryDsl.update(metaTable).single(this@update) }
+    val result = R2DBC.runQuery { QueryDsl.update(metaTable).single(this@update) }
     val stringUpdated = calculateUpdate(before, result)
 
     if (showLog) printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}] $this} {$stringUpdated}")
@@ -74,10 +73,8 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kPro
 
     if (kProperty1 != null) {
         val metaProperty = metaTable.properties().find { it.name == kProperty1.name } as PropertyMetamodel<Any, Any, META>
-        val already = db.runQuery {
-            QueryDsl.from(metaTable)
-                .where { metaProperty eq kProperty1.get(this@create) }
-                .singleOrNull()
+        val already = R2DBC.runQuery {
+            QueryDsl.from(metaTable).where { metaProperty eq kProperty1.get(this@create) }.singleOrNull()
         }
 
         if (already != null) {
@@ -85,7 +82,7 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.create(kPro
         }
     }
 
-    val result = db.runQuery { QueryDsl.insert(metaTable).single(this@create) }
+    val result = R2DBC.runQuery { QueryDsl.insert(metaTable).single(this@create) }
     printLog("[${this::class.java.simpleName}::${Thread.currentThread().stackTrace[1].methodName}]$appendText $result")
     return CoreResult(bit = true, result = result as TYPE)
 }
@@ -106,45 +103,21 @@ suspend fun <META : EntityMetamodel<Any, Any, META>> Any.delete() {
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getData(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : List<TYPE> {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    return if (sortExpression == null) db.runQuery { QueryDsl.from(metaTable).where(whereExpr) } as List<TYPE>
-    else db.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression) } as List<TYPE>
+    return if (sortExpression == null) R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr) } as List<TYPE>
+    else R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression) } as List<TYPE>
 }
 
 @Suppress("UNCHECKED_CAST")
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getDataOne(declaration: WhereDeclaration? = null, sortExpression: SortExpression? = null) : TYPE? {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr: WhereDeclaration = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    return if (sortExpression == null) db.runQuery { QueryDsl.from(metaTable).where(whereExpr).singleOrNull() } as TYPE?
-    else db.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression).singleOrNull() } as TYPE?
+    return if (sortExpression == null) R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).singleOrNull() } as TYPE?
+    else R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).orderBy(sortExpression).singleOrNull() } as TYPE?
 }
 
 @Suppress("UNCHECKED_CAST")
 suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.getSize(declaration: WhereDeclaration? = null) : Long {
     val metaTable = getInstanceClassForTbl(this) as META
     val whereExpr: WhereDeclaration = declaration ?: {metaTable.getAutoIncrementProperty() as PropertyMetamodel<Any, Int, Int> greaterEq 0}
-    return db.runQuery { QueryDsl.from(metaTable).where(whereExpr).select(count()) }?:0L
+    return R2DBC.runQuery { QueryDsl.from(metaTable).where(whereExpr).select(count()) }?:0L
 }
-
-//@Suppress("UNCHECKED_CAST")
-//suspend inline fun <reified TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.addBatch(list: List<TYPE>, batchSize: Int = 100, printLog: Boolean = true) : List<TYPE> {
-//    val metaTable = getInstanceClassForTbl(this) as META
-//    return db.withTransaction {
-//        val miniList = ArrayList<TYPE>()
-//        val resultedList = ArrayList<TYPE>()
-//        list.forEach { value ->
-//            miniList.add(value)
-//            if (miniList.size == batchSize) {
-//                val res = db.runQuery { QueryDsl.insert(metaTable).multiple(miniList) } as List<TYPE>
-//                resultedList.addAll(res)
-//                if (printLog) res.forEach { printLog("\t[Batch_${TYPE::class.java.simpleName}::save] $it", false) }
-//                miniList.clear()
-//            }
-//        }
-//        if (miniList.isNotEmpty()) {
-//            val res = db.runQuery { QueryDsl.insert(metaTable).multiple(miniList) } as List<TYPE>
-//            resultedList.addAll(res)
-//            if (printLog) res.forEach { printLog("\t[Batch_${TYPE::class.java.simpleName}::save] $it", false) }
-//        }
-//        resultedList
-//    }
-//}

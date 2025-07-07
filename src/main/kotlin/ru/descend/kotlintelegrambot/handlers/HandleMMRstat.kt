@@ -20,13 +20,13 @@ val listening_data_array = ArrayList<String>()
 var last_date_loaded_matches: Date? = null
 
 fun Dispatcher.handleMMRstat() {
-    command("testListening") {
+    command("listening_test") {
         listening_data_array.add("TestStr ${System.currentTimeMillis()}")
     }
-    command("listeningStatus") {
+    command("listening_status") {
         bot.sendMessage(ChatId.fromId(message.chat.id), "Статус: $global_listening_counter. Job: ${listeningJob?.isActive}. Last loaded: $last_date_loaded_matches")
     }
-    command("startListening") {
+    command("listening_start") {
         if (global_listening_counter != 0) {
             bot.sendMessage(ChatId.fromId(message.chat.id), "Слушатель матчей уже запущен (чат $global_listeting_chat). Повторный запуск отменён")
         } else {
@@ -54,7 +54,7 @@ fun Dispatcher.handleMMRstat() {
             }
         }
     }
-    command("stopListening") {
+    command("listening_stop") {
         if (global_listening_counter > 0) {
             global_listening_counter--
             listeningJob?.cancel()

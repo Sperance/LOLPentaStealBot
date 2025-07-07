@@ -177,18 +177,18 @@ class Calc_MMRv3(private val match: Matches) {
         allBaseWeight.changeByRole(detectedRole)
 
         val topStats = getTopsFromParticipant(player)
-        textAllResult += "[topStats]:{$topStats}; "
+        textAllResult += "[topStats]:{$topStats, count:${topStats.count { it == ';' }}}; "
 
         // Расчет Performance Score
         var performanceScore = (calculatePerformanceScore(player, allBaseWeight) + topStats.count { it == ';' } * 0.3).to1Digits()
-        if (detectedRole == "USELESS") performanceScore -= 1.0
 
         val oldRank = determineRank(currentMMR)
+        val winMatchModificator = 0.5
         val rankModifier = if (matchResult) {
-            performanceScore += 1.0
+            performanceScore += winMatchModificator
             oldRank.winModifier
         } else {
-            performanceScore -= 1.0
+            performanceScore -= winMatchModificator
             oldRank.loseModifier
         }
         performanceScore = performanceScore.to1Digits()

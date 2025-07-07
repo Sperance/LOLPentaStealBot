@@ -90,7 +90,7 @@ data class Calc_AddMatch (
 
         val curLOLs = LOLs().getData({ tbl_lols.LOL_puuid.inList(arrayHeroName.map { it.puuid }) })
         val arrayNewParts = ArrayList<ParticipantsNew>()
-        val lastLolsList = ArrayList<LOLs>()
+        val lolsAll = ArrayList<LOLs>()
         match.info.participants.forEach {part ->
             var curLOL = curLOLs.find { it.LOL_puuid == part.puuid }
 
@@ -102,7 +102,7 @@ data class Calc_AddMatch (
                     LOL_riotIdTagline = part.riotIdTagline,
                     LOL_summonerLevel = part.summonerLevel,
                     LOL_region = pMatch.getRegionValue(),
-                    profile_icon = part.profileIcon).create(LOLs::LOL_puuid).result
+                    profile_icon = part.profileIcon)
             } else if (!curLOL.isBot()) {
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
                 curLOL.LOL_region = pMatch.getRegionValue()
@@ -111,17 +111,20 @@ data class Calc_AddMatch (
                 if (newName != "null") curLOL.LOL_riotIdName = newName
                 curLOL.LOL_summonerLevel = part.summonerLevel
                 curLOL.profile_icon = part.profileIcon
-                curLOL = curLOL.update()
             }
 
-            lastLolsList.add(curLOL)
+            lolsAll.add(curLOL)
+
             if (pMatch.isNeedCalcStats() && sqlData.getKORDLOL().find { kl -> kl.LOL_id == curLOL.id } != null)
                 arrayNewParts.add(ParticipantsNew(part, pMatch, curLOL))
         }
 
+        val batchCreatedLols = db.runQuery { QueryDsl.insert(tbl_lols).onDuplicateKeyUpdate().multiple(lolsAll) }
+        printLog("[ADD_MATCH] LOLS batch created: $batchCreatedLols")
+
         if (pMatch.isNeedCalcStats()) {
             val lastPartList = db.runQuery { QueryDsl.insert(tbl_participantsnew).multiple(arrayNewParts) }
-            calculateMMR(pMatch, lastPartList, lastLolsList)
+            calculateMMR(pMatch, lastPartList, lolsAll)
         }
 
         return pMatch

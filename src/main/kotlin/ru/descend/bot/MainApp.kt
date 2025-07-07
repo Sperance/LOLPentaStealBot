@@ -23,6 +23,7 @@ import me.jakejmattson.discordkt.util.TimeStamp
 import org.komapper.core.dsl.QueryDsl
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.datas.getData
+import ru.descend.bot.datas.getSize
 import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.update
@@ -36,7 +37,9 @@ import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
+import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
+import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
 import ru.descend.kotlintelegrambot.Bot
 import ru.descend.kotlintelegrambot.dispatch
@@ -88,6 +91,7 @@ val atomicNeedUpdateTables = AtomicBoolean(true)
 var sql_data_initialized = false
 
 private fun startLoadingMatches() = launch {
+    delay((10).seconds)
     while (true) {
         if (sql_data_initialized) {
             val kordLol_lol_id = KORDLOLs().getData().map { it.LOL_id }
@@ -176,17 +180,13 @@ fun timerRequestReset(duration: Duration) = launch {
     }
 }
 
-fun timerMainInformation(duration: Duration, skipFirst: Boolean = false) = launch {
-    var skipped = skipFirst
+fun timerMainInformation(duration: Duration) = launch {
     while (true) {
+        printLog("[showLeagueHistory::${sqlData.guildSQL.botChannelId}]")
         if (sqlData.guildSQL.botChannelId.isNotEmpty()) {
-            if (!skipped) {
-                showLeagueHistory(sqlData)
-                garbaceCollect()
-                printMemoryUsage()
-            } else {
-                skipped = true
-            }
+            showLeagueHistory(sqlData)
+//            garbaceCollect()
+            printMemoryUsage()
         }
         delay(duration)
     }
@@ -211,32 +211,33 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.onCalculateTimer()
 
     val channelText: TextChannel = sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId))
+
+    //Таблица Главная - ID никнейм серияпобед
     launch {
-        //Таблица Главная - ID никнейм серияпобед
-        launch {
-            editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
-                editMessageMainDataContent(it, sqlData)
-            }) {
-                createMessageMainData(channelText, sqlData)
-            }
-        }.join()
-        //Таблица ММР - все про ММР арама
-        launch {
-            editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, "MessageAramMMRDataContent", {
-                editMessageAramMMRDataContent(it, sqlData)
-            }) {
-                createMessageAramMMRData(channelText, sqlData)
-            }
-        }.join()
-        //Таблица по играм\винрейту\сериям убийств
-        launch {
-            editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, "MessageGlobalStatisticContent", {
-                editMessageGlobalStatisticContent(it, sqlData)
-            }) {
-                createMessageGlobalStatistic(channelText, sqlData)
-            }
-        }.join()
-        //Таблица по Мастерству ТОП3 чемпионов каждого игрока
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
+            editMessageMainDataContent(it, sqlData)
+        }) {
+            createMessageMainData(channelText, sqlData)
+        }
+    }.join()
+    //Таблица ММР - все про ММР арама
+    launch {
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, "MessageAramMMRDataContent", {
+            editMessageAramMMRDataContent(it, sqlData)
+        }) {
+            createMessageAramMMRData(channelText, sqlData)
+        }
+    }.join()
+    //Таблица по играм\винрейту\сериям убийств
+    launch {
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, "MessageGlobalStatisticContent", {
+            editMessageGlobalStatisticContent(it, sqlData)
+        }) {
+            createMessageGlobalStatistic(channelText, sqlData)
+        }
+    }.join()
+    //Таблица по Мастерству ТОП3 чемпионов каждого игрока
+    launch {
         if (isNeedUpdateMasteries(channelText, sqlData)) {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, "MessageMasteriesContent", {
                 editMessageMasteriesContent(it, sqlData)
@@ -244,7 +245,9 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
                 createMessageMasteries(channelText, sqlData)
             }
         }
-        //Таблица по ТОП чемпионам сервера
+    }.join()
+    //Таблица по ТОП чемпионам сервера
+    launch {
         if (isNeedUpdateTop(channelText, sqlData)) {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, "MessageTopContent", {
                 editMessageTopContent(it, sqlData)
@@ -253,6 +256,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
             }
         }
     }.join()
+    printLog("[showLeagueHistory::completed]")
 
     sqlData.dataKORDLOL.clear()
     sqlData.dataKORD.clear()
@@ -462,16 +466,16 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 }
 
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
-//    val sizeMatches = Matches().getSize()
-//    val sizeLOLs = LOLs().getSize()
-//    val sizeParticipants = ParticipantsNew().getSize()
+    val sizeMatches = Matches().getSize()
+    val sizeLOLs = LOLs().getSize()
+    val sizeParticipants = ParticipantsNew().getSize()
     printLog("start EDITMAINMESSAGE")
     val sizeHeroes = R2DBC.stockHEROES.get().size
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
-//    contentText += "* Матчей: $sizeMatches\n"
-//    contentText += "* Игроков: $sizeLOLs\n"
-//    contentText += "* Данных (строк): ~${sizeParticipants + sizeMatches + sizeLOLs}\n"
+    contentText += "* Матчей: $sizeMatches\n"
+    contentText += "* Игроков: $sizeLOLs\n"
+    contentText += "* Данных (строк): ~${sizeParticipants + sizeMatches + sizeLOLs}\n"
     contentText += "* Чемпионов: $sizeHeroes\n"
     contentText += "* Версия игры: ${LeagueMainObject.LOL_VERSION}\n"
     builder.content = contentText

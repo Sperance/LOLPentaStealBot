@@ -34,12 +34,8 @@ data class Matches(
         if (surrender) return false
         if (aborted) return false
         if (matchDuration < (60 * 8)) return false
-        return true
-    }
-
-    fun isNeedCalcMMR() : Boolean {
         if (matchMode != "ARAM") return false
-        return isNeedCalcStats()
+        return true
     }
 
     companion object {
