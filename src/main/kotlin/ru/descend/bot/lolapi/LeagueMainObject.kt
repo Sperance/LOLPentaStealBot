@@ -78,7 +78,7 @@ object LeagueMainObject {
             is Result.Success -> { res.data }
             is Result.Error -> {
                 statusLOLRequests = 1
-                val messageError = "catchMatchID failure: ${res.message} puuid: ${lol.LOL_puuid} start: $start count: $count"
+                val messageError = "catchMatchID failure: ${res.message} lol_id: ${lol.id} puuid: ${lol.LOL_puuid}"
                 printLog(messageError)
                 writeLog(messageError)
 

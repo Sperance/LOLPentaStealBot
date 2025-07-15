@@ -56,7 +56,7 @@ fun printLog(message: Any, writeToFile: Boolean = true){
 fun printLogMMR(message: Any, writeToFile: Boolean = true){
     val curDTime = System.currentTimeMillis().toFormatDateTime()
     val lastText = "[$curDTime] $message"
-    println(lastText)
+//    println(lastText)
     if (writeToFile) writeTempLog(lastText)
 }
 

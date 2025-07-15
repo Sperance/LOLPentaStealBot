@@ -72,14 +72,6 @@ data class LOLs(
 
     fun isBot() = LOL_puuid.trim() == "BOT" || LOL_summonerId == "BOT" || LOL_puuid.length < 10
 
-    private fun isSameFields(match: Matches, parts: Participant) : Boolean {
-        return (LOL_region != match.getRegionValue() ||
-            LOL_riotIdTagline != parts.riotIdTagline ||
-            LOL_summonerId != parts.summonerId ||
-            LOL_riotIdName != parts.riotIdGameName ||
-            profile_icon != parts.profileIcon)
-    }
-
     fun getIconURL() : String {
         return "https://ddragon.leagueoflegends.com/cdn/$LOL_VERSION/img/profileicon/$profile_icon.png"
     }
@@ -95,6 +87,6 @@ data class LOLs(
     fun getARAMRank() = EnumARAMRank.getMMRRank(mmrAram)
 
     override fun toString(): String {
-        return "LOLs(id=$id, riotIdName=${getCorrectName()}, region=$LOL_region, mmrAram=$mmrAram, savedAram=$mmrAramSaved)"
+        return "LOLs(id=$id, riotIdName=${getCorrectNameWithTag()}, region=$LOL_region, mmrAram=$mmrAram, savedAram=$mmrAramSaved)"
     }
 }

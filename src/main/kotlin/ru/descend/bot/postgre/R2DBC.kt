@@ -58,12 +58,9 @@ object R2DBC {
 
     suspend fun runTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction(transactionAttribute = TransactionAttribute.REQUIRES_NEW) { body.invoke(it) }
 
-    suspend fun <T> runQuery(query: Query<T>) = db.withTransaction(transactionAttribute = TransactionAttribute.REQUIRES_NEW) { db.runQuery { query } }
+    suspend fun <T> runQuery(query: Query<T>) = db.withTransaction { db.runQuery { query } }
     suspend fun <T> runQuery(block: QueryScope.() -> Query<T>) =
-        db.withTransaction(
-            transactionAttribute = TransactionAttribute.REQUIRES_NEW,
-//            transactionProperty = TransactionProperty.LockWaitTime(Duration.ofMinutes(2))
-        ) {
+        db.withTransaction {
             val query = block(QueryScope)
             runQuery(query)
         }

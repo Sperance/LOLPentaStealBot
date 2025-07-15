@@ -78,6 +78,7 @@ fun main() {
     }
 
     Runtime.getRuntime().addShutdownHook(Thread {
+        telegram_bot.stopPolling()
         scope.cancel("server shutdown")
         printLog("server shutdown")
     })
@@ -91,7 +92,7 @@ val atomicNeedUpdateTables = AtomicBoolean(true)
 var sql_data_initialized = false
 
 private fun startLoadingMatches() = launch {
-    delay((10).seconds)
+    delay((30).seconds)
     while (true) {
         if (sql_data_initialized) {
             val kordLol_lol_id = KORDLOLs().getData().map { it.LOL_id }
@@ -158,11 +159,11 @@ lateinit var telegram_bot: Bot
 
 private fun startTelegramBot() {
     telegram_bot = ru.descend.kotlintelegrambot.bot {
-        timeout = 60
+        timeout = 120
         dispatch {
-            handleButtons()
-            handleCommands()
-            handleOthers()
+//            handleButtons()
+//            handleCommands()
+//            handleOthers()
             handleMMRstat()
 
             telegramError {
@@ -186,7 +187,7 @@ fun timerMainInformation(duration: Duration) = launch {
         if (sqlData.guildSQL.botChannelId.isNotEmpty()) {
             showLeagueHistory(sqlData)
 //            garbaceCollect()
-            printMemoryUsage()
+            printMemoryUsage(" [TELEGRAM: $telegram_bot]")
         }
         delay(duration)
     }
@@ -287,8 +288,12 @@ suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, measu
         if (messageId.isBlank()) {
             createBody.invoke()
         } else {
-            val message = channelText.getMessageOrNull(Snowflake(messageId))
-            message?.edit { editBody.invoke(this) } ?: createBody.invoke()
+            try {
+                val message = channelText.getMessageOrNull(Snowflake(messageId))
+                message?.edit { editBody.invoke(this) } ?: createBody.invoke()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }
@@ -469,8 +474,7 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
     val sizeMatches = Matches().getSize()
     val sizeLOLs = LOLs().getSize()
     val sizeParticipants = ParticipantsNew().getSize()
-    printLog("start EDITMAINMESSAGE")
-    val sizeHeroes = R2DBC.stockHEROES.get().size
+    val sizeHeroes = R2DBC.stockHEROES.get(true).size
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
     contentText += "* Матчей: $sizeMatches\n"
@@ -480,8 +484,7 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
     contentText += "* Версия игры: ${LeagueMainObject.LOL_VERSION}\n"
     builder.content = contentText
 
-    printLog("start GETKORDLOL")
-    val data = sqlData.getKORDLOL()
+    val data = sqlData.getKORDLOL(true)
     data.sortBy { it.showCode }
 
     val charStr = "/"

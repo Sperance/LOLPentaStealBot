@@ -1,6 +1,5 @@
 package ru.descend.bot.postgre.calculating
 
-import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.to1Digits
@@ -11,15 +10,15 @@ enum class PlayerRank(
     val winModifier: Double,
     val loseModifier: Double
 ) {
-    CHALLENGER(3000.0, 0.5, 1.3),
-    GRANDMASTER(2500.0, 0.6, 1.2),
-    MASTER(2000.0, 0.7, 1.1),
-    DIAMOND(1800.0, 0.8, 1.0),
-    PLATINUM(1500.0, 0.9, 0.9),
-    GOLD(1200.0, 1.0, 0.8),
-    SILVER(900.0, 1.1, 0.7),
-    BRONZE(600.0, 1.2, 0.6),
-    IRON(300.0, 1.3, 0.5);
+    CHALLENGER(3000.0, 0.6, 1.2),
+    GRANDMASTER(2800.0, 0.7, 1.2),
+    MASTER(2500.0, 0.7, 1.1),
+    DIAMOND(2000.0, 0.8, 1.0),
+    PLATINUM(1600.0, 0.9, 0.9),
+    GOLD(1300.0, 1.0, 0.9),
+    SILVER(900.0, 1.1, 0.8),
+    BRONZE(500.0, 1.1, 0.8),
+    IRON(0.0, 1.2, 0.7);
 
     companion object {
         fun fromMMR(mmr: Double): PlayerRank {
@@ -47,22 +46,25 @@ class AllBaseWeight {
         arrayWeights.add(BaseWeight("outnumberedFights", 4.0, 1.0))
         arrayWeights.add(BaseWeight("saveAllyFromDeath", 5.0, 1.0))
         arrayWeights.add(BaseWeight("bountyGold", 500.0, 1.0))
+        arrayWeights.add(BaseWeight("teamDamagePercentage", 0.3, 1.0))
     }
 
     fun changeByRole(role: String) {
         when (role) {
             "DAMAGE" -> {
-                changeStat("damagePerMinute", needV = 2200.0, modV = 0.9)
+                changeStat("damagePerMinute", needV = 2200.0, modV = 0.5)
                 changeStat("timeCCingOthers", needV = 40.0, modV = 1.2)
                 changeStat("minionsKilled", needV = 50.0, modV = 0.7)
                 changeStat("skillAccuracy", needV = 20.0)
+                changeStat("teamDamagePercentage", needV = 20.0, modV = 1.8)
             }
             "TANK" -> {
                 changeStat("damagePerMinute", modV = 1.6)
                 changeStat("timeCCingOthers", needV = 70.0, modV = 1.4)
                 changeStat("survivedLowHP", modV = 1.4)
                 changeStat("damageSelfMitigated", needV = 80000.0, modV = 0.8)
-                changeStat("skillAccuracy", needV = 10.0)
+                changeStat("skillAccuracy", needV = 5.0)
+                changeStat("teamDamagePercentage", modV = 1.2)
             }
             "SUPPORT" -> {
                 changeStat("kda", needV = 8.0, modV = 0.6)
@@ -78,6 +80,7 @@ class AllBaseWeight {
                 changeStat("timeCCingOthers", needV = 40.0, modV = 1.8)
                 changeStat("skillAccuracy", needV = 1.0, modV = 0.8)
                 changeStat("minionsKilled", needV = 40.0, modV = 1.2)
+                changeStat("teamDamagePercentage", modV = 1.3)
             }
             "HYBRID" -> {
                 changeStat("damagePerMinute", needV = 1600.0, modV = 1.1)
@@ -203,7 +206,7 @@ class Calc_MMRv3(private val match: Matches) {
         val rank = determineRank(newMMR)
         val matchGrade = calculateMatchGrade(performanceScore)
 
-        player.gameMatchKey += "[$matchGrade:$performanceScore:$detectedRole]"
+        player.gameMatchKey += "[$matchGrade:$detectedRole]"
 
         return AramMatchResult(
             newMMR = newMMR,
@@ -217,6 +220,7 @@ class Calc_MMRv3(private val match: Matches) {
             lolChampion = player.championName,
             match = match,
             textResult = textAllResult,
+            topStatsCounter = topStats.count { it == ';' },
             gameLength = match.matchDuration
         )
     }
@@ -274,6 +278,7 @@ class Calc_MMRv3(private val match: Matches) {
         val outnumberedFights = normalizeParameter("outnumberedFights", player.outnumberedKills * 1.5 + player.soloKills * 0.3, true)
         val saveAllyFromDeath = normalizeParameter("saveAllyFromDeath", player.saveAllyFromDeath, true)
         val bountyGold = normalizeParameter("bountyGold", player.bountyGold, true)
+        val teamDamagePercentage = normalizeParameter("teamDamagePercentage", player.teamDamagePercentage, false)
 
         // Взвешенная сумма всех параметров
         return (kda * weights.getModByName("kda") +
@@ -289,7 +294,8 @@ class Calc_MMRv3(private val match: Matches) {
                 skillAccuracy * weights.getModByName("skillAccuracy") +
                 outnumberedFights * weights.getModByName("outnumberedFights") +
                 saveAllyFromDeath * weights.getModByName("saveAllyFromDeath") +
-                bountyGold * weights.getModByName("bountyGold")
+                bountyGold * weights.getModByName("bountyGold") +
+                teamDamagePercentage * weights.getModByName("teamDamagePercentage")
                 )
     }
 
@@ -362,6 +368,7 @@ data class AramMatchResult(
     val lolName: String,
     val lolChampion: String,
     val match: Matches,
+    val topStatsCounter: Int,
     val textResult: String,                             // Результат всех вычислений как текст
 ) {
     override fun toString(): String {
@@ -379,15 +386,16 @@ data class AramMatchResult(
                 "textResult='${textResult.split(";").joinToString("\t\n")}')"
     }
 
-    suspend fun toStringLow(): String {
-        return "\n-----\n\tMMR=$mmrChange" +
+    fun toStringLow(): String {
+        return "\n-----\nMMR=$mmrChange" +
                 "\n  Очков=$performanceScore" +
                 "\n  Оценка='$matchGrade'" +
                 "\n  Ранг='$rank'" +
                 "\n  Роль='$detectedRole'" +
                 "\n  ДлительностьИгры=$gameLength" +
                 "\n  ID Игры=${match.matchId}" +
+                "\n  ТОП статов=$topStatsCounter" +
                 "\n  Игрок=$lolName" +
-                "\n  Чемпион=${R2DBC.getHeroFromNameEN(lolChampion)?.nameRU?:""}"
+                "\n  Чемпион=$lolChampion"
     }
 }

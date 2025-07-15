@@ -58,8 +58,8 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     val dataSavedLOL = WorkData<LOLs>("SavedLOL")
 
     fun initialize() {
-        if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { KORDLOLs().getData({ tbl_kordlols.guild_id eq guildSQL.id }) }
-        if (dataKORD.bodyReset == null) dataKORD.bodyReset = { KORDs().getData({ tbl_kords.guild_id eq guildSQL.id }) }
+        if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { KORDLOLs().getData() }
+        if (dataKORD.bodyReset == null) dataKORD.bodyReset = { KORDs().getData() }
 
         if (dataSavedLOL.bodyReset == null) {
             dataSavedLOL.bodyReset = {

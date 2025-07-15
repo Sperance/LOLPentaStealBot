@@ -41,7 +41,6 @@ fun Dispatcher.handleMMRstat() {
                         var stringData = ""
                         listening_data_array.forEach { str ->
                             stringData += str
-                            printLog("NEW STR DATA: $stringData")
                         }
                         listening_data_array.clear()
                         bot.sendMessage(ChatId.fromId(message.chat.id), stringData).fold(

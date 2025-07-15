@@ -52,7 +52,8 @@ suspend fun <TYPE: Any, META : EntityMetamodel<Any, Any, META>> TYPE.update(show
             .singleOrNull()
     }
     if (before == this) return before as TYPE
-    if (before == null) return this@update.create(null) as TYPE
+    if (before == null) throw IllegalArgumentException("In table for name tbl_${this::class.java.simpleName.lowercase()}) in Meta ${metaTable.javaClass.simpleName} don`t find object with id ${this@update.getField("id")}. Object: $this")
+//    if (before == null) return this@update.create(null) as TYPE
 
     val result = R2DBC.runQuery { QueryDsl.update(metaTable).single(this@update) }
     val stringUpdated = calculateUpdate(before, result)
