@@ -70,13 +70,9 @@ data class Calc_AddMatch (
         if (!pMatchResult.bit) return pMatchResult.result
         val pMatch = pMatchResult.result
 
-        if (pMatch.matchMode == "ARAM") sqlData.isHaveLastARAM = true
-        else return pMatch
-
-//        if (pMatch.id % LOAD_MMR_HEROES_MATCHES == 0){
-//            R2DBC.executeProcedure("call \"GetAVGs\"()")
-//            LeagueMainObject.catchHeroNames()
-//        }
+        if (pMatch.id % LOAD_MMR_HEROES_MATCHES == 0){
+            LeagueMainObject.catchHeroNames()
+        }
 
         val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->
@@ -105,7 +101,7 @@ data class Calc_AddMatch (
                     LOL_summonerLevel = part.summonerLevel,
                     LOL_region = pMatch.getRegionValue(),
                     profile_icon = part.profileIcon,
-                    last_loaded = pMatch.matchDateEnd).create(null).result
+                    last_loaded = pMatch.matchDateEnd).calculateFromParticipant(part, pMatch).create(null).result
             } else if (!curLOL.isBot() && curLOL.last_loaded != 0L && curLOL.last_loaded < pMatch.matchDateEnd) {
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
                 curLOL.LOL_region = pMatch.getRegionValue()
@@ -114,21 +110,23 @@ data class Calc_AddMatch (
                 curLOL.LOL_summonerLevel = part.summonerLevel
                 curLOL.profile_icon = part.profileIcon
                 curLOL.last_loaded = pMatch.matchDateEnd
-                curLOL = curLOL.update()
+                curLOL = curLOL.calculateFromParticipant(part, pMatch).update()
+            } else {
+                printLog("[LOLs::nope] $curLOL")
             }
 
             lolsAll.add(curLOL)
 
             val newPart = ParticipantsNew(part, pMatch, curLOL)
             arrayNewParts.add(newPart)
-//            printLog("\tSIZE: ${arrayNewParts.size} PART: $newPart LOL: $curLOL")
         }
+
+        if (pMatch.matchMode != "ARAM") return pMatch
+        sqlData.isHaveLastARAM = true
 
         val findedCurrent = sqlData.getKORDLOL().find { kl -> kl.LOL_id in arrayNewParts.map { np -> np.LOLperson_id } }
         if (pMatch.isNeedCalcStats() && findedCurrent != null) {
-//            printLog("\tARRAYSIZE: ${arrayNewParts.size} FINDED: $findedCurrent")
             var lastPartList = db.runQuery { QueryDsl.insert(tbl_participantsnew).multiple(arrayNewParts) }
-//            printLog("\tAFTER MULTIPLE CREATE - SIZE: ${lastPartList.size} DATA: ${lastPartList.joinToString("\n")}")
             if (lastPartList.isEmpty()) lastPartList = arrayNewParts
             calculateMMR(pMatch, lastPartList, lolsAll)
         }
@@ -146,15 +144,11 @@ data class Calc_AddMatch (
             }
         }
 
-//        printLog("[calculateMMR] lastPartList: ${lastPartList.joinToString("\n")}")
-//        printLog("[calculateMMR] lastLolsList: ${lastLolsList.joinToString("\n")}")
-//        printLog("[calculateMMR] arrayKORDmmr: ${arrayKORDmmr.joinToString("\n")}")
-
         calcMMR20(pMatch, arrayKORDmmr)
         calcv3.calculateTOPstats(arrayKORDmmr.map { it.second })
         var strToTelegram = ""
         arrayKORDmmr.filter { rd -> rd.first.LOL_puuid in sqlData.dataSavedLOL.get().map { sl -> sl.LOL_puuid } }.forEach {
-            val veResult = calcv3.calculateNewMMR(it.second, 0.0, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win)
+            val veResult = calcv3.calculateNewMMR(it.second, it.first, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win)
             it.first.update()
             it.second.update()
             strToTelegram += veResult.toStringLow()
@@ -267,10 +261,10 @@ data class Calc_AddMatch (
             it.second.gameMatchMmr = it.second.tempTextMMR2value.to1Digits()
         }
 
-        printLog("MAX MATCH MMR: $maxMMR")
-        data.forEach {
-            printLog("DATA: ${it.first} ${it.second} win:${it.second.win} ${it.second.tempTextMMR2value} ${it.second.tempTextMMR2}")
-        }
+//        printLog("MAX MATCH MMR: $maxMMR")
+//        data.forEach {
+//            printLog("DATA: ${it.first} ${it.second} win:${it.second.win} ${it.second.tempTextMMR2value} ${it.second.tempTextMMR2}")
+//        }
 
         val textMatchResult = "**${pMatch.matchId} ${pMatch.id} ${pMatch.matchMode} ${pMatch.matchDateEnd.toFormatDate()}\n${data.joinToString("\n\t") { it.second.win.toString() + " lol: " + it.first.getCorrectNameWithTag() + " " + it.second.championName + " MMR: " + it.second.gameMatchMmr + " DATA: " + it.second.tempTextMMR2 }}\n**"
         asyncLaunch {

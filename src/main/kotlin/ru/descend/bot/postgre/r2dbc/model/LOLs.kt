@@ -14,6 +14,7 @@ import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.to1Digits
+import java.math.BigInteger
 import kotlin.math.abs
 
 @KomapperEntity
@@ -32,10 +33,66 @@ data class LOLs(
     var profile_icon: Int = 0,
     var last_loaded: Long = 0,
     var mmrAram: Double = 0.0,
-    var mmrAramSaved: Double = 0.0
+    var mmrAramSaved: Double = 0.0,
+
+    var f_aram_games: Double = 0.0,
+    var f_aram_wins: Double = 0.0,
+    var f_aram_winstreak: Int = 0,
+    var f_aram_kills: Double = 0.0,
+    var f_aram_kills2: Double = 0.0,
+    var f_aram_kills3: Double = 0.0,
+    var f_aram_kills4: Double = 0.0,
+    var f_aram_kills5: Double = 0.0,
+    var f_aram_deaths: Double = 0.0,
+    var f_aram_assists: Double = 0.0,
+    var f_aram_last_key: BigInteger = BigInteger.ZERO,
+    var show_code: Int = 0
 ) {
     companion object {
         val tbl_lols = Meta.loLs
+    }
+
+    fun calculateFromParticipant(part: ParticipantsNew, match: Matches?): LOLs {
+        if (match == null || match.matchMode != "ARAM") return this
+
+        f_aram_games += 1
+        f_aram_wins += if (part.win) 1 else 0
+        f_aram_kills += part.kills
+        f_aram_kills2 += part.kills2
+        f_aram_kills3 += part.kills3
+        f_aram_kills4 += part.kills4
+        f_aram_kills5 += part.kills5
+        f_aram_deaths += part.deathsByEnemyChamps
+        f_aram_assists += part.assists
+        if (f_aram_winstreak >= 0 && part.win) f_aram_winstreak++
+        else if (f_aram_winstreak <= 0 && part.win) f_aram_winstreak = 1
+        else if (f_aram_winstreak >= 0) f_aram_winstreak = -1
+        else f_aram_winstreak--
+        return this
+    }
+
+    fun calculateFromParticipant(part: Participant, match: Matches?): LOLs {
+        if (match == null || match.matchMode != "ARAM") return this
+
+        val kill5 = part.pentaKills
+        val kill4 = part.quadraKills - kill5
+        val kill3 = part.tripleKills - kill4
+        val kill2 = part.doubleKills - kill3
+
+        f_aram_games += 1
+        f_aram_wins += if (part.win) 1 else 0
+        f_aram_kills += part.kills
+        f_aram_kills2 += kill2
+        f_aram_kills3 += kill3
+        f_aram_kills4 += kill4
+        f_aram_kills5 += kill5
+        f_aram_deaths += part.challenges?.deathsByEnemyChamps?:0
+        f_aram_assists += part.assists
+        if (f_aram_winstreak >= 0 && part.win) f_aram_winstreak++
+        else if (f_aram_winstreak <= 0 && part.win) f_aram_winstreak = 1
+        else if (f_aram_winstreak >= 0) f_aram_winstreak = -1
+        else f_aram_winstreak--
+        return this
     }
 
     fun removeMMRvalue(removedValue: Double) {
@@ -87,6 +144,6 @@ data class LOLs(
     fun getARAMRank() = EnumARAMRank.getMMRRank(mmrAram)
 
     override fun toString(): String {
-        return "LOLs(id=$id, riotIdName=${getCorrectNameWithTag()}, region=$LOL_region, mmrAram=$mmrAram, savedAram=$mmrAramSaved)"
+        return "LOLs(id=$id, riotIdName=${getCorrectNameWithTag()}, region=$LOL_region, mmrAram=$mmrAram, savedAram=$mmrAramSaved, f_aram_games=$f_aram_games)"
     }
 }

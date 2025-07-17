@@ -31,6 +31,7 @@ import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.kotlintelegrambot.handlers.last_date_loaded_matches
 import ru.gildor.coroutines.okhttp.await
 import java.io.File
+import java.math.BigInteger
 import java.math.RoundingMode
 import java.nio.file.Files
 import java.text.DecimalFormat
@@ -350,4 +351,14 @@ fun Double.addPercent(value: Double) : Double {
 
 fun Double.removePercent(value: Double) : Double {
     return (this - getPercent(value)).to1Digits()
+}
+
+fun String.toHexInt(): BigInteger {
+    val bytes = this.toByteArray(Charsets.UTF_8)
+    return BigInteger(1, bytes)
+}
+
+fun BigInteger.fromHexInt(): String {
+    val bytes = this.toByteArray()
+    return String(bytes, Charsets.UTF_8)
 }

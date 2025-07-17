@@ -21,6 +21,7 @@ import ru.descend.bot.datas.create
 import ru.descend.bot.datas.delete
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
+import ru.descend.bot.datas.getSize
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs.Companion.tbl_kordlols
 import ru.descend.bot.postgre.r2dbc.model.KORDs
@@ -93,6 +94,42 @@ fun arguments() = commands("Arguments") {
             }
 
             respond("Пользователю ${user.lowDescriptor()} привязана дата $date")
+        }
+    }
+
+    slash("changeShowCode", "Изменить SHOWCODE пользователя", Permissions(Permission.Administrator)) {
+        execute(
+            AnyArg("currentCode", "Текущий Show code"),
+            AnyArg("newCode", "Новый Show code")
+        ) {
+            val (currentCode, newCode) = args
+            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'currentCode=$currentCode', 'newCode=$newCode'"
+            printLog(textCommand)
+            val r2Guild = R2DBC.getGuild(guild)
+            guild.sendMessage(r2Guild.messageIdDebug, textCommand)
+
+            if (currentCode.toIntOrNull() == null || newCode.toIntOrNull() == null) {
+                respond("Некорректный код currentCode($currentCode) и|или newCode($newCode)")
+                return@execute
+            }
+
+            val findedOldLOL = LOLs().getDataOne({ tbl_lols.show_code eq currentCode.toInt() })
+            if (findedOldLOL == null) {
+                respond("Не найден пользователь LOL с showCode $currentCode")
+                return@execute
+            }
+
+            val findedNewLOL = LOLs().getDataOne({ tbl_lols.show_code eq newCode.toInt() })
+            if (findedNewLOL != null) {
+                respond("Пользователь с showCode $newCode уже существует: $findedNewLOL")
+                return@execute
+            }
+
+            findedOldLOL.show_code = newCode.toInt()
+            findedOldLOL.update()
+
+            sqlData.isNeedUpdateDays = true
+            respond("Успешно изменен showCode у пользователя с '$currentCode' на '$newCode'")
         }
     }
 
@@ -199,6 +236,16 @@ fun arguments() = commands("Arguments") {
 
             //Если аккаунт есть в базе - ок, если нет - создаём в базе
             LOL = LOLs().getDataOne({ tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }) ?: LOL.create(LOLs::LOL_puuid).result
+            val allShow = LOLs().getData({ tbl_lols.show_code notEq 0 })
+
+            var index = 0
+            while (true) {
+                index++
+                if (allShow.find { it.show_code == index } == null) break
+            }
+
+            LOL.show_code = index
+            LOL = LOL.update()
 
             //Проверка что к пользователю уже привязан какой-либо аккаунт лиги
             val alreadyKORDLOL = KORDLOLs().getDataOne({ tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id; tbl_kordlols.LOL_id eq LOL.id })
@@ -214,12 +261,7 @@ fun arguments() = commands("Arguments") {
                     guild_id = guilds.id
                 )
 
-                val resultData = KORDLOL.create(null).result
-                val arrayData = ArrayList<KORDLOLs>()
-                arrayData.addAll(KORDLOLs().getData({ tbl_kordlols.guild_id eq guilds.id }))
-                arrayData.sortBy { data -> data.showCode }
-                resultData.showCode = arrayData.last().showCode + 1
-                resultData.update()
+                KORDLOL.create(null).result
             }
             sqlData.isNeedUpdateDays = true
             respond("Пользователь ${user.lowDescriptor()} успешно связан с учётной записью ${LOL.getCorrectName()}")
@@ -325,28 +367,6 @@ fun arguments() = commands("Arguments") {
         }
     }
 
-    slash("userDelete", "Удалить учётную запись из базы данных бота", Permissions(Permission.Administrator)) {
-        execute(UserArg("User", "Пользователь Discord")) {
-            val (user) = args
-            val textCommand =
-                "[Start command] '$name' from ${author.fullName} with params: 'user=${user.fullName}'"
-            printLog(textCommand)
-
-            val guilds = R2DBC.getGuild(guild)
-            guild.sendMessage(guilds.messageIdDebug, textCommand)
-
-            val dataKORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id })
-            val textMessage = if (dataKORD == null) {
-                "Пользователя не существует в базе"
-            } else {
-                dataKORD.deleteWithKORDLOL(guilds)
-                "Удаление произошло успешно"
-            }
-            sqlData.isNeedUpdateDays = true
-            respond(textMessage)
-        }
-    }
-
     slash("userDeleteFromID", "Удалить учётную запись из базы данных бота по show ID", Permissions(Permission.Administrator)) {
         execute(IntegerArg("id", "show id пользователя Discord")) {
             val (id) = args
@@ -356,24 +376,34 @@ fun arguments() = commands("Arguments") {
             val guilds = R2DBC.getGuild(guild)
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataKORD = KORDLOLs().getData({ tbl_kordlols.showCode eq id; tbl_kordlols.guild_id eq guilds.id })
+            val dataLOL = LOLs().getDataOne({ tbl_lols.show_code eq id })
+            if (dataLOL == null) {
+                respond("Пользователя с show_code $id в базе не найдено. Операция отменена. Обратитесь к Администратору")
+                return@execute
+            }
+            printLog("[DELETE] dataLOL: $dataLOL")
 
-            if (dataKORD.isEmpty()) {
+            val dataKORDLOLs = KORDLOLs().getDataOne({ tbl_kordlols.LOL_id eq dataLOL.id })
+            if (dataKORDLOLs == null) {
                 respond("Пользователя с id $id в базе не найдено. Операция отменена. Обратитесь к Администратору")
                 return@execute
             }
-
-            if (dataKORD.size > 1) {
-                respond("Пользователей с id $id больше 1: ${dataKORD.size}. Операция отменена. Обратитесь к Администратору")
-                return@execute
-            }
+            printLog("[DELETE] dataKORD: $dataKORDLOLs")
+            val kordId = dataKORDLOLs.KORD_id
+            dataLOL.show_code = 0
+            dataLOL.update()
 
             val textMessage = run {
-                val kordId = dataKORD.first().KORD_id
-                dataKORD.first().delete()
-                KORDs().getDataOne({ tbl_kords.id eq kordId })?.delete()
+                dataKORDLOLs.delete()
                 "Удаление произошло успешно"
             }
+
+            val dataKORDLOLsDeleted = KORDLOLs().getDataOne({ tbl_kordlols.KORD_id eq kordId })
+            if (dataKORDLOLsDeleted == null) {
+                printLog("[DELETE KORD]")
+                KORDs().getDataOne({ tbl_kords.id eq kordId })?.delete()
+            }
+
             respond(textMessage)
         }
     }

@@ -1,7 +1,6 @@
 package ru.descend.bot.datas
 
 import ru.descend.bot.lowDescriptor
-import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
@@ -43,29 +42,17 @@ class Toppartisipants {
         return arrayData
     }
 
-    suspend fun getResults() : ArrayList<TopPartObject> {
-        var matchObj: Matches?
-        arrayData.forEach {
-            matchObj = Matches().getDataOne(declaration = { tbl_matches.id eq it.match_id })
-            it.stat_date = matchObj?.matchDateStart?.toFormatDate()?:""
-            it.stat_date_long = matchObj?.matchDateStart?:0
-            it.match_text = matchObj?.matchId?:""
-            it.stat_lol_name = (KORDLOLs().getDataOne({ KORDLOLs.tbl_kordlols.LOL_id eq it.lol_id })?.LOL_id?:"").toString()
-        }
-        return arrayData
-    }
-
-    suspend fun calculateField(participants: ParticipantsNew, name: String, value: Double) {
+    fun calculateField(participants: ParticipantsNew, name: String, value: Double) {
         val obj = arrayData.find { it.stat_name == name }
         if (obj != null) {
             if (obj.stat_value < value) {
                 obj.lol_id = participants.LOLperson_id
                 obj.match_id = participants.match_id
                 obj.stat_value = value.toLong()
-                obj.stat_champion = R2DBC.getHeroFromNameEN(participants.championName)?.nameRU?:""
+                obj.stat_champion = ""
             }
         } else {
-            arrayData.add(TopPartObject(participants.LOLperson_id, participants.match_id, name, value.toLong(), participants.championName))
+            arrayData.add(TopPartObject(participants.LOLperson_id, participants.match_id, name, value.toLong(), ""))
         }
     }
 }

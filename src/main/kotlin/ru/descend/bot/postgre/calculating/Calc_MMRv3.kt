@@ -1,8 +1,10 @@
 package ru.descend.bot.postgre.calculating
 
+import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.to1Digits
+import ru.descend.bot.toHexInt
 import kotlin.math.pow
 
 enum class PlayerRank(
@@ -119,11 +121,11 @@ class Calc_MMRv3(private val match: Matches) {
     private var textAllResult = ""
     private val matchMinutes = (match.matchDuration / 60.0).to1Digits()
     private val timeFactor = when {
-        matchMinutes > 30.0 -> 1.5
+        matchMinutes > 30.0 -> 1.6
         matchMinutes > 25.0 -> 1.2
         matchMinutes > 20.0 -> 1.0
-        matchMinutes > 15.0 -> 0.8
-        matchMinutes > 10.0 -> 0.7
+        matchMinutes > 15.0 -> 0.83
+        matchMinutes > 10.0 -> 0.67
         matchMinutes > 5.0 -> 0.5
         else -> 1.0
     }
@@ -156,7 +158,6 @@ class Calc_MMRv3(private val match: Matches) {
      * Основной метод для расчета нового MMR после матча.
      *
      * @param player Статистика игрока
-     * @param currentMMR Текущий MMR игрока
      * @param teamMMR MMR членов команды (включая игрока)
      * @param enemyTeamMMR MMR противников
      * @param matchResult Результат матча (true - победа)
@@ -164,7 +165,7 @@ class Calc_MMRv3(private val match: Matches) {
      */
     fun calculateNewMMR(
         player: ParticipantsNew,
-        currentMMR: Double,
+        lol: LOLs,
         teamMMR: List<Double>,
         enemyTeamMMR: List<Double>,
         matchResult: Boolean
@@ -185,7 +186,7 @@ class Calc_MMRv3(private val match: Matches) {
         // Расчет Performance Score
         var performanceScore = (calculatePerformanceScore(player, allBaseWeight) + topStats.count { it == ';' } * 0.3).to1Digits()
 
-        val oldRank = determineRank(currentMMR)
+        val oldRank = determineRank(lol.mmrAram)
         val winMatchModificator = 0.5
         val rankModifier = if (matchResult) {
             performanceScore += winMatchModificator
@@ -200,13 +201,14 @@ class Calc_MMRv3(private val match: Matches) {
         textAllResult += "[expectedWin, actualResult]:{$expectedWin, $actualResult}; "
 
         val mmrChange = (baseKFactor * (actualResult - expectedWin) * (1.0 + performanceImpact * (performanceScore - 1.0)) * rankModifier).to1Digits()
-        val newMMR = (currentMMR + mmrChange).to1Digits()
+        val newMMR = (lol.mmrAram + mmrChange).to1Digits()
 
         // Определение ранга и оценки
         val rank = determineRank(newMMR)
         val matchGrade = calculateMatchGrade(performanceScore)
 
-        player.gameMatchKey += "[$matchGrade:$detectedRole]"
+//        player.gameMatchKey += "[$matchGrade:$detectedRole]"
+        lol.f_aram_last_key = "[$matchGrade:$detectedRole]".toHexInt()
 
         return AramMatchResult(
             newMMR = newMMR,
@@ -251,11 +253,11 @@ class Calc_MMRv3(private val match: Matches) {
         textAllResult += "[skillAccuracyRatio]:{${skillAccuracyRatio}}; "
 
         return when {
-            damageRatio > 2200 && damageMitidatedRatio > 15000 && skillAccuracyRatio < 20 -> "BROUSER"
+            damageRatio > 1000 && damageMitidatedRatio < 20000 && healRatioTeam < 5000 -> "DAMAGE"
+            damageRatio > 2000 && damageMitidatedRatio > 15000 && skillAccuracyRatio < 20 -> "BROUSER"
             (damageMitidatedRatio > 20000 && ccRatio > 20) || damageMitidatedRatio > 50000 -> "TANK"
             damageRatio < 1200 && healRatioTeam > 15000 && skillAccuracyRatio > 20 -> "SUPPORT"
-            damageRatio > 1000 && damageMitidatedRatio < 20000 && healRatioTeam < 5000 -> "DAMAGE"
-            damageRatio < 1000 && ccRatio < 10 && healTotal < 10000 -> "USELESS"
+            damageRatio < 1000 && ccRatio < 10 && healTotal < 10000 && damageMitidatedRatio < 10000 -> "USELESS"
             else -> "HYBRID"
         }
     }
@@ -318,14 +320,18 @@ class Calc_MMRv3(private val match: Matches) {
      */
     private fun calculateMatchGrade(performanceScore: Double): String {
         return when {
-            performanceScore >= 11 -> "S+"
-            performanceScore >= 10 -> "S"
-            performanceScore >= 9 -> "S-"
-            performanceScore >= 8 -> "A+"
-            performanceScore >= 7 -> "A"
+            performanceScore >= 10 -> "S+"
+            performanceScore >= 9 -> "S"
+            performanceScore >= 8 -> "S-"
+            performanceScore >= 7 -> "A+"
+            performanceScore >= 6.5 -> "A"
             performanceScore >= 6 -> "A-"
+            performanceScore >= 5.5 -> "B+"
             performanceScore >= 5 -> "B"
-            performanceScore >= 4 -> "C"
+            performanceScore >= 4.5 -> "B-"
+            performanceScore >= 4 -> "C+"
+            performanceScore >= 3.5 -> "C"
+            performanceScore >= 3 -> "C-"
             else -> "D"
         }
     }

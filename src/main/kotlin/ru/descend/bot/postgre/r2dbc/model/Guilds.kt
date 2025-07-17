@@ -52,6 +52,7 @@ data class Guilds(
      * Таблица ТОПА сервера
      */
     var messageIdTop: String = "",
+    var messageIdTopLols: String = "",
     var messageIdTopUpdated: Long = 0
 ) {
 

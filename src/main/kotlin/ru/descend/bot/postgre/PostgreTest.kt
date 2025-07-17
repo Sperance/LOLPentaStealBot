@@ -10,12 +10,65 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import org.junit.Test
+import ru.descend.bot.datas.Toplols
+import ru.descend.bot.datas.getData
+import ru.descend.bot.datas.getDataOne
+import ru.descend.bot.datas.update
+import ru.descend.bot.fromHexInt
 import ru.descend.bot.generateAIText
+import ru.descend.bot.postgre.r2dbc.model.LOLs
+import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
 import ru.descend.bot.printLog
+import ru.descend.bot.sqlData
+import ru.descend.bot.to1Digits
+import ru.descend.bot.toHexInt
 import ru.gildor.coroutines.okhttp.await
 import java.time.LocalDate
 
 class PostgreTest {
+
+    @Test
+    fun testConvertations() {
+        val str = "[S+:DAMAGE:28.4];"
+        val coded = str.toHexInt()
+        println("codded: $coded")
+        println("encoded: ${coded.fromHexInt()}")
+    }
+
+    @Test
+    fun test_lol_top() {
+        runBlocking {
+            val statClass = Toplols()
+            val data = LOLs().getData({ tbl_lols.show_code notEq 0 })
+            data.forEach {
+                statClass.calculateField(it, "Игр", it.f_aram_games)
+                statClass.calculateField(it, "ВинРейт", ((it.f_aram_wins / it.f_aram_games) * 100.0).to1Digits())
+                statClass.calculateField(it, "Пентакиллов", it.f_aram_kills5)
+                statClass.calculateField(it, "Убийств", it.f_aram_kills)
+            }
+
+            val res = statClass.getTopAll()
+            var resStr = ""
+            res.forEach { (s, topLolObjects) ->
+                resStr += "$s\n"
+                topLolObjects.forEach { lo ->
+                    resStr += "\t$lo\n"
+                }
+            }
+            printLog(resStr)
+        }
+    }
+
+    @Test
+    fun testConvertations2() {
+        runBlocking {
+            val lolobj = LOLs().getDataOne({ tbl_lols.id eq 14 })!!
+            printLog("DATA: ${lolobj.f_aram_last_key.fromHexInt()}")
+//            lolobj.f_aram_kills3 = 5.2
+//            lolobj.f_aram_last_key = "[S+:32:DAMAGE];".toHexInt()
+//            lolobj.update()
+        }
+    }
 
     @Test
     fun test_chatgpt() {

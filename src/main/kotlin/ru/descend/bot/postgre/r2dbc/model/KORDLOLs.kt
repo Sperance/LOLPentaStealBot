@@ -10,6 +10,7 @@ import org.komapper.annotation.KomapperId
 import org.komapper.annotation.KomapperTable
 import org.komapper.core.dsl.Meta
 import ru.descend.bot.postgre.SQLData_R2DBC
+import ru.descend.bot.printLog
 import ru.descend.bot.sqlData
 
 @KomapperEntity
@@ -23,7 +24,6 @@ data class KORDLOLs(
     var LOL_id: Int = -1,
     var guild_id: Int = -1,
 
-    var showCode: Int = 0,
     var realtime_match_message: String = ""
 ) {
 
@@ -35,10 +35,10 @@ data class KORDLOLs(
 
     suspend fun asUser(data: SQLData_R2DBC) : User {
         if (KORD_id == -1) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
-        return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), sqlData.guild!!.kord)
+        return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), sqlData.guild.kord)
     }
 
     override fun toString(): String {
-        return "KORDLOLs(id=$id, showCode=$showCode, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
+        return "KORDLOLs(id=$id, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
     }
 }

@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import me.jakejmattson.discordkt.dsl.bot
 import me.jakejmattson.discordkt.util.TimeStamp
 import org.komapper.core.dsl.QueryDsl
+import ru.descend.bot.datas.Toplols
 import ru.descend.bot.datas.Toppartisipants
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getSize
@@ -88,7 +89,6 @@ fun main() {
 
 lateinit var sqlData: SQLData_R2DBC
 val atomicIntLoaded = AtomicInteger()
-val atomicNeedUpdateTables = AtomicBoolean(true)
 var sql_data_initialized = false
 
 private fun startLoadingMatches() = launch {
@@ -196,7 +196,7 @@ fun timerMainInformation(duration: Duration) = launch {
 suspend fun removeMessage() {
     if (sqlData.guildSQL.botChannelId.isNotEmpty()){
         sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId)).messages.collect {
-            if (it.id.value.toString() in listOf(sqlData.guildSQL.messageIdGlobalStatisticData, sqlData.guildSQL.messageIdMain, sqlData.guildSQL.messageIdArammmr, sqlData.guildSQL.messageIdMasteries, sqlData.guildSQL.messageIdTop)) {
+            if (it.id.value.toString() in listOf(sqlData.guildSQL.messageIdGlobalStatisticData, sqlData.guildSQL.messageIdMain, sqlData.guildSQL.messageIdArammmr, sqlData.guildSQL.messageIdMasteries, sqlData.guildSQL.messageIdTop, sqlData.guildSQL.messageIdTopLols)) {
                 Unit
             } else {
                 it.delete()
@@ -257,13 +257,19 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
             }
         }
     }.join()
+    launch {
+        editMessageGlobal(channelText, sqlData.guildSQL.messageIdTopLols, "MessageTopLoLContent", {
+            editMessageTopLolContent(it, sqlData)
+        }) {
+            createMessageTopLol(channelText, sqlData)
+        }
+    }.join()
     printLog("[showLeagueHistory::completed]")
 
     sqlData.dataKORDLOL.clear()
     sqlData.dataKORD.clear()
     sqlData.dataSavedLOL.clear()
 
-    atomicNeedUpdateTables.set(false)
     sqlData.isHaveLastARAM = false
 }
 
@@ -344,18 +350,25 @@ suspend fun createMessageTop(channelText: TextChannel, sqlData: SQLData_R2DBC) {
     sqlData.guildSQL.update()
 }
 
+suspend fun createMessageTopLol(channelText: TextChannel, sqlData: SQLData_R2DBC) {
+    val message = channelText.createMessage("Initial Message TopLol")
+    channelText.getMessage(message.id).edit {
+        editMessageTopLolContent(this, sqlData)
+    }
+
+    sqlData.guildSQL.messageIdTopLols = message.id.value.toString()
+    sqlData.guildSQL.update()
+}
+
 suspend fun editMessageGlobalStatisticContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
     builder.content = "**Статистика Матчей**\nОбновлено: ${TimeStamp.now()}\n"
 
-    if (!atomicNeedUpdateTables.get()) return
-
     val charStr = " / "
-    val savedParts = sqlData.getSavedParticipants()
+    val savedParts = sqlData.dataSavedLOL.get(true)
+    savedParts.sortBy { it.show_code }
 
-    savedParts.sortBy { it.kordLOL?.showCode }
-
-    val mainDataList1 = (savedParts.map { formatInt(it.kordLOL?.showCode, 2) + "| " + formatInt(it.games, 3) + charStr + formatInt(it.win, 3) + charStr + ((it.win.toDouble() / it.games.toDouble()) * 100.0).to1Digits() + "%" })
-    val mainDataList2 = (savedParts.map {  it.kill.toFormatK() + charStr + formatInt(it.kill3, 3) + charStr + formatInt(it.kill4, 3) + charStr + formatInt(it.kill5, 2) })
+    val mainDataList1 = (savedParts.map { formatInt(it.show_code, 2) + "| " + formatInt(it.f_aram_games.toInt(), 3) + charStr + formatInt(it.f_aram_wins.toInt(), 3) + charStr + ((it.f_aram_wins / it.f_aram_games) * 100.0).to1Digits() + "%" })
+    val mainDataList2 = (savedParts.map {  it.f_aram_kills.toInt().toFormatK() + charStr + formatInt(it.f_aram_kills3.toInt(), 3) + charStr + formatInt(it.f_aram_kills4.toInt(), 3) + charStr + formatInt(it.f_aram_kills5.toInt(), 2) })
 
     builder.embed {
         field {
@@ -380,12 +393,12 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         .from(tbl_participantsnew)
         .leftJoin(tbl_matches) { tbl_matches.id eq tbl_participantsnew.match_id }
         .innerJoin(KORDLOLs.tbl_kordlols) { KORDLOLs.tbl_kordlols.LOL_id eq tbl_participantsnew.LOLperson_id }
-        .where { tbl_matches.matchMode.inList(listOf("ARAM", "CLASSIC")) ; tbl_matches.bots eq false ; tbl_participantsnew.championName.notInList(listOf("", "null"))  }
+        .where { tbl_matches.matchMode eq "ARAM" ; tbl_matches.bots eq false }
         .orderBy(tbl_participantsnew.id)
         .selectAsEntity(tbl_participantsnew)
 
     val statClass = Toppartisipants()
-    val result = R2DBC.runQuery { query }
+    var result = R2DBC.runQuery { query }
     result.forEach {
         statClass.calculateField(it, "Убийств", it.kills.toDouble())
         statClass.calculateField(it, "Смертей", it.deaths.toDouble())
@@ -420,9 +433,31 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         resultText += "* $it\n"
     }
     builder.content = "**ТОП сервера по параметрам (за матч)**\nОбновлено: ${TimeStamp.now()}\n" + resultText
+    resultText = ""
+    result = emptyList()
 
     sqlData.guildSQL.messageIdTopUpdated = System.currentTimeMillis()
     sqlData.guildSQL.update()
+}
+
+suspend fun editMessageTopLolContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC){
+
+    val statClass = Toplols()
+    sqlData.dataSavedLOL.get(true).forEach {
+        statClass.calculateField(it, "Игр", it.f_aram_games)
+        statClass.calculateField(it, "ВинРейт", ((it.f_aram_wins / it.f_aram_games) * 100.0).to1Digits())
+        statClass.calculateField(it, "Пентакиллов", it.f_aram_kills5)
+        statClass.calculateField(it, "Убийств", it.f_aram_kills)
+    }
+
+    var resultText = ""
+    statClass.getTopAll().forEach { (s, topLolObjects) ->
+        resultText += "$s\n"
+        topLolObjects.forEach { lo ->
+            resultText += "\t$lo\n"
+        }
+    }
+    builder.content = "**ТОП сервера по параметрам ARAM (всего)**\nОбновлено: ${TimeStamp.now()}\n" + resultText
 }
 
 suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
@@ -431,22 +466,23 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
     builder.content = "**Мастерство чемпионов (ТОП 3)**\nОбновлено: ${TimeStamp.now()}\n"
     val charStr = " / "
 
-    val savedPartsHash = HashMap<KORDLOLs, ArrayList<ChampionMasteryDtoItem>>()
-    sqlData.dataSavedLOL.get().forEach {
-        if (it.LOL_puuid.isEmpty()) return@forEach
-        val kordlol = sqlData.getKORDLOL().find { kl -> kl.LOL_id == it.id } ?: return@forEach
-        savedPartsHash[kordlol] = ArrayList()
-        LeagueMainObject.catchChampionMasteries(it.LOL_puuid, it.LOL_region).forEach { dto ->
-            savedPartsHash[kordlol]!!.add(dto)
+    val savedPartsHash = HashMap<LOLs, ArrayList<ChampionMasteryDtoItem>>()
+    val kordlols = sqlData.getKORDLOL()
+    sqlData.dataSavedLOL.get().forEach { lol ->
+        if (lol.LOL_puuid.isEmpty()) return@forEach
+        if (kordlols.find { kl -> kl.LOL_id == lol.id } == null) return@forEach
+        savedPartsHash[lol] = ArrayList()
+        LeagueMainObject.catchChampionMasteries(lol.LOL_puuid, lol.LOL_region).forEach { dto ->
+            savedPartsHash[lol]!!.add(dto)
         }
-        while (savedPartsHash[kordlol]!!.size < 3) {
-            savedPartsHash[kordlol]!!.add(ChampionMasteryDtoItem(0, 0, 0, 0, 0, false, 0, "", "", 0))
+        while (savedPartsHash[lol]!!.size < 3) {
+            savedPartsHash[lol]!!.add(ChampionMasteryDtoItem(0, 0, 0, 0, 0, false, 0, "", "", 0))
         }
     }
 
-    val savedParts = savedPartsHash.map { it.key to it.value }.sortedBy { it.first.showCode }.toMap()
+    val savedParts = savedPartsHash.map { it.key to it.value }.sortedBy { it.first.show_code }.toMap()
 
-    val mainDataList1 = (savedParts.map { formatInt(it.key.showCode, 2) + "| " + R2DBC.getHeroFromKey(it.value[0].championId.toString())?.nameRU.toMaxSymbols(8, "..") + charStr + R2DBC.getHeroFromKey(it.value[1].championId.toString())?.nameRU.toMaxSymbols(8, "..") + charStr + R2DBC.getHeroFromKey(it.value[2].championId.toString())?.nameRU.toMaxSymbols(8, "..") })
+    val mainDataList1 = (savedParts.map { formatInt(it.key.show_code, 2) + "| " + R2DBC.getHeroFromKey(it.value[0].championId.toString())?.nameRU.toMaxSymbols(8, "..") + charStr + R2DBC.getHeroFromKey(it.value[1].championId.toString())?.nameRU.toMaxSymbols(8, "..") + charStr + R2DBC.getHeroFromKey(it.value[2].championId.toString())?.nameRU.toMaxSymbols(8, "..") })
     val mainDataList2 = (savedParts.map {
         it.value[0].championLevel.toString() + " (" + it.value[0].championPoints.toFormatK() + ")" + charStr +
         it.value[1].championLevel.toString() + " (" + it.value[1].championPoints.toFormatK() + ")" + charStr +
@@ -468,13 +504,15 @@ suspend fun editMessageMasteriesContent(builder: UserMessageModifyBuilder, sqlDa
 
     sqlData.guildSQL.messageIdMasteriesUpdated = System.currentTimeMillis()
     sqlData.guildSQL.update()
+
+    savedPartsHash.clear()
 }
 
 suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
     val sizeMatches = Matches().getSize()
     val sizeLOLs = LOLs().getSize()
     val sizeParticipants = ParticipantsNew().getSize()
-    val sizeHeroes = R2DBC.stockHEROES.get(true).size
+    val sizeHeroes = R2DBC.stockHEROES.get().size
 
     var contentText = "**Статистика Главная**\nОбновлено: ${TimeStamp.now()}\n"
     contentText += "* Матчей: $sizeMatches\n"
@@ -484,14 +522,16 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
     contentText += "* Версия игры: ${LeagueMainObject.LOL_VERSION}\n"
     builder.content = contentText
 
-    val data = sqlData.getKORDLOL(true)
-    data.sortBy { it.showCode }
+    if (!sqlData.isHaveLastARAM) return
+
+    val data = sqlData.dataKORDLOL.get(true)
+    val dataLols = sqlData.dataSavedLOL.get(true)
+    dataLols.sortBy { it.show_code }
 
     val charStr = "/"
-    val curLOLlist = LOLs().getData({ tbl_lols.id.inList(data.map { dat -> dat.LOL_id }) })
 
-    val mainDataList1 = (data.map { formatInt(it.showCode, 2) + charStr + it.asUser(sqlData).lowDescriptor() })
-    val mainDataList2 = (data.map { curLOLlist.find { lol -> lol.id == it.LOL_id }?.getCorrectNameWithTag()?.toMaxSymbols(18, "..") })
+    val mainDataList1 = (dataLols.map { formatInt(it.show_code, 2) + charStr + data.find { dt -> dt.LOL_id == it.id }?.asUser(sqlData)?.lowDescriptor() })
+    val mainDataList2 = (dataLols.map { it.getCorrectNameWithTag().toMaxSymbols(18, "..") })
 
     builder.embed {
         field {
@@ -505,23 +545,25 @@ suspend fun editMessageMainDataContent(builder: UserMessageModifyBuilder, sqlDat
             inline = true
         }
     }
+
+    data.clear()
+    dataLols.clear()
 }
 
 suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sqlData: SQLData_R2DBC) {
 
     builder.content = "**Статистика ММР**\nОбновлено: ${TimeStamp.now()}\n"
 
-    if (!atomicNeedUpdateTables.get()) return
     if (!sqlData.isHaveLastARAM) return
 
     val charStr = " / "
     val aramData = sqlData.getArrayAramMMRData()
 
-    aramData.sortBy { it.kordLOL?.showCode }
+    aramData.sortBy { it.LOL?.show_code }
 
     val mainDataList1 = (aramData.map {
         val textBold = if (it.bold) "**" else ""
-        textBold + formatInt(it.kordLOL?.showCode, 2) + "| " + EnumARAMRank.getMMRRank(it.mmr_aram).nameRank + textBold
+        textBold + formatInt(it.LOL?.show_code, 2) + "| " + EnumARAMRank.getMMRRank(it.mmr_aram).nameRank + textBold
     })
     val mainDataList2 = (aramData.map {
         val textBold = if (it.bold) "**" else ""
@@ -529,7 +571,7 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
     })
     val mainDataList3 = (aramData.map {
         val textBold = if (it.bold) "**" else ""
-        textBold + R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info + textBold
+        textBold + R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info + " " + it.LOL?.f_aram_last_key?.fromHexInt() + textBold
     })
 
     builder.embed {
@@ -549,4 +591,6 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
             inline = true
         }
     }
+
+    aramData.clear()
 }

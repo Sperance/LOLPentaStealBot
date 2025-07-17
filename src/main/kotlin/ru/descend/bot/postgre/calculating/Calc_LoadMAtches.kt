@@ -3,7 +3,6 @@ package ru.descend.bot.postgre.calculating
 import org.komapper.core.dsl.QueryDsl
 import org.komapper.core.dsl.query.get
 import ru.descend.bot.atomicIntLoaded
-import ru.descend.bot.atomicNeedUpdateTables
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
 import ru.descend.bot.postgre.R2DBC
@@ -30,9 +29,6 @@ class Calc_LoadMAtches {
         listChecked.sortBy { it }
         listChecked.forEach { newMatch ->
             atomicIntLoaded.incrementAndGet()
-            if (!atomicNeedUpdateTables.get()) {
-                atomicNeedUpdateTables.set(true)
-            }
             LeagueMainObject.catchMatch(newMatch)?.let { match ->
                 addMatch(match)
             }
