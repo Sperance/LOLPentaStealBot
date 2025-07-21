@@ -6,7 +6,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import me.jakejmattson.discordkt.commands.commands
 import ru.descend.bot.printLog
+import ru.descend.bot.startDiscordBot
 import ru.descend.kotlintelegrambot.dispatcher.Dispatcher
 import ru.descend.kotlintelegrambot.dispatcher.command
 import ru.descend.kotlintelegrambot.entities.ChatId
@@ -18,13 +20,23 @@ private var global_listeting_chat = -1L
 private var listeningJob: Job? = null
 val listening_data_array = ArrayList<String>()
 var last_date_loaded_matches: Date? = null
+var last_date_loaded_discord: Date? = null
 
 fun Dispatcher.handleMMRstat() {
+//    command("restart_discord") {
+//        try {
+//            printLog("[handleMMRstat] restart_discord")
+//            startDiscordBot()
+//        }catch (e: Exception) {
+//            e.printStackTrace()
+//            bot.sendMessage(ChatId.fromId(message.chat.id), "Error: ${e.localizedMessage}")
+//        }
+//    }
     command("listening_test") {
         listening_data_array.add("TestStr ${System.currentTimeMillis()}")
     }
     command("listening_status") {
-        bot.sendMessage(ChatId.fromId(message.chat.id), "Статус: $global_listening_counter. Job: ${listeningJob?.isActive}. Last loaded: $last_date_loaded_matches")
+        bot.sendMessage(ChatId.fromId(message.chat.id), "Статус: $global_listening_counter. Job: ${listeningJob?.isActive}. Last loaded: $last_date_loaded_matches Discord: $last_date_loaded_discord")
     }
     command("listening_start") {
         if (global_listening_counter != 0) {

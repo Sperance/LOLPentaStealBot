@@ -236,7 +236,7 @@ fun arguments() = commands("Arguments") {
 
             //Если аккаунт есть в базе - ок, если нет - создаём в базе
             LOL = LOLs().getDataOne({ tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }) ?: LOL.create(LOLs::LOL_puuid).result
-            val allShow = LOLs().getData({ tbl_lols.show_code notEq 0 })
+            val allShow = sqlData.dataSavedLOL.get()
 
             var index = 0
             while (true) {
@@ -398,11 +398,13 @@ fun arguments() = commands("Arguments") {
                 "Удаление произошло успешно"
             }
 
-            val dataKORDLOLsDeleted = KORDLOLs().getDataOne({ tbl_kordlols.KORD_id eq kordId })
-            if (dataKORDLOLsDeleted == null) {
-                printLog("[DELETE KORD]")
-                KORDs().getDataOne({ tbl_kords.id eq kordId })?.delete()
-            }
+//            val dataKORDLOLsDeleted = KORDLOLs().getDataOne({ tbl_kordlols.KORD_id eq kordId })
+//            if (dataKORDLOLsDeleted == null) {
+//                printLog("[DELETE KORD]")
+//                KORDs().getDataOne({ tbl_kords.id eq kordId })?.delete()
+//            }
+            sqlData.isNeedUpdateDays = true
+            sqlData.isHaveLastARAM = true
 
             respond(textMessage)
         }

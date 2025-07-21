@@ -9,17 +9,17 @@ data class TopLolObject(
     val statName: String,
     val statValue: Double,
     val statLolName: String = "",
-    val matchText: String = ""
+    val enableOneDigit: Boolean,
 ) {
-    override fun toString(): String = "$statValue $statLolName"
+    override fun toString(): String = "${if (enableOneDigit) statValue else statValue.toLong()} $statLolName"
 }
 
 class Toplols {
     // Храним топ-3 героя для каждой статистики
     private val topStats = mutableMapOf<String, List<TopLolObject>>()
 
-    fun calculateField(lol: LOLs, statName: String, value: Double) {
-        var disStatName = "**$statName**"
+    fun calculateField(lol: LOLs, statName: String, value: Double, enableOneDigit: Boolean) {
+        val disStatName = "**$statName**"
         val currentTop = topStats[disStatName]?.toMutableList() ?: mutableListOf()
 
         // Добавляем нового героя или обновляем существующего
@@ -32,7 +32,7 @@ class Toplols {
             }
         } else {
             // Добавляем нового героя
-            currentTop.add(TopLolObject(lol.id, disStatName, value.to1Digits(), lol.getCorrectNameWithTag()))
+            currentTop.add(TopLolObject(lol.id, disStatName, value.to1Digits(), lol.getCorrectNameWithTag(), enableOneDigit = enableOneDigit))
         }
 
         // Сортируем по убыванию и оставляем топ-3

@@ -1,14 +1,19 @@
 package ru.descend.bot.datas
 
+import ru.descend.bot.launch
 import ru.descend.bot.printLog
 
-class WorkData<T>(val nameObject: String) {
+class WorkData<T>(private val nameObject: String) {
 
     private val listData = ArrayList<T>()
     var bodyReset: (suspend () -> List<T>)? = null
 
     suspend fun get(reset: Boolean = false) : ArrayList<T> {
-        if (isEmpty() || reset) reset()
+        if (isEmpty() || reset) {
+            launch {
+                reset()
+            }.join()
+        }
         return listData
     }
 

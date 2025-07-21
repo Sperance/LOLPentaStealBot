@@ -33,8 +33,8 @@ data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var m
 
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
-    var isHaveLastARAM = false
-    var isNeedUpdateDays = false
+    var isHaveLastARAM = true
+    var isNeedUpdateDays = true
 
     val dataKORDLOL = WorkData<KORDLOLs>("KORDLOL")
     val dataKORD = WorkData<KORDs>("KORD")
@@ -43,43 +43,11 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
     fun initialize() {
         if (dataKORDLOL.bodyReset == null) dataKORDLOL.bodyReset = { KORDLOLs().getData() }
         if (dataKORD.bodyReset == null) dataKORD.bodyReset = { KORDs().getData() }
-
-        if (dataSavedLOL.bodyReset == null) {
-            dataSavedLOL.bodyReset = {
-                val kordLol_lol_id = dataKORDLOL.get().map { it.LOL_id }
-                R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
-            }
-        }
+        if (dataSavedLOL.bodyReset == null) dataSavedLOL.bodyReset = { LOLs().getData({ tbl_lols.show_code notEq 0 }) }
     }
 
-    suspend fun getKORDLOL(reset: Boolean = false) = dataKORDLOL.get(reset)
-    private suspend fun getKORDLOL(id: Int?) = getKORDLOL().find { it.id == id }
-    private suspend fun getKORD(reset: Boolean = false) = dataKORD.get(reset)
-    suspend fun getKORD(id: Int?) = getKORD().find { it.id == id }
-    private suspend fun getKORDLOL_fromLOL(lolid: Int) = getKORDLOL().find { it.LOL_id == lolid }
-//
-//    suspend fun getSavedParticipants() : ArrayList<statMainTemp_r2> {
-//        val arraySavedParticipants = ArrayList<statMainTemp_r2>()
-//        measureBlock(EnumMeasures.QUERY, "get_player_stats_param") {
-//            R2DBC.runQuery {
-//                QueryDsl.fromTemplate("SELECT * FROM get_player_stats_param()").select {
-//                    val id = it.int("id")?:0
-//                    val games = it.int("games")?:0
-//                    val win = it.int("win")?:0
-//                    val kill = it.int("kill")?:0
-//                    val kill2 = it.int("kill2")?:0
-//                    val kill3 = it.int("kill3")?:0
-//                    val kill4 = it.int("kill4")?:0
-//                    val kill5 = it.int("kill5")?:0
-//                    arraySavedParticipants.add(statMainTemp_r2(id, games, win, kill, kill2, kill3, kill4, kill5, null))
-//                }
-//            }
-//            arraySavedParticipants.forEach {
-//                it.kordLOL = getKORDLOL(it.kord_lol_id)
-//            }
-//        }
-//        return arraySavedParticipants
-//    }
+    suspend fun getKORD(id: Int?) = dataKORD.get().find { it.id == id }
+    private suspend fun getKORDLOL_fromLOL(lolid: Int) = dataKORDLOL.get().find { it.LOL_id == lolid }
 
     fun calculatePentakill(lol: LOLs, part: ParticipantsNew, match: Matches) {
         if (part.kills5 <= 0) return
@@ -96,16 +64,19 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
             }
             val championName = part.getHeroNameRU()
             val textPentasCount = if (part.kills5 == 1) "" else "(${part.kills5})"
-            val generatedText = generateAIText("Напиши прикольное поздравление в шуточном стиле пользователю ${curLol.asUser(this@SQLData_R2DBC).lowDescriptor()} за то, что он сделал Пентакилл в игре League of Legends за чемпиона $championName в режиме ${match.matchMode}")
+            val generatedText = generateAIText("Напиши длинное прикольное поздравление в шуточном стиле с извратом пользователю ${curLol.asUser(this@SQLData_R2DBC).lowDescriptor()} за то, что он сделал Пентакилл в игре League of Legends за чемпиона $championName в режиме ARAM")
             val resultText = "Поздравляем!!!\n${curLol.asUser(this@SQLData_R2DBC).lowDescriptor()} cделал Пентакилл$textPentasCount за $championName\nМатч: ${match.matchId} Дата: ${match.matchDateEnd.toFormatDateTime()}\n\n$generatedText"
             sendMessage(guildSQL.messageIdStatus, resultText)
         }
     }
 
     suspend fun getArrayAramMMRData() : ArrayList<statAramDataTemp_r2> {
+        printLog("[getArrayAramMMRData] 1")
         val arrayAramMMRData = ArrayList<statAramDataTemp_r2>()
         measureBlock(EnumMeasures.QUERY, "get_aram_data_param") {
+            printLog("[getArrayAramMMRData] 2")
             R2DBC.runQuery {
+                printLog("[getArrayAramMMRData] 3")
                 QueryDsl.fromTemplate("SELECT * FROM get_aram_data_param()").select { row ->
                     val id = row.int("id")
                     val mmr_aram = row.double("mmr_aram")
@@ -117,12 +88,15 @@ class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
                     arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, champion_id, mmr, mvp_lvp_info,last_game == "+", null, null))
                 }
             }
-            val lols = sqlData.dataSavedLOL.get(true)
+            printLog("[getArrayAramMMRData] 4")
+            val lols = sqlData.dataSavedLOL.get()
             arrayAramMMRData.forEach {
                 it.kordLOL = getKORDLOL_fromLOL(it.kord_lol_id)
                 it.LOL = lols.find { ll -> ll.id == it.kordLOL?.LOL_id }
             }
+            printLog("[getArrayAramMMRData] 5")
         }
+        printLog("[getArrayAramMMRData] 6")
         return arrayAramMMRData
     }
 

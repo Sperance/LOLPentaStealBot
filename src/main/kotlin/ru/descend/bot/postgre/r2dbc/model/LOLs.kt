@@ -10,6 +10,7 @@ import ru.descend.bot.lolapi.LeagueMainObject.LOL_VERSION
 import ru.descend.bot.datas.Result
 import ru.descend.bot.datas.safeApiCall
 import ru.descend.bot.enums.EnumARAMRank
+import ru.descend.bot.fromHexInt
 import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
@@ -46,29 +47,11 @@ data class LOLs(
     var f_aram_deaths: Double = 0.0,
     var f_aram_assists: Double = 0.0,
     var f_aram_last_key: BigInteger = BigInteger.ZERO,
+    var f_aram_grades: BigInteger = BigInteger.ZERO,
     var show_code: Int = 0
 ) {
     companion object {
         val tbl_lols = Meta.loLs
-    }
-
-    fun calculateFromParticipant(part: ParticipantsNew, match: Matches?): LOLs {
-        if (match == null || match.matchMode != "ARAM") return this
-
-        f_aram_games += 1
-        f_aram_wins += if (part.win) 1 else 0
-        f_aram_kills += part.kills
-        f_aram_kills2 += part.kills2
-        f_aram_kills3 += part.kills3
-        f_aram_kills4 += part.kills4
-        f_aram_kills5 += part.kills5
-        f_aram_deaths += part.deathsByEnemyChamps
-        f_aram_assists += part.assists
-        if (f_aram_winstreak >= 0 && part.win) f_aram_winstreak++
-        else if (f_aram_winstreak <= 0 && part.win) f_aram_winstreak = 1
-        else if (f_aram_winstreak >= 0) f_aram_winstreak = -1
-        else f_aram_winstreak--
-        return this
     }
 
     fun calculateFromParticipant(part: Participant, match: Matches?): LOLs {
@@ -144,6 +127,6 @@ data class LOLs(
     fun getARAMRank() = EnumARAMRank.getMMRRank(mmrAram)
 
     override fun toString(): String {
-        return "LOLs(id=$id, riotIdName=${getCorrectNameWithTag()}, region=$LOL_region, mmrAram=$mmrAram, savedAram=$mmrAramSaved, f_aram_games=$f_aram_games)"
+        return "LOLs(id=$id, riotIdName=${getCorrectNameWithTag()}, region=$LOL_region, mmrAram=$mmrAram, aram_games=$f_aram_games, grades=${f_aram_grades.fromHexInt()})"
     }
 }

@@ -36,30 +36,6 @@ class PostgreTest {
     }
 
     @Test
-    fun test_lol_top() {
-        runBlocking {
-            val statClass = Toplols()
-            val data = LOLs().getData({ tbl_lols.show_code notEq 0 })
-            data.forEach {
-                statClass.calculateField(it, "Игр", it.f_aram_games)
-                statClass.calculateField(it, "ВинРейт", ((it.f_aram_wins / it.f_aram_games) * 100.0).to1Digits())
-                statClass.calculateField(it, "Пентакиллов", it.f_aram_kills5)
-                statClass.calculateField(it, "Убийств", it.f_aram_kills)
-            }
-
-            val res = statClass.getTopAll()
-            var resStr = ""
-            res.forEach { (s, topLolObjects) ->
-                resStr += "$s\n"
-                topLolObjects.forEach { lo ->
-                    resStr += "\t$lo\n"
-                }
-            }
-            printLog(resStr)
-        }
-    }
-
-    @Test
     fun testConvertations2() {
         runBlocking {
             val lolobj = LOLs().getDataOne({ tbl_lols.id eq 14 })!!
@@ -68,6 +44,15 @@ class PostgreTest {
 //            lolobj.f_aram_last_key = "[S+:32:DAMAGE];".toHexInt()
 //            lolobj.update()
         }
+    }
+
+    @Test
+    fun test_coerce() {
+        val start = 38.25
+        val end = 50.0
+        println("COE 1: ${(start / end).coerceIn(10.0, 50.0)}")
+        println("COE 1: ${(start / end).coerceIn(0.0, 50.0)}")
+        println("COE 1: ${(start / end).coerceIn(0.0, 100.0)}")
     }
 
     @Test

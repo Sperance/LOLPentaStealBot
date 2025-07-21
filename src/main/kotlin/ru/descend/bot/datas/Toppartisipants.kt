@@ -1,6 +1,7 @@
 package ru.descend.bot.datas
 
 import ru.descend.bot.lowDescriptor
+import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.SQLData_R2DBC
 import ru.descend.bot.postgre.r2dbc.model.KORDLOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
@@ -42,17 +43,17 @@ class Toppartisipants {
         return arrayData
     }
 
-    fun calculateField(participants: ParticipantsNew, name: String, value: Double) {
+    suspend fun calculateField(participants: ParticipantsNew, name: String, value: Double) {
         val obj = arrayData.find { it.stat_name == name }
         if (obj != null) {
             if (obj.stat_value < value) {
                 obj.lol_id = participants.LOLperson_id
                 obj.match_id = participants.match_id
                 obj.stat_value = value.toLong()
-                obj.stat_champion = ""
+                obj.stat_champion = R2DBC.getHeroFromNameEN(participants.championName)?.nameRU?:""
             }
         } else {
-            arrayData.add(TopPartObject(participants.LOLperson_id, participants.match_id, name, value.toLong(), ""))
+            arrayData.add(TopPartObject(participants.LOLperson_id, participants.match_id, name, value.toLong(), participants.championName))
         }
     }
 }

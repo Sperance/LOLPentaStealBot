@@ -111,8 +111,6 @@ data class Calc_AddMatch (
                 curLOL.profile_icon = part.profileIcon
                 curLOL.last_loaded = pMatch.matchDateEnd
                 curLOL = curLOL.calculateFromParticipant(part, pMatch).update()
-            } else {
-                printLog("[LOLs::nope] $curLOL")
             }
 
             lolsAll.add(curLOL)
@@ -124,7 +122,7 @@ data class Calc_AddMatch (
         if (pMatch.matchMode != "ARAM") return pMatch
         sqlData.isHaveLastARAM = true
 
-        val findedCurrent = sqlData.getKORDLOL().find { kl -> kl.LOL_id in arrayNewParts.map { np -> np.LOLperson_id } }
+        val findedCurrent = sqlData.dataKORDLOL.get().find { kl -> kl.LOL_id in arrayNewParts.map { np -> np.LOLperson_id } }
         if (pMatch.isNeedCalcStats() && findedCurrent != null) {
             var lastPartList = db.runQuery { QueryDsl.insert(tbl_participantsnew).multiple(arrayNewParts) }
             if (lastPartList.isEmpty()) lastPartList = arrayNewParts
@@ -144,11 +142,11 @@ data class Calc_AddMatch (
             }
         }
 
-        calcMMR20(pMatch, arrayKORDmmr)
         calcv3.calculateTOPstats(arrayKORDmmr.map { it.second })
         var strToTelegram = ""
         arrayKORDmmr.filter { rd -> rd.first.LOL_puuid in sqlData.dataSavedLOL.get().map { sl -> sl.LOL_puuid } }.forEach {
-            val veResult = calcv3.calculateNewMMR(it.second, it.first, listOf(0.0, 0.0, 0.0, 0.0), listOf(0.0, 0.0, 0.0, 0.0, 0.0), it.second.win)
+            val veResult = calcv3.calculateNewMMR(it.second, it.first, it.second.win)
+            sqlData.calculatePentakill(it.first, it.second, pMatch)
             it.first.update()
             it.second.update()
             strToTelegram += veResult.toStringLow()

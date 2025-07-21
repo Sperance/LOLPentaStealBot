@@ -1,10 +1,13 @@
 package ru.descend.bot.postgre.calculating
 
+import ru.descend.bot.fromHexInt
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
+import ru.descend.bot.printLogMMR
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toHexInt
+import java.math.BigInteger
 import kotlin.math.pow
 
 enum class PlayerRank(
@@ -12,14 +15,14 @@ enum class PlayerRank(
     val winModifier: Double,
     val loseModifier: Double
 ) {
-    CHALLENGER(3000.0, 0.6, 1.2),
-    GRANDMASTER(2800.0, 0.7, 1.2),
-    MASTER(2500.0, 0.7, 1.1),
-    DIAMOND(2000.0, 0.8, 1.0),
-    PLATINUM(1600.0, 0.9, 0.9),
-    GOLD(1300.0, 1.0, 0.9),
-    SILVER(900.0, 1.1, 0.8),
-    BRONZE(500.0, 1.1, 0.8),
+    CHALLENGER(3300.0, 0.7, 1.2),
+    GRANDMASTER(3000.0, 0.8, 1.2),
+    MASTER(2400.0, 0.8, 1.1),
+    DIAMOND(2000.0, 0.9, 1.0),
+    PLATINUM(1600.0, 1.0, 0.9),
+    GOLD(1200.0, 1.0, 0.9),
+    SILVER(800.0, 1.1, 0.8),
+    BRONZE(400.0, 1.1, 0.8),
     IRON(0.0, 1.2, 0.7);
 
     companion object {
@@ -116,14 +119,14 @@ class Calc_MMRv3(private val match: Matches) {
 
     // Настройки системы MMR
     private val baseKFactor = 20.0
-    private val performanceImpact = 0.25
     private val allBaseWeight = AllBaseWeight()
     private var textAllResult = ""
     private val matchMinutes = (match.matchDuration / 60.0).to1Digits()
     private val timeFactor = when {
-        matchMinutes > 30.0 -> 1.6
-        matchMinutes > 25.0 -> 1.2
-        matchMinutes > 20.0 -> 1.0
+        matchMinutes > 30.0 -> 1.9
+        matchMinutes > 25.0 -> 1.5
+        matchMinutes > 20.0 -> 1.2
+        matchMinutes > 18.0 -> 1.0
         matchMinutes > 15.0 -> 0.83
         matchMinutes > 10.0 -> 0.67
         matchMinutes > 5.0 -> 0.5
@@ -166,8 +169,6 @@ class Calc_MMRv3(private val match: Matches) {
     fun calculateNewMMR(
         player: ParticipantsNew,
         lol: LOLs,
-        teamMMR: List<Double>,
-        enemyTeamMMR: List<Double>,
         matchResult: Boolean
     ): AramMatchResult {
 
@@ -197,18 +198,24 @@ class Calc_MMRv3(private val match: Matches) {
         }
         performanceScore = performanceScore.to1Digits()
 
-        val (expectedWin, actualResult) = calculateWinProbability(teamMMR, enemyTeamMMR, matchResult)
+        val (expectedWin, actualResult) = calculateWinProbability(matchResult)
         textAllResult += "[expectedWin, actualResult]:{$expectedWin, $actualResult}; "
 
-        val mmrChange = (baseKFactor * (actualResult - expectedWin) * (1.0 + performanceImpact * (performanceScore - 1.0)) * rankModifier).to1Digits()
-        val newMMR = (lol.mmrAram + mmrChange).to1Digits()
+        val matchGrade = calculateMatchGrade(performanceScore)
+
+        val actualValue = if (player.win) 1.0 else -0.8
+        val mmrChange = (baseKFactor * actualValue * (10.0 / performanceScore) * rankModifier).to1Digits()
+
+        var newMMR = (lol.mmrAram + mmrChange).to1Digits()
+        if (newMMR < 0.0) newMMR = 0.0
 
         // Определение ранга и оценки
         val rank = determineRank(newMMR)
-        val matchGrade = calculateMatchGrade(performanceScore)
 
-//        player.gameMatchKey += "[$matchGrade:$detectedRole]"
+        lol.mmrAram = newMMR
+        player.gameMatchMmr = mmrChange
         lol.f_aram_last_key = "[$matchGrade:$detectedRole]".toHexInt()
+        lol.f_aram_grades = calcGradeLOL(lol, matchGrade).toHexInt()
 
         return AramMatchResult(
             newMMR = newMMR,
@@ -225,6 +232,19 @@ class Calc_MMRv3(private val match: Matches) {
             topStatsCounter = topStats.count { it == ';' },
             gameLength = match.matchDuration
         )
+    }
+
+    private fun calcGradeLOL(lol: LOLs, matchGrade: String): String {
+        if (lol.f_aram_grades == BigInteger.ZERO) {
+            lol.f_aram_grades = "S:0;A:0;B:0;C:0;D:0;".toHexInt()
+        }
+        val hexArray = lol.f_aram_grades.fromHexInt().split(";")
+        val countS = hexArray[0].split(":")[1].toInt() + matchGrade.count { it == 'S' }
+        val countA = hexArray[1].split(":")[1].toInt() + matchGrade.count { it == 'A' }
+        val countB = hexArray[2].split(":")[1].toInt() + matchGrade.count { it == 'B' }
+        val countC = hexArray[3].split(":")[1].toInt() + matchGrade.count { it == 'C' }
+        val countD = hexArray[4].split(":")[1].toInt() + matchGrade.count { it == 'D' }
+        return "S:$countS;A:$countA;B:$countB;C:$countC;D:$countD;"
     }
 
     /**
@@ -340,13 +360,9 @@ class Calc_MMRv3(private val match: Matches) {
      * Рассчитывает вероятность победы и фактический результат.
      */
     private fun calculateWinProbability(
-        teamMMR: List<Double>,
-        enemyMMR: List<Double>,
         isWin: Boolean
     ): Pair<Double, Double> {
-        val teamAvg = teamMMR.average()
-        val enemyAvg = enemyMMR.average()
-        val expectedWin = 1.0 / (1.0 + 10.0.pow((enemyAvg - teamAvg) / 400.0))
+        val expectedWin = 1.0 / (1.0 + 10.0.pow(1 / 400.0))
         val actualResult = if (isWin) 1.0 else 0.0
         return expectedWin to actualResult
     }
