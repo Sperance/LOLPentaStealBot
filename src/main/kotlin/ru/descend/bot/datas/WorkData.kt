@@ -1,6 +1,5 @@
 package ru.descend.bot.datas
 
-import ru.descend.bot.launch
 import ru.descend.bot.printLog
 
 class WorkData<T>(private val nameObject: String) {
@@ -10,9 +9,7 @@ class WorkData<T>(private val nameObject: String) {
 
     suspend fun get(reset: Boolean = false) : ArrayList<T> {
         if (isEmpty() || reset) {
-            launch {
-                reset()
-            }.join()
+            reset()
         }
         return listData
     }

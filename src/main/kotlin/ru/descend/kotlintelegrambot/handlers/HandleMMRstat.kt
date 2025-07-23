@@ -6,9 +6,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import me.jakejmattson.discordkt.commands.commands
 import ru.descend.bot.printLog
-import ru.descend.bot.startDiscordBot
 import ru.descend.kotlintelegrambot.dispatcher.Dispatcher
 import ru.descend.kotlintelegrambot.dispatcher.command
 import ru.descend.kotlintelegrambot.entities.ChatId
@@ -23,15 +21,6 @@ var last_date_loaded_matches: Date? = null
 var last_date_loaded_discord: Date? = null
 
 fun Dispatcher.handleMMRstat() {
-//    command("restart_discord") {
-//        try {
-//            printLog("[handleMMRstat] restart_discord")
-//            startDiscordBot()
-//        }catch (e: Exception) {
-//            e.printStackTrace()
-//            bot.sendMessage(ChatId.fromId(message.chat.id), "Error: ${e.localizedMessage}")
-//        }
-//    }
     command("listening_test") {
         listening_data_array.add("TestStr ${System.currentTimeMillis()}")
     }
@@ -67,13 +56,17 @@ fun Dispatcher.handleMMRstat() {
     }
     command("listening_stop") {
         if (global_listening_counter > 0) {
-            global_listening_counter--
-            listeningJob?.cancel()
-            global_listeting_chat = -1L
-            last_date_loaded_matches = null
+            stopTelegramBot()
             bot.sendMessage(ChatId.fromId(message.chat.id), "Слушатель матчей успешно завершен")
         } else {
             bot.sendMessage(ChatId.fromId(message.chat.id), "Слушатель матчей не запущен. Нечего завершать")
         }
     }
+}
+
+fun stopTelegramBot() {
+    global_listening_counter--
+    listeningJob?.cancel()
+    global_listeting_chat = -1L
+    last_date_loaded_matches = null
 }

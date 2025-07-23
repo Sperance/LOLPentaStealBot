@@ -8,7 +8,6 @@ import ru.descend.bot.asyncLaunch
 import ru.descend.bot.atomicIntLoaded
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.postgre.SQLData_R2DBC
-import ru.descend.bot.postgre.R2DBC
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.datas.create
@@ -25,6 +24,7 @@ import ru.descend.bot.printLogMMR
 import ru.descend.bot.sendMessage
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toFormatDate
+import ru.descend.bot.toHexInt
 import ru.descend.kotlintelegrambot.handlers.listening_data_array
 import kotlin.math.abs
 
@@ -88,7 +88,6 @@ data class Calc_AddMatch (
         val curLOLs = LOLs().getData({ tbl_lols.LOL_puuid.inList(arrayHeroName.map { it.puuid }) })
         val arrayNewParts = ArrayList<ParticipantsNew>()
         val lolsAll = ArrayList<LOLs>()
-//        printLog("\n\n\tMATCH: ${pMatch.matchId} MODE: ${pMatch.matchMode} CALC: ${pMatch.isNeedCalcStats()}")
         match.info.participants.forEach {part ->
             var curLOL = curLOLs.find { it.LOL_puuid == part.puuid }
 
@@ -101,7 +100,10 @@ data class Calc_AddMatch (
                     LOL_summonerLevel = part.summonerLevel,
                     LOL_region = pMatch.getRegionValue(),
                     profile_icon = part.profileIcon,
-                    last_loaded = pMatch.matchDateEnd).calculateFromParticipant(part, pMatch).create(null).result
+                    last_loaded = pMatch.matchDateEnd,
+                    f_aram_grades = "S:0;A:0;B:0;C:0;D:0;".toHexInt(),
+                    f_aram_streaks = "W:0;L:0;".toHexInt(),
+                    f_aram_roles = "D:0;B:0;T:0;S:0;U:0;H:0;".toHexInt()).calculateFromParticipant(part, pMatch).create(null).result
             } else if (!curLOL.isBot() && curLOL.last_loaded != 0L && curLOL.last_loaded < pMatch.matchDateEnd) {
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
                 curLOL.LOL_region = pMatch.getRegionValue()
@@ -122,8 +124,8 @@ data class Calc_AddMatch (
         if (pMatch.matchMode != "ARAM") return pMatch
         sqlData.isHaveLastARAM = true
 
-        val findedCurrent = sqlData.dataKORDLOL.get().find { kl -> kl.LOL_id in arrayNewParts.map { np -> np.LOLperson_id } }
-        if (pMatch.isNeedCalcStats() && findedCurrent != null) {
+//        val findedCurrent = sqlData.dataKORDLOL.get().find { kl -> kl.LOL_id in arrayNewParts.map { np -> np.LOLperson_id } }
+        if (pMatch.isNeedCalcStats()) {
             var lastPartList = db.runQuery { QueryDsl.insert(tbl_participantsnew).multiple(arrayNewParts) }
             if (lastPartList.isEmpty()) lastPartList = arrayNewParts
             calculateMMR(pMatch, lastPartList, lolsAll)
@@ -144,13 +146,16 @@ data class Calc_AddMatch (
 
         calcv3.calculateTOPstats(arrayKORDmmr.map { it.second })
         var strToTelegram = ""
-        arrayKORDmmr.filter { rd -> rd.first.LOL_puuid in sqlData.dataSavedLOL.get().map { sl -> sl.LOL_puuid } }.forEach {
+        arrayKORDmmr.forEach {
             val veResult = calcv3.calculateNewMMR(it.second, it.first, it.second.win)
-            sqlData.calculatePentakill(it.first, it.second, pMatch)
             it.first.update()
             it.second.update()
-            strToTelegram += veResult.toStringLow()
-            printLogMMR("Результат: $veResult")
+
+            if (it.first.LOL_puuid in sqlData.dataSavedLOL.get().map { sl -> sl.LOL_puuid }) {
+                sqlData.calculatePentakill(it.first, it.second, pMatch)
+                strToTelegram += veResult.toStringLow()
+                printLogMMR("Результат: $veResult")
+            }
         }
         listening_data_array.add(strToTelegram)
     }

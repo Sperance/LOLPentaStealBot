@@ -4,10 +4,10 @@ import ru.descend.bot.fromHexInt
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
-import ru.descend.bot.printLogMMR
 import ru.descend.bot.to1Digits
 import ru.descend.bot.toHexInt
 import java.math.BigInteger
+import kotlin.math.abs
 import kotlin.math.pow
 
 enum class PlayerRank(
@@ -44,7 +44,7 @@ class AllBaseWeight {
         arrayWeights.add(BaseWeight("killParticipation", 1.0, 1.0))
         arrayWeights.add(BaseWeight("totalHealsOnTeammates", 10000.0, 1.0))
         arrayWeights.add(BaseWeight("timeCCingOthers", 50.0,  1.0))
-        arrayWeights.add(BaseWeight("goldPerMinute", 1100.0, 1.0))
+        arrayWeights.add(BaseWeight("goldPerMinute", 1000.0, 1.0))
         arrayWeights.add(BaseWeight("minionsKilled", 30.0, 1.0))
         arrayWeights.add(BaseWeight("survivedLowHP", 2.0, 1.0))
         arrayWeights.add(BaseWeight("skillAccuracy", 30.0, 1.0))
@@ -57,22 +57,24 @@ class AllBaseWeight {
     fun changeByRole(role: String) {
         when (role) {
             "DAMAGE" -> {
-                changeStat("damagePerMinute", needV = 2200.0, modV = 0.5)
-                changeStat("timeCCingOthers", needV = 40.0, modV = 1.2)
+                changeStat("damagePerMinute", needV = 1800.0, modV = 0.7)
+                changeStat("timeCCingOthers", needV = 30.0, modV = 1.3)
                 changeStat("minionsKilled", needV = 50.0, modV = 0.7)
-                changeStat("skillAccuracy", needV = 20.0)
+                changeStat("damageSelfMitigated", needV = 10000.0)
+                changeStat("skillAccuracy", needV = 50.0, modV = 1.2)
                 changeStat("teamDamagePercentage", needV = 20.0, modV = 1.8)
             }
             "TANK" -> {
+                changeStat("kda", needV = 4.0, modV = 1.1)
                 changeStat("damagePerMinute", modV = 1.6)
                 changeStat("timeCCingOthers", needV = 70.0, modV = 1.4)
                 changeStat("survivedLowHP", modV = 1.4)
                 changeStat("damageSelfMitigated", needV = 80000.0, modV = 0.8)
-                changeStat("skillAccuracy", needV = 5.0)
+                changeStat("skillAccuracy", needV = 1.0)
                 changeStat("teamDamagePercentage", modV = 1.2)
             }
             "SUPPORT" -> {
-                changeStat("kda", needV = 8.0, modV = 0.6)
+                changeStat("kda", needV = 10.0, modV = 0.6)
                 changeStat("damagePerMinute", needV = 1100.0, modV = 1.2)
                 changeStat("timeCCingOthers", needV = 60.0, modV = 1.4)
                 changeStat("skillAccuracy", needV = 30.0, modV = 0.8)
@@ -83,13 +85,14 @@ class AllBaseWeight {
                 changeStat("kda", modV = 1.2)
                 changeStat("damagePerMinute", needV = 2000.0, modV = 1.2)
                 changeStat("timeCCingOthers", needV = 40.0, modV = 1.8)
-                changeStat("skillAccuracy", needV = 1.0, modV = 0.8)
+                changeStat("skillAccuracy", needV = 1.0)
                 changeStat("minionsKilled", needV = 40.0, modV = 1.2)
                 changeStat("teamDamagePercentage", modV = 1.3)
             }
             "HYBRID" -> {
                 changeStat("damagePerMinute", needV = 1600.0, modV = 1.1)
                 changeStat("timeCCingOthers", modV = 1.1)
+                changeStat("skillAccuracy", needV = 5.0)
             }
             else -> Unit
         }
@@ -118,19 +121,19 @@ class AllBaseWeight {
 class Calc_MMRv3(private val match: Matches) {
 
     // Настройки системы MMR
-    private val baseKFactor = 20.0
+    private val baseKFactor = 15.0
     private val allBaseWeight = AllBaseWeight()
     private var textAllResult = ""
     private val matchMinutes = (match.matchDuration / 60.0).to1Digits()
-    private val timeFactor = when {
-        matchMinutes > 30.0 -> 1.9
-        matchMinutes > 25.0 -> 1.5
-        matchMinutes > 20.0 -> 1.2
-        matchMinutes > 18.0 -> 1.0
-        matchMinutes > 15.0 -> 0.83
-        matchMinutes > 10.0 -> 0.67
-        matchMinutes > 5.0 -> 0.5
-        else -> 1.0
+    private val timeFactor = ultraSmoothExponential(matchMinutes)
+
+    private fun ultraSmoothExponential(x: Double): Double {
+        return when (x) {
+            8.0 -> 0.6
+            9.0 -> 0.7
+            10.0 -> 0.85
+            else -> 0.85 * (1.06.pow(x - 10))
+        }
     }
 
     fun calculateTOPstats(list: List<ParticipantsNew>) {
@@ -160,10 +163,6 @@ class Calc_MMRv3(private val match: Matches) {
     /**
      * Основной метод для расчета нового MMR после матча.
      *
-     * @param player Статистика игрока
-     * @param teamMMR MMR членов команды (включая игрока)
-     * @param enemyTeamMMR MMR противников
-     * @param matchResult Результат матча (true - победа)
      * @return AramMatchResult с полной информацией о расчете
      */
     fun calculateNewMMR(
@@ -187,7 +186,7 @@ class Calc_MMRv3(private val match: Matches) {
         // Расчет Performance Score
         var performanceScore = (calculatePerformanceScore(player, allBaseWeight) + topStats.count { it == ';' } * 0.3).to1Digits()
 
-        val oldRank = determineRank(lol.mmrAram)
+        val oldRank = PlayerRank.fromMMR(lol.mmrAram)
         val winMatchModificator = 0.5
         val rankModifier = if (matchResult) {
             performanceScore += winMatchModificator
@@ -203,19 +202,30 @@ class Calc_MMRv3(private val match: Matches) {
 
         val matchGrade = calculateMatchGrade(performanceScore)
 
-        val actualValue = if (player.win) 1.0 else -0.8
-        val mmrChange = (baseKFactor * actualValue * (10.0 / performanceScore) * rankModifier).to1Digits()
+        val mmrChange = if (player.win) {
+            (baseKFactor * 1.5 * (performanceScore / 10.0) * rankModifier).to1Digits()
+        } else {
+            (baseKFactor * -0.8 * (10.0 / (performanceScore - 1.0)) * rankModifier).to1Digits()
+        }
+        textAllResult += "[mmrChange:$baseKFactor * (10.0 / ${(performanceScore - 1.0)}) * $rankModifier = $mmrChange]; "
 
         var newMMR = (lol.mmrAram + mmrChange).to1Digits()
         if (newMMR < 0.0) newMMR = 0.0
 
         // Определение ранга и оценки
-        val rank = determineRank(newMMR)
+        val rank = PlayerRank.fromMMR(newMMR)
 
         lol.mmrAram = newMMR
         player.gameMatchMmr = mmrChange
         lol.f_aram_last_key = "[$matchGrade:$detectedRole]".toHexInt()
         lol.f_aram_grades = calcGradeLOL(lol, matchGrade).toHexInt()
+        lol.f_aram_roles = calcRolesLOL(lol, detectedRole).toHexInt()
+
+        if (lol.f_aram_winstreak > lol.countStreak(0))
+            lol.f_aram_streaks = "W:${lol.f_aram_winstreak};L:${lol.countStreak(1)};".toHexInt()
+
+        if (lol.f_aram_winstreak < 0 && (abs(lol.f_aram_winstreak) > lol.countStreak(1)))
+            lol.f_aram_streaks = "W:${lol.countStreak(0)};L:${lol.f_aram_winstreak};".toHexInt()
 
         return AramMatchResult(
             newMMR = newMMR,
@@ -230,6 +240,7 @@ class Calc_MMRv3(private val match: Matches) {
             match = match,
             textResult = textAllResult,
             topStatsCounter = topStats.count { it == ';' },
+            lol = lol,
             gameLength = match.matchDuration
         )
     }
@@ -238,13 +249,25 @@ class Calc_MMRv3(private val match: Matches) {
         if (lol.f_aram_grades == BigInteger.ZERO) {
             lol.f_aram_grades = "S:0;A:0;B:0;C:0;D:0;".toHexInt()
         }
-        val hexArray = lol.f_aram_grades.fromHexInt().split(";")
-        val countS = hexArray[0].split(":")[1].toInt() + matchGrade.count { it == 'S' }
-        val countA = hexArray[1].split(":")[1].toInt() + matchGrade.count { it == 'A' }
-        val countB = hexArray[2].split(":")[1].toInt() + matchGrade.count { it == 'B' }
-        val countC = hexArray[3].split(":")[1].toInt() + matchGrade.count { it == 'C' }
-        val countD = hexArray[4].split(":")[1].toInt() + matchGrade.count { it == 'D' }
+        val countS = lol.countGrade(0) + matchGrade.count { it == 'S' }
+        val countA = lol.countGrade(1) + matchGrade.count { it == 'A' }
+        val countB = lol.countGrade(2) + matchGrade.count { it == 'B' }
+        val countC = lol.countGrade(3) + matchGrade.count { it == 'C' }
+        val countD = lol.countGrade(4) + matchGrade.count { it == 'D' }
         return "S:$countS;A:$countA;B:$countB;C:$countC;D:$countD;"
+    }
+
+    private fun calcRolesLOL(lol: LOLs, role: String): String {
+        if (lol.f_aram_roles == BigInteger.ZERO) {
+            lol.f_aram_roles = "D:0;B:0;T:0;S:0;U:0;H:0;".toHexInt()
+        }
+        val countD = lol.countRoles(0) + (if (role.firstOrNull() == 'D') 1 else 0)
+        val countB = lol.countRoles(1) + (if (role.firstOrNull() == 'B') 1 else 0)
+        val countT = lol.countRoles(2) + (if (role.firstOrNull() == 'T') 1 else 0)
+        val countS = lol.countRoles(3) + (if (role.firstOrNull() == 'S') 1 else 0)
+        val countU = lol.countRoles(4) + (if (role.firstOrNull() == 'U') 1 else 0)
+        val countH = lol.countRoles(5) + (if (role.firstOrNull() == 'H') 1 else 0)
+        return "D:$countD;B:$countB;T:$countT;S:$countS;U:$countU;H:$countH;"
     }
 
     /**
@@ -329,13 +352,6 @@ class Calc_MMRv3(private val match: Matches) {
     }
 
     /**
-     * Определяет ранг игрока по MMR.
-     */
-    private fun determineRank(mmr: Double): PlayerRank {
-        return PlayerRank.fromMMR(mmr)
-    }
-
-    /**
      * Рассчитывает оценку за матч (S+, A, B и т.д.).
      */
     private fun calculateMatchGrade(performanceScore: Double): String {
@@ -359,9 +375,7 @@ class Calc_MMRv3(private val match: Matches) {
     /**
      * Рассчитывает вероятность победы и фактический результат.
      */
-    private fun calculateWinProbability(
-        isWin: Boolean
-    ): Pair<Double, Double> {
+    private fun calculateWinProbability(isWin: Boolean): Pair<Double, Double> {
         val expectedWin = 1.0 / (1.0 + 10.0.pow(1 / 400.0))
         val actualResult = if (isWin) 1.0 else 0.0
         return expectedWin to actualResult
@@ -391,6 +405,7 @@ data class AramMatchResult(
     val lolChampion: String,
     val match: Matches,
     val topStatsCounter: Int,
+    val lol: LOLs,
     val textResult: String,                             // Результат всех вычислений как текст
 ) {
     override fun toString(): String {
@@ -416,6 +431,10 @@ data class AramMatchResult(
                 "\n  Роль='$detectedRole'" +
                 "\n  ДлительностьИгры=$gameLength" +
                 "\n  ID Игры=${match.matchId}" +
+                "\n  ТОП статов=$topStatsCounter" +
+                "\n  Оценки=${lol.f_aram_grades.fromHexInt()}" +
+                "\n  Стрики=${lol.f_aram_streaks.fromHexInt()}" +
+                "\n  Роли=${lol.f_aram_roles.fromHexInt()}" +
                 "\n  ТОП статов=$topStatsCounter" +
                 "\n  Игрок=$lolName" +
                 "\n  Чемпион=$lolChampion"

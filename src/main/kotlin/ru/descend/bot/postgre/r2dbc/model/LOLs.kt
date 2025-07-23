@@ -15,6 +15,7 @@ import ru.descend.bot.lolapi.dto.matchDto.Participant
 import ru.descend.bot.printLog
 import ru.descend.bot.statusLOLRequests
 import ru.descend.bot.to1Digits
+import ru.descend.bot.toHexInt
 import java.math.BigInteger
 import kotlin.math.abs
 
@@ -48,6 +49,8 @@ data class LOLs(
     var f_aram_assists: Double = 0.0,
     var f_aram_last_key: BigInteger = BigInteger.ZERO,
     var f_aram_grades: BigInteger = BigInteger.ZERO,
+    var f_aram_streaks: BigInteger = BigInteger.ZERO,
+    var f_aram_roles: BigInteger = BigInteger.ZERO,
     var show_code: Int = 0
 ) {
     companion object {
@@ -56,6 +59,10 @@ data class LOLs(
 
     fun calculateFromParticipant(part: Participant, match: Matches?): LOLs {
         if (match == null || match.matchMode != "ARAM") return this
+
+        if (f_aram_grades == BigInteger.ZERO) f_aram_grades = "S:0;A:0;B:0;C:0;D:0;".toHexInt()
+        if (f_aram_streaks == BigInteger.ZERO) f_aram_streaks = "W:0;L:0;".toHexInt()
+        if (f_aram_roles == BigInteger.ZERO) f_aram_roles = "D:0;B:0;T:0;S:0;U:0;H:0;".toHexInt()
 
         val kill5 = part.pentaKills
         val kill4 = part.quadraKills - kill5
@@ -71,10 +78,10 @@ data class LOLs(
         f_aram_kills5 += kill5
         f_aram_deaths += part.challenges?.deathsByEnemyChamps?:0
         f_aram_assists += part.assists
-        if (f_aram_winstreak >= 0 && part.win) f_aram_winstreak++
+        if (f_aram_winstreak >= 0 && part.win) { f_aram_winstreak++ }
         else if (f_aram_winstreak <= 0 && part.win) f_aram_winstreak = 1
         else if (f_aram_winstreak >= 0) f_aram_winstreak = -1
-        else f_aram_winstreak--
+        else { f_aram_winstreak-- }
         return this
     }
 
@@ -124,9 +131,24 @@ data class LOLs(
         return getCorrectName() + "#" + LOL_riotIdTagline
     }
 
+    fun countGrade(index: Int): Int {
+        if (f_aram_grades == BigInteger.ZERO) return 0
+        return f_aram_grades.fromHexInt().split(";")[index].split(":")[1].toIntOrNull() ?: 0
+    }
+
+    fun countStreak(index: Int): Int {
+        if (f_aram_streaks == BigInteger.ZERO) return 0
+        return f_aram_streaks.fromHexInt().split(";")[index].split(":")[1].toIntOrNull() ?: 0
+    }
+
+    fun countRoles(index: Int): Int {
+        if (f_aram_roles == BigInteger.ZERO) return 0
+        return f_aram_roles.fromHexInt().split(";")[index].split(":")[1].toIntOrNull() ?: 0
+    }
+
     fun getARAMRank() = EnumARAMRank.getMMRRank(mmrAram)
 
     override fun toString(): String {
-        return "LOLs(id=$id, riotIdName=${getCorrectNameWithTag()}, region=$LOL_region, mmrAram=$mmrAram, aram_games=$f_aram_games, grades=${f_aram_grades.fromHexInt()})"
+        return "LOLs(id=$id, riotIdName=${getCorrectNameWithTag()}, region=$LOL_region, mmrAram=$mmrAram, aram_games=$f_aram_games, grades=${f_aram_grades.fromHexInt()}, streaks=${f_aram_streaks.fromHexInt()}, roles=${f_aram_roles.fromHexInt()})"
     }
 }

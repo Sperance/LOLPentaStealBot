@@ -34,7 +34,7 @@ data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var m
 class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
 
     var isHaveLastARAM = true
-    var isNeedUpdateDays = true
+    var isNeedUpdateDays = false
 
     val dataKORDLOL = WorkData<KORDLOLs>("KORDLOL")
     val dataKORD = WorkData<KORDs>("KORD")

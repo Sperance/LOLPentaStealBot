@@ -52,6 +52,7 @@ import ru.descend.kotlintelegrambot.handlers.handleMMRstat
 import ru.descend.kotlintelegrambot.handlers.handleOthers
 import ru.descend.kotlintelegrambot.handlers.last_date_loaded_discord
 import ru.descend.kotlintelegrambot.handlers.last_date_loaded_matches
+import ru.descend.kotlintelegrambot.handlers.stopTelegramBot
 import java.awt.Color
 import java.util.Date
 import java.util.concurrent.atomic.AtomicBoolean
@@ -59,6 +60,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
+private val discordScope = CoroutineScope(Dispatchers.IO)
 
 fun main() {
     printLog("server start")
@@ -81,6 +84,7 @@ fun main() {
     }
 
     Runtime.getRuntime().addShutdownHook(Thread {
+        stopTelegramBot()
         telegram_bot.stopPolling()
         scope.cancel("server shutdown")
         printLog("server shutdown")
@@ -162,11 +166,13 @@ private fun startTelegramBot() {
             handleMMRstat()
 
             telegramError {
+//                telegram_bot.deleteWebhook()
                 printLog("Telegram error: " + error.getErrorMessage())
             }
         }
     }
     telegram_bot.startPolling()
+    telegram_bot.deleteWebhook()
 }
 
 fun timerRequestReset(duration: Duration) = launch {
@@ -176,7 +182,7 @@ fun timerRequestReset(duration: Duration) = launch {
     }
 }
 
-fun timerMainInformation(duration: Duration) = launch {
+suspend fun timerMainInformation(duration: Duration) {
     while (true) {
         printLog("[showLeagueHistory::${sqlData.guildSQL.botChannelId}]")
         if (sqlData.guildSQL.botChannelId.isNotEmpty()) {
@@ -213,7 +219,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
     sqlData.dataKORD.get(true)
 
     //Таблица Главная - ID никнейм серияпобед
-    launch {
+    discordScope.launch {
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdMain, "MessageMainDataContent", {
             editMessageMainDataContent(it, sqlData)
         }) {
@@ -221,7 +227,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }
     }.join()
     //Таблица ММР - все про ММР арама
-    launch {
+    discordScope.launch {
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdArammmr, "MessageAramMMRDataContent", {
             editMessageAramMMRDataContent(it, sqlData)
         }) {
@@ -229,7 +235,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }
     }.join()
     //Таблица по играм\винрейту\сериям убийств
-    launch {
+    discordScope.launch {
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdGlobalStatisticData, "MessageGlobalStatisticContent", {
             editMessageGlobalStatisticContent(it)
         }) {
@@ -237,7 +243,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }
     }.join()
     //Таблица по Мастерству ТОП3 чемпионов каждого игрока
-    launch {
+    discordScope.launch {
         if (isNeedUpdateMasteries(channelText, sqlData)) {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdMasteries, "MessageMasteriesContent", {
                 editMessageMasteriesContent(it, sqlData)
@@ -246,7 +252,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
             }
         }
     }.join()
-    launch {
+    discordScope.launch {
         editMessageGlobal(channelText, sqlData.guildSQL.messageIdTopLols, "MessageTopLoLContent", {
             editMessageTopLolContent(it)
         }) {
@@ -254,7 +260,7 @@ suspend fun showLeagueHistory(sqlData: SQLData_R2DBC) {
         }
     }.join()
     //Таблица по ТОП чемпионам сервера
-    launch {
+    discordScope.launch {
         if (isNeedUpdateTop(channelText, sqlData)) {
             editMessageGlobal(channelText, sqlData.guildSQL.messageIdTop, "MessageTopContent", {
                 editMessageTopContent(it, sqlData)
@@ -290,16 +296,20 @@ suspend fun isNeedUpdateMasteries(channelText: TextChannel, sqlData: SQLData_R2D
 }
 
 suspend fun editMessageGlobal(channelText: TextChannel, messageId: String, measuredText: String, editBody: suspend (UserMessageModifyBuilder) -> Unit, createBody: suspend () -> Unit) {
-    measureBlock(EnumMeasures.BLOCK, measuredText) {
-        if (messageId.isBlank()) {
-            createBody.invoke()
-        } else {
-            try {
-                val message = channelText.getMessageOrNull(Snowflake(messageId))
-                message?.edit { editBody.invoke(this) } ?: createBody.invoke()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+    if (messageId.isBlank()) {
+        createBody.invoke()
+    } else {
+        try {
+            printLog("[editMessageGlobal] 1 $measuredText")
+            val message = channelText.getMessageOrNull(Snowflake(messageId))
+            printLog("[editMessageGlobal] 2 $measuredText")
+            message?.edit { editBody.invoke(this) } ?: createBody.invoke()
+            printLog("[editMessageGlobal] 3 $measuredText")
+        } catch (e: Exception) {
+            printLog("[editMessageGlobal] 4 $measuredText")
+            e.printStackTrace()
+        } finally {
+            printLog("[editMessageGlobal] 5 $measuredText")
         }
     }
 }
@@ -445,6 +455,13 @@ suspend fun editMessageTopLolContent(builder: UserMessageModifyBuilder){
         statClass.calculateField(it, "ВинРейт", (it.f_aram_wins / it.f_aram_games) * 100.0, true)
         statClass.calculateField(it, "Пентакиллов", it.f_aram_kills5, false)
         statClass.calculateField(it, "Убийств", it.f_aram_kills, false)
+        statClass.calculateField(it, "Винстрик", it.countStreak(0).toDouble(), false)
+        statClass.calculateField(it, "Лузстрик", it.countStreak(1).toDouble(), false)
+        statClass.calculateField(it, "Оценок S", it.countGrade(0).toDouble(), false)
+        statClass.calculateField(it, "Оценок A", it.countGrade(1).toDouble(), false)
+        statClass.calculateField(it, "Оценок B", it.countGrade(2).toDouble(), false)
+        statClass.calculateField(it, "Оценок C", it.countGrade(3).toDouble(), false)
+        statClass.calculateField(it, "Оценок D", it.countGrade(4).toDouble(), false)
     }
     printLog("[editMessageTopLolContent] 2")
 
