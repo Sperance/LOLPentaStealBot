@@ -58,11 +58,11 @@ data class LOLs(
     }
 
     fun calculateFromParticipant(part: Participant, match: Matches?): LOLs {
-        if (match == null || match.matchMode != "ARAM") return this
-
         if (f_aram_grades == BigInteger.ZERO) f_aram_grades = "S:0;A:0;B:0;C:0;D:0;".toHexInt()
         if (f_aram_streaks == BigInteger.ZERO) f_aram_streaks = "W:0;L:0;".toHexInt()
         if (f_aram_roles == BigInteger.ZERO) f_aram_roles = "D:0;B:0;T:0;S:0;U:0;H:0;".toHexInt()
+
+        if (match == null || match.matchMode != "ARAM") return this
 
         val kill5 = part.pentaKills
         val kill4 = part.quadraKills - kill5

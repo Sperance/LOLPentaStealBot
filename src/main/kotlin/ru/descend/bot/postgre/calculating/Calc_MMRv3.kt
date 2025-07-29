@@ -8,6 +8,7 @@ import ru.descend.bot.to1Digits
 import ru.descend.bot.toHexInt
 import java.math.BigInteger
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.math.pow
 
 enum class PlayerRank(
@@ -39,34 +40,37 @@ class AllBaseWeight {
     init {
         arrayWeights.add(BaseWeight("kda", 6.0, 1.0))
         arrayWeights.add(BaseWeight("multiKills", 1.0, 1.0))
-        arrayWeights.add(BaseWeight("damagePerMinute",1400.0, 1.0))
+        arrayWeights.add(BaseWeight("damagePerMinute",1200.0, 1.0))
         arrayWeights.add(BaseWeight("damageSelfMitigated", 30000.0, 1.0))
         arrayWeights.add(BaseWeight("killParticipation", 1.0, 1.0))
         arrayWeights.add(BaseWeight("totalHealsOnTeammates", 10000.0, 1.0))
         arrayWeights.add(BaseWeight("timeCCingOthers", 50.0,  1.0))
-        arrayWeights.add(BaseWeight("goldPerMinute", 1000.0, 1.0))
+        arrayWeights.add(BaseWeight("goldPerMinute", 900.0, 1.0))
         arrayWeights.add(BaseWeight("minionsKilled", 30.0, 1.0))
         arrayWeights.add(BaseWeight("survivedLowHP", 2.0, 1.0))
         arrayWeights.add(BaseWeight("skillAccuracy", 30.0, 1.0))
         arrayWeights.add(BaseWeight("outnumberedFights", 4.0, 1.0))
-        arrayWeights.add(BaseWeight("saveAllyFromDeath", 5.0, 1.0))
-        arrayWeights.add(BaseWeight("bountyGold", 500.0, 1.0))
+        arrayWeights.add(BaseWeight("saveAllyFromDeath", 4.0, 1.0))
+        arrayWeights.add(BaseWeight("bountyGold", 400.0, 1.0))
         arrayWeights.add(BaseWeight("teamDamagePercentage", 0.3, 1.0))
     }
 
     fun changeByRole(role: String) {
         when (role) {
             "DAMAGE" -> {
-                changeStat("damagePerMinute", needV = 1800.0, modV = 0.7)
-                changeStat("timeCCingOthers", needV = 30.0, modV = 1.3)
-                changeStat("minionsKilled", needV = 50.0, modV = 0.7)
-                changeStat("damageSelfMitigated", needV = 10000.0)
-                changeStat("skillAccuracy", needV = 50.0, modV = 1.2)
-                changeStat("teamDamagePercentage", needV = 20.0, modV = 1.8)
+                changeStat("kda", modV = 1.2)
+                changeStat("damagePerMinute", needV = 1500.0)
+                changeStat("timeCCingOthers", needV = 20.0, modV = 1.4)
+                changeStat("minionsKilled", needV = 60.0, modV = 0.8)
+                changeStat("damageSelfMitigated", needV = 8000.0, modV = 0.8)
+                changeStat("skillAccuracy", needV = 50.0)
+                changeStat("teamDamagePercentage", needV = 0.3, modV = 1.2)
+                changeStat("goldPerMinute", needV = 700.0)
             }
             "TANK" -> {
                 changeStat("kda", needV = 4.0, modV = 1.1)
-                changeStat("damagePerMinute", modV = 1.6)
+                changeStat("damagePerMinute", needV = 1100.0, modV = 1.6)
+                changeStat("minionsKilled", needV = 15.0, modV = 1.2)
                 changeStat("timeCCingOthers", needV = 70.0, modV = 1.4)
                 changeStat("survivedLowHP", modV = 1.4)
                 changeStat("damageSelfMitigated", needV = 80000.0, modV = 0.8)
@@ -90,9 +94,10 @@ class AllBaseWeight {
                 changeStat("teamDamagePercentage", modV = 1.3)
             }
             "HYBRID" -> {
-                changeStat("damagePerMinute", needV = 1600.0, modV = 1.1)
-                changeStat("timeCCingOthers", modV = 1.1)
+                changeStat("damagePerMinute", needV = 1300.0, modV = 1.2)
+                changeStat("timeCCingOthers", needV = 30.0, modV = 1.2)
                 changeStat("skillAccuracy", needV = 5.0)
+                changeStat("bountyGold", needV = 300.0)
             }
             else -> Unit
         }
@@ -132,7 +137,7 @@ class Calc_MMRv3(private val match: Matches) {
             8.0 -> 0.6
             9.0 -> 0.7
             10.0 -> 0.85
-            else -> 0.85 * (1.06.pow(x - 10))
+            else -> min(0.85 * (1.06.pow(x - 10)), 2.8)
         }
     }
 
@@ -184,17 +189,12 @@ class Calc_MMRv3(private val match: Matches) {
         textAllResult += "[topStats]:{$topStats, count:${topStats.count { it == ';' }}}; "
 
         // Расчет Performance Score
-        var performanceScore = (calculatePerformanceScore(player, allBaseWeight) + topStats.count { it == ';' } * 0.3).to1Digits()
+        var performanceScore = (calculatePerformanceScore(player, allBaseWeight) + topStats.count { it == ';' } * 0.0).to1Digits()
 
         val oldRank = PlayerRank.fromMMR(lol.mmrAram)
-        val winMatchModificator = 0.5
-        val rankModifier = if (matchResult) {
-            performanceScore += winMatchModificator
-            oldRank.winModifier
-        } else {
-            performanceScore -= winMatchModificator
-            oldRank.loseModifier
-        }
+        val rankModifier = if (matchResult) oldRank.winModifier
+        else oldRank.loseModifier
+
         performanceScore = performanceScore.to1Digits()
 
         val (expectedWin, actualResult) = calculateWinProbability(matchResult)
@@ -203,11 +203,13 @@ class Calc_MMRv3(private val match: Matches) {
         val matchGrade = calculateMatchGrade(performanceScore)
 
         val mmrChange = if (player.win) {
-            (baseKFactor * 1.5 * (performanceScore / 10.0) * rankModifier).to1Digits()
+            textAllResult += "[mmrChange:$baseKFactor * 1.5 * ($performanceScore / 10.0) * $rankModifier]; "
+            ((baseKFactor * 1.5 * (performanceScore / 10.0)) * rankModifier).to1Digits()
         } else {
-            (baseKFactor * -0.8 * (10.0 / (performanceScore - 1.0)) * rankModifier).to1Digits()
+            textAllResult += "[mmrChange:$baseKFactor * -0.9 * (8.0 / $performanceScore) * $rankModifier]; "
+            ((baseKFactor * -0.9 * (8.0 / performanceScore)) * rankModifier).to1Digits()
         }
-        textAllResult += "[mmrChange:$baseKFactor * (10.0 / ${(performanceScore - 1.0)}) * $rankModifier = $mmrChange]; "
+
 
         var newMMR = (lol.mmrAram + mmrChange).to1Digits()
         if (newMMR < 0.0) newMMR = 0.0
@@ -224,8 +226,8 @@ class Calc_MMRv3(private val match: Matches) {
         if (lol.f_aram_winstreak > lol.countStreak(0))
             lol.f_aram_streaks = "W:${lol.f_aram_winstreak};L:${lol.countStreak(1)};".toHexInt()
 
-        if (lol.f_aram_winstreak < 0 && (abs(lol.f_aram_winstreak) > lol.countStreak(1)))
-            lol.f_aram_streaks = "W:${lol.countStreak(0)};L:${lol.f_aram_winstreak};".toHexInt()
+        if (lol.f_aram_winstreak < 0 && (abs(lol.f_aram_winstreak) > abs(lol.countStreak(1))))
+            lol.f_aram_streaks = "W:${lol.countStreak(0)};L:${abs(lol.f_aram_winstreak)};".toHexInt()
 
         return AramMatchResult(
             newMMR = newMMR,
@@ -275,32 +277,32 @@ class Calc_MMRv3(private val match: Matches) {
      */
     private fun detectRoleByStats(player: ParticipantsNew): String {
 
-        val damageRatio = player.damagePerMinute.to1Digits() / timeFactor
+        val damageRatio = (player.damagePerMinute).to1Digits()
         textAllResult += "[damageRatio]:{${damageRatio}, stock: ${player.damagePerMinute.to1Digits()}}; "
 
-        val healRatioSelf = player.totalHeal.toDouble().to1Digits() / timeFactor
+        val healRatioSelf = (player.totalHeal.toDouble()).to1Digits()
         textAllResult += "[healRatioSelf]:{${healRatioSelf}, stock: ${player.totalHeal}}; "
 
-        val healRatioTeam = player.totalHealsOnTeammates.toDouble().to1Digits() / timeFactor
+        val healRatioTeam = (player.totalHealsOnTeammates.toDouble()).to1Digits()
         textAllResult += "[healRatioTeam]:{${healRatioTeam}, stock: ${player.totalHealsOnTeammates}}; "
 
         val healTotal = (healRatioSelf + healRatioTeam).to1Digits()
 
-        val ccRatio = player.timeCCingOthers.toDouble().to1Digits() / timeFactor
+        val ccRatio = (player.timeCCingOthers.toDouble()).to1Digits()
         textAllResult += "[ccRatio]:{${ccRatio}, stock: ${player.timeCCingOthers}}; "
 
-        val damageMitidatedRatio = player.damageSelfMitigated.toDouble().to1Digits() / timeFactor
+        val damageMitidatedRatio = (player.damageSelfMitigated.toDouble()).to1Digits()
         textAllResult += "[damageMitidatedRatio]:{${damageMitidatedRatio}, stock: ${player.damageSelfMitigated}}; "
 
         val skillAccuracyRatio = (player.skillshotsHit.toDouble() - player.skillshotsDodged).toInt()
         textAllResult += "[skillAccuracyRatio]:{${skillAccuracyRatio}}; "
 
         return when {
-            damageRatio > 1000 && damageMitidatedRatio < 20000 && healRatioTeam < 5000 -> "DAMAGE"
-            damageRatio > 2000 && damageMitidatedRatio > 15000 && skillAccuracyRatio < 20 -> "BROUSER"
-            (damageMitidatedRatio > 20000 && ccRatio > 20) || damageMitidatedRatio > 50000 -> "TANK"
-            damageRatio < 1200 && healRatioTeam > 15000 && skillAccuracyRatio > 20 -> "SUPPORT"
-            damageRatio < 1000 && ccRatio < 10 && healTotal < 10000 && damageMitidatedRatio < 10000 -> "USELESS"
+            damageRatio > 1200 && damageMitidatedRatio < 40000 -> "DAMAGE"
+            damageRatio > 1200 && damageMitidatedRatio > 40000 -> "BROUSER"
+            (damageMitidatedRatio > 30000 && ccRatio > 60) || damageMitidatedRatio > 60000 -> "TANK"
+            damageRatio < 1000 && (healRatioTeam > 10000 || skillAccuracyRatio > 10) -> "SUPPORT"
+            damageRatio < 1100 && ccRatio < 10 && healTotal < 10000 && damageMitidatedRatio < 10000 -> "USELESS"
             else -> "HYBRID"
         }
     }
@@ -320,10 +322,12 @@ class Calc_MMRv3(private val match: Matches) {
         val minionsKilled = normalizeParameter("minionsKilled", player.totalMinionsKilled, true)
         val survivedLowHP = normalizeParameter("survivedLowHP", player.survivedSingleDigitHpCount + player.tookLargeDamageSurvived, true)
         val skillAccuracy = normalizeParameter("skillAccuracy", player.skillshotsHit - player.skillshotsDodged, true)
-        val outnumberedFights = normalizeParameter("outnumberedFights", player.outnumberedKills * 1.5 + player.soloKills * 0.3, true)
+        val outnumberedFights = normalizeParameter("outnumberedFights", player.outnumberedKills * 1.5 + player.soloKills * 0.3, false)
         val saveAllyFromDeath = normalizeParameter("saveAllyFromDeath", player.saveAllyFromDeath, true)
-        val bountyGold = normalizeParameter("bountyGold", player.bountyGold, true)
+        val bountyGold = normalizeParameter("bountyGold", player.bountyGold, false)
         val teamDamagePercentage = normalizeParameter("teamDamagePercentage", player.teamDamagePercentage, false)
+
+        textAllResult += "[perfectGame]:{${player.perfectGame}}; "
 
         // Взвешенная сумма всех параметров
         return (kda * weights.getModByName("kda") +
@@ -435,7 +439,6 @@ data class AramMatchResult(
                 "\n  Оценки=${lol.f_aram_grades.fromHexInt()}" +
                 "\n  Стрики=${lol.f_aram_streaks.fromHexInt()}" +
                 "\n  Роли=${lol.f_aram_roles.fromHexInt()}" +
-                "\n  ТОП статов=$topStatsCounter" +
                 "\n  Игрок=$lolName" +
                 "\n  Чемпион=$lolChampion"
     }
