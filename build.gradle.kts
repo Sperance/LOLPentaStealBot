@@ -52,8 +52,6 @@ dependencies {
 
 tasks {
     compileKotlin {
-        kotlinOptions.jvmTarget = "17"
-
         Properties().apply {
             setProperty("name", project.name)
             setProperty("description", project.description)

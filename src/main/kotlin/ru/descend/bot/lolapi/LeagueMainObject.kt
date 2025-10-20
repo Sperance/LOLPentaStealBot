@@ -55,7 +55,6 @@ object LeagueMainObject {
             }
         }
         val heroes = R2DBC.stockHEROES.get()
-        R2DBC.stockMMR.reset()
         val result = Gson().fromJson(Gson().toJson(champions), ChampionsDTOsample::class.java)
         result.data.forEach { (_, any2) ->
             val dataChamp = Gson().fromJson(Gson().toJson(any2), InterfaceChampionBase::class.java)

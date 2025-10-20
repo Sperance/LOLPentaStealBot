@@ -25,8 +25,6 @@ data class KORDs(
     @KomapperAutoIncrement
     val id: Int = 0,
 
-    var guild_id: Int = -1,
-
     var KORD_id: String = "",
     var KORD_name: String = "",
     var KORD_discriminator: String = "",
@@ -39,7 +37,6 @@ data class KORDs(
     }
 
     constructor(guild: Guilds, user: User) : this() {
-        this.guild_id = guild.id
         this.KORD_id = user.id.value.toString()
         this.KORD_name = user.username
         this.KORD_discriminator = user.discriminator
@@ -51,13 +48,13 @@ data class KORDs(
 
     suspend fun deleteWithKORDLOL(guilds: Guilds) {
         printLog("[KORDs::deleteWithKORDLOL] $this")
-        KORDLOLs().getData({ tbl_kordlols.KORD_id eq id ; tbl_kordlols.guild_id eq guilds.id }).forEach {
+        KORDLOLs().getData({ tbl_kordlols.KORD_id eq id }).forEach {
             it.delete()
         }
         this.delete()
     }
 
     override fun toString(): String {
-        return "KORDs(id=$id, KORD_id='$KORD_id', KORD_name='$KORD_name', guild_id=$guild_id)"
+        return "KORDs(id=$id, KORD_id='$KORD_id', KORD_name='$KORD_name')"
     }
 }

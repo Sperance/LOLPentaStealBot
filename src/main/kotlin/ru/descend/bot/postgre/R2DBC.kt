@@ -29,8 +29,6 @@ import ru.descend.bot.postgre.r2dbc.model.KORDs
 import ru.descend.bot.postgre.r2dbc.model.KORDs.Companion.tbl_kords
 import ru.descend.bot.postgre.r2dbc.model.LOLs
 import ru.descend.bot.postgre.r2dbc.model.LOLs.Companion.tbl_lols
-import ru.descend.bot.postgre.r2dbc.model.MMRs
-import ru.descend.bot.postgre.r2dbc.model.MMRs.Companion.tbl_mmrs
 import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
@@ -40,11 +38,12 @@ import kotlin.time.Duration.Companion.minutes
 
 private val connectionFactory: ConnectionFactoryOptions = ConnectionFactoryOptions.builder()
     .option(ConnectionFactoryOptions.DRIVER, "postgresql")
-    .option(ConnectionFactoryOptions.HOST, "localhost")
+    .option(ConnectionFactoryOptions.HOST, "jouquemuprosa.beget.app")
     .option(ConnectionFactoryOptions.PORT, 5432)
-    .option(ConnectionFactoryOptions.USER, "postgres")
-    .option(ConnectionFactoryOptions.PASSWORD, "22322137")
-    .option(ConnectionFactoryOptions.DATABASE, "postgres2")
+    .option(ConnectionFactoryOptions.USER, "descend")
+    .option(ConnectionFactoryOptions.PASSWORD, "Elbrinom666.")
+    .option(ConnectionFactoryOptions.DATABASE, "descend_db")
+    .option(ConnectionFactoryOptions.SSL, false)
     .build()
 
 val db = R2dbcDatabase(connectionFactory, executionOptions = ExecutionOptions(queryTimeoutSeconds = 180, suppressLogging = true))
@@ -54,7 +53,6 @@ val db = R2dbcDatabase(connectionFactory, executionOptions = ExecutionOptions(qu
  */
 object R2DBC {
     val stockHEROES = WorkData<Heroes>("HEROES")
-    val stockMMR = WorkData<MMRs>("MMR")
 
     suspend fun runTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction(transactionAttribute = TransactionAttribute.REQUIRES_NEW) { body.invoke(it) }
 
@@ -72,12 +70,10 @@ object R2DBC {
             db.runQuery { QueryDsl.create(tbl_kords) }
             db.runQuery { QueryDsl.create(tbl_lols) }
             db.runQuery { QueryDsl.create(tbl_matches) }
-            db.runQuery { QueryDsl.create(tbl_mmrs) }
             db.runQuery { QueryDsl.create(tbl_heroes) }
             db.runQuery { QueryDsl.create(tbl_participantsnew) }
         }
         if (stockHEROES.bodyReset == null) stockHEROES.bodyReset = { Heroes().getData() }
-        if (stockMMR.bodyReset == null) stockMMR.bodyReset = { MMRs().getData() }
 
         LeagueMainObject.catchHeroNames()
     }
@@ -89,7 +85,6 @@ object R2DBC {
 
     suspend fun getHeroFromNameEN(nameEN: String) = stockHEROES.get().find { it.nameEN == nameEN }
     suspend fun getHeroFromKey(key: String) = stockHEROES.get().find { it.key == key }
-    suspend fun getMMRforChampion(championName: String) = stockMMR.get().find { it.champion == championName }
 
     suspend fun getKORDLOLs_forKORD(guilds: Guilds, kord: String) : KORDLOLs? {
         return db.withTransaction {
@@ -97,7 +92,6 @@ object R2DBC {
                 QueryDsl.from(tbl_kordlols)
                     .leftJoin(tbl_kords) { tbl_kords.id eq tbl_kordlols.KORD_id }
                     .where { tbl_kords.KORD_id eq kord }
-                    .where { tbl_kordlols.guild_id eq guilds.id }
                     .limit(1)
             }.firstOrNull()
         }

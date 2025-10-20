@@ -20,7 +20,8 @@ class Calc_LoadMAtches {
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
-        loadArrayMatches(checkMatches)
+        if (checkMatches.isNotEmpty())
+            loadArrayMatches(checkMatches)
     }
 
     private suspend fun loadArrayMatches(checkMatches: ArrayList<String>) {

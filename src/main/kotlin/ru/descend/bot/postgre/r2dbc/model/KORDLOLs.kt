@@ -21,10 +21,7 @@ data class KORDLOLs(
     val id: Int = 0,
 
     var KORD_id: Int = -1,
-    var LOL_id: Int = -1,
-    var guild_id: Int = -1,
-
-    var realtime_match_message: String = ""
+    var LOL_id: Int = -1
 ) {
 
     companion object {
@@ -39,6 +36,6 @@ data class KORDLOLs(
     }
 
     override fun toString(): String {
-        return "KORDLOLs(id=$id, KORD_id=$KORD_id, LOL_id=$LOL_id, guild_id=$guild_id)"
+        return "KORDLOLs(id=$id, KORD_id=$KORD_id, LOL_id=$LOL_id)"
     }
 }

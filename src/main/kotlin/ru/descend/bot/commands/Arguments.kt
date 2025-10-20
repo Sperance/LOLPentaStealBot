@@ -32,7 +32,6 @@ import ru.descend.bot.postgre.r2dbc.model.Matches
 import ru.descend.bot.datas.update
 import ru.descend.bot.printLog
 import ru.descend.bot.launch
-import ru.descend.bot.postgre.calculating.Calc_MMR
 import ru.descend.bot.postgre.r2dbc.model.Matches.Companion.tbl_matches
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew
 import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_participantsnew
@@ -84,7 +83,7 @@ fun arguments() = commands("Arguments") {
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
-            val KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id })
+            val KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID() })
             if (KORD == null) {
                 respond("Пользователь ${user.lowDescriptor()} не зарегистрирован в боте. Его изменение невозможно")
                 return@execute
@@ -225,7 +224,7 @@ fun arguments() = commands("Arguments") {
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
             var KORD = KORDs(guilds, user)
-            KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID(); tbl_kords.guild_id eq guilds.id }) ?: KORD.create(KORDs::KORD_id).result
+            KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID() }) ?: KORD.create(KORDs::KORD_id).result
 
             //Создаем LOL сразу со связью с аккаунтом Лиги Легенд
             var LOL = LOLs().connectLOL(region, summonerName, tagLine)
@@ -248,7 +247,7 @@ fun arguments() = commands("Arguments") {
             LOL = LOL.update()
 
             //Проверка что к пользователю уже привязан какой-либо аккаунт лиги
-            val alreadyKORDLOL = KORDLOLs().getDataOne({ tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.guild_id eq guilds.id; tbl_kordlols.LOL_id eq LOL.id })
+            val alreadyKORDLOL = KORDLOLs().getDataOne({ tbl_kordlols.KORD_id eq KORD.id; tbl_kordlols.LOL_id eq LOL.id })
             if (alreadyKORDLOL != null) {
                 respond("Призыватель уже связан с аккаунтом лиги легенд (KORDLOL: ${alreadyKORDLOL.id}). Для внесения изменений - сначала удалите из базы пользователя ${user.lowDescriptor()}")
                 return@execute
@@ -257,8 +256,7 @@ fun arguments() = commands("Arguments") {
             asyncLaunch {
                 val KORDLOL = KORDLOLs(
                     KORD_id = KORD.id,
-                    LOL_id = LOL.id,
-                    guild_id = guilds.id
+                    LOL_id = LOL.id
                 )
 
                 KORDLOL.create(null).result
@@ -281,40 +279,6 @@ fun arguments() = commands("Arguments") {
             }
 
             respond("Ожидание ответа...")
-        }
-    }
-
-    slash("getMatchAramMMR", "Получить статистику по подсчёту ММР по матчу по всем пользователям", Permissions(Permission.Administrator)) {
-        execute(AnyArg("matchText")) {
-            val (matchText) = args
-            val textCommand = "[Start command] '$name' from ${author.fullName} with params: 'matchText'=${matchText}"
-            printLog(textCommand)
-
-            respond("Генерация ответа по матчу $matchText...")
-
-            val match = Matches().getDataOne({ tbl_matches.matchId eq matchText })
-            if (match == null) {
-                channel.createMessage { content = "Матч '$matchText' не найден в БД бота" }
-                return@execute
-            }
-
-            val participants = ParticipantsNew().getData({ tbl_participantsnew.match_id eq match.id })
-            if (participants.isEmpty()) {
-                channel.createMessage { content = "Не найдены игроки в матче '$matchText'" }
-                return@execute
-            }
-
-            launch {
-                val result = Calc_MMR(participants, match)
-                result.calculateMMR()
-                val file = File("${matchText}_ALL.txt")
-                file.writeText(result.mmrValueTextLog)
-                channel.createMessage {
-                    content = "Файл данных по матчу $matchText"
-                    files.add(file.toNamedFile())
-                }
-                file.delete()
-            }
         }
     }
 
