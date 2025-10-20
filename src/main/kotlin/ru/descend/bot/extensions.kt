@@ -23,6 +23,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import ru.descend.bot.datas.AESUtils
 import ru.descend.bot.datas.DSC_PS
 import ru.descend.bot.datas.decrypt
+import ru.descend.bot.datas.encrypt
 import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.datas.getStrongDate
 import ru.descend.bot.postgre.SQLData_R2DBC
@@ -201,7 +202,6 @@ fun catchToken(): List<String> {
     val file = File("token.dsc")
     if (!file.exists()) {
         file.createNewFile()
-        //TODO Write token 1 - dicsord/2 - LOL
     }
     return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
 }

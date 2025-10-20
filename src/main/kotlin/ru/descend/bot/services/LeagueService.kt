@@ -7,7 +7,6 @@ import retrofit2.http.Query
 import ru.descend.bot.lolapi.dto.AccountDTO
 import ru.descend.bot.lolapi.dto.MatchTimelineDTO
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDto
-import ru.descend.bot.lolapi.dto.currentGameInfo.CurrentGameInfo
 import ru.descend.bot.lolapi.dto.matchDto.MatchDTO
 
 interface LeagueService {
