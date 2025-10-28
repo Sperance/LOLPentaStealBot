@@ -127,7 +127,7 @@ fun arguments() = commands("Arguments") {
             findedOldLOL.show_code = newCode.toInt()
             findedOldLOL.update()
 
-            sqlData.isNeedUpdateDays = true
+            sqlData?.isNeedUpdateDays = true
             respond("Успешно изменен showCode у пользователя с '$currentCode' на '$newCode'")
         }
     }
@@ -235,7 +235,7 @@ fun arguments() = commands("Arguments") {
 
             //Если аккаунт есть в базе - ок, если нет - создаём в базе
             LOL = LOLs().getDataOne({ tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }) ?: LOL.create(LOLs::LOL_puuid).result
-            val allShow = sqlData.dataSavedLOL.get()
+            val allShow = LOLs().getData({ tbl_lols.show_code notEq 0 })
 
             var index = 0
             while (true) {
@@ -261,7 +261,7 @@ fun arguments() = commands("Arguments") {
 
                 KORDLOL.create(null).result
             }
-            sqlData.isNeedUpdateDays = true
+            sqlData?.isNeedUpdateDays = true
             respond("Пользователь ${user.lowDescriptor()} успешно связан с учётной записью ${LOL.getCorrectName()}")
         }
     }
@@ -367,8 +367,8 @@ fun arguments() = commands("Arguments") {
 //                printLog("[DELETE KORD]")
 //                KORDs().getDataOne({ tbl_kords.id eq kordId })?.delete()
 //            }
-            sqlData.isNeedUpdateDays = true
-            sqlData.isHaveLastARAM = true
+            sqlData?.isNeedUpdateDays = true
+            sqlData?.isHaveLastARAM = true
 
             respond(textMessage)
         }
@@ -454,7 +454,7 @@ suspend fun KORD_userCreate(KORDid: String, KORDname: String, KORDdiscriminator:
 
     //Если аккаунт есть в базе - ок, если нет - создаём в базе
     LOL = LOLs().getDataOne({ tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }) ?: LOL.create(LOLs::LOL_puuid).result
-    val allShow = sqlData.dataSavedLOL.get()
+    val allShow = LOLs().getData({ tbl_lols.show_code notEq 0 })
 
     var index = 0
     while (true) {

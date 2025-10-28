@@ -88,7 +88,7 @@ class SQLData_R2DBC(var guild: Guild, var guildSQL: Guilds) {
                 }
             }
             printLog("[getArrayAramMMRData] 4")
-            val lols = sqlData.dataSavedLOL.get()
+            val lols = sqlData?.dataSavedLOL?.get() ?: LOLs().getData({ tbl_lols.show_code notEq 0 })
             arrayAramMMRData.forEach {
                 it.kordLOL = getKORDLOL_fromLOL(it.kord_lol_id)
                 it.LOL = lols.find { ll -> ll.id == it.kordLOL?.LOL_id }

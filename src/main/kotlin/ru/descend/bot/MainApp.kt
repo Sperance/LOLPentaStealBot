@@ -64,10 +64,10 @@ fun main() {
 
     val scope = CoroutineScope(Dispatchers.IO)
 
-    scope.launch {
-        printLog("startDiscordBot")
-        startDiscordBot()
-    }
+//    scope.launch {
+//        printLog("startDiscordBot")
+//        startDiscordBot()
+//    }
 
     scope.launch {
         printLog("startLoadingMatches")
@@ -89,23 +89,23 @@ fun main() {
     Thread.currentThread().join()
 }
 
-lateinit var sqlData: SQLData_R2DBC
+var sqlData: SQLData_R2DBC? = null
 val atomicIntLoaded = AtomicInteger()
 var sql_data_initialized = false
 
 private fun startLoadingMatches() = launch {
     delay((30).seconds)
     while (true) {
-        if (sql_data_initialized) {
+//        if (sql_data_initialized) {
             val kordLol_lol_id = KORDLOLs().getData().map { it.LOL_id }
             val savedLols = R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
             val loaderMatches = Calc_LoadMAtches()
             loaderMatches.loadMatches(savedLols)
             loaderMatches.clearTempData()
             last_date_loaded_matches = Date()
-        } else {
-            printLog("[sql_data not initialized]")
-        }
+//        } else {
+//            printLog("[sql_data not initialized]")
+//        }
         delay((2).minutes)
     }
 }
@@ -141,7 +141,7 @@ fun startDiscordBot() {
                 if (it.name == "АрамоЛолево") {
                     val guilds = Guilds().getData().first()
                     sqlData = SQLData_R2DBC(it, guilds)
-                    sqlData.initialize()
+                    sqlData!!.initialize()
                     sql_data_initialized = true
                     removeMessage()
                     initCreateUser()
@@ -180,8 +180,8 @@ fun timerRequestReset(duration: Duration) = launch {
 
 suspend fun timerMainInformation(duration: Duration) {
     while (true) {
-        printLog("[showLeagueHistory::${sqlData.guildSQL.botChannelId}]")
-        if (sqlData.guildSQL.botChannelId.isNotEmpty()) {
+        printLog("[showLeagueHistory::${sqlData?.guildSQL?.botChannelId}]")
+        if (sqlData?.guildSQL?.botChannelId?.isNotEmpty() == true) {
             last_date_loaded_discord = Date()
 //            showLeagueHistory(sqlData)
             garbaceCollect()
@@ -192,9 +192,9 @@ suspend fun timerMainInformation(duration: Duration) {
 }
 
 suspend fun removeMessage() {
-    if (sqlData.guildSQL.botChannelId.isNotEmpty()){
-        sqlData.guild.getChannelOf<TextChannel>(Snowflake(sqlData.guildSQL.botChannelId)).messages.collect {
-            if (it.id.value.toString() in listOf(sqlData.guildSQL.messageIdGlobalStatisticData, sqlData.guildSQL.messageIdMain, sqlData.guildSQL.messageIdArammmr, sqlData.guildSQL.messageIdMasteries, sqlData.guildSQL.messageIdTop, sqlData.guildSQL.messageIdTopLols)) {
+    if (sqlData?.guildSQL?.botChannelId?.isNotEmpty() == true){
+        sqlData!!.guild.getChannelOf<TextChannel>(Snowflake(sqlData!!.guildSQL.botChannelId)).messages.collect {
+            if (it.id.value.toString() in listOf(sqlData!!.guildSQL.messageIdGlobalStatisticData, sqlData!!.guildSQL.messageIdMain, sqlData!!.guildSQL.messageIdArammmr, sqlData!!.guildSQL.messageIdMasteries, sqlData!!.guildSQL.messageIdTop, sqlData!!.guildSQL.messageIdTopLols)) {
                 Unit
             } else {
                 it.delete()
@@ -458,7 +458,8 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
 
 fun editMessageTopLolContent(builder: UserMessageModifyBuilder, lols: ArrayList<LOLs>){
     printLog("[editMessageTopLolContent] 0")
-    if (!sqlData.isHaveLastARAM) return
+    if (sqlData == null) return
+    if (!sqlData!!.isHaveLastARAM) return
     printLog("[editMessageTopLolContent] 1")
     val statClass = Toplols()
     lols.forEach {

@@ -12,25 +12,35 @@ import ru.descend.bot.sqlData
 import ru.descend.bot.writeLog
 
 class Calc_LoadMAtches {
-    suspend fun loadMatches(lols: Collection<LOLs>) {
+
+    var lastStarted = 0
+    suspend fun loadMatches(lols: Collection<LOLs>, startIndex: Int = 0) {
         val checkMatches = ArrayList<String>()
+        if (startIndex > lastStarted) lastStarted = startIndex
         lols.forEach {
             if (it.LOL_puuid == "") return@forEach
             atomicIntLoaded.incrementAndGet()
 
-            LeagueMainObject.catchMatchID(it, 0, 100).forEach ff@{ matchId ->
+            LeagueMainObject.catchMatchID(it, lastStarted, 100).forEach ff@{ matchId ->
                 if (!checkMatches.contains(matchId)) checkMatches.add(matchId)
             }
         }
-        if (checkMatches.isNotEmpty())
-            loadArrayMatches(checkMatches)
+        if (checkMatches.isNotEmpty()) {
+            val listChecked = getNewMatches(checkMatches)
+            printLog("[loadArrayMatches] count: ${listChecked.size}")
+            if (listChecked.isEmpty()) {
+                loadMatches(lols, lastStarted + 100)
+            } else {
+                loadArrayMatches(listChecked)
+            }
+        } else {
+            printLog("[loadArrayMatches] is EMPTY")
+        }
     }
 
     private suspend fun loadArrayMatches(checkMatches: ArrayList<String>) {
-        val listChecked = getNewMatches(checkMatches)
-        printLog("[loadArrayMatches] count: ${listChecked.size}")
-        listChecked.sortBy { it }
-        listChecked.forEach { newMatch ->
+        checkMatches.sortBy { it }
+        checkMatches.forEach { newMatch ->
             atomicIntLoaded.incrementAndGet()
             LeagueMainObject.catchMatch(newMatch)?.let { match ->
                 addMatch(match)

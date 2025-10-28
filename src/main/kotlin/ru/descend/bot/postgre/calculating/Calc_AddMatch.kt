@@ -29,7 +29,7 @@ import ru.descend.kotlintelegrambot.handlers.listening_data_array
 import kotlin.math.abs
 
 data class Calc_AddMatch (
-    val sqlData: SQLData_R2DBC,
+    val sqlData: SQLData_R2DBC?,
     val match: MatchDTO
 ) {
     suspend fun calculate() : Matches {
@@ -122,7 +122,7 @@ data class Calc_AddMatch (
         }
 
         if (!pMatch.matchMode.contains("ARAM")) return pMatch
-        sqlData.isHaveLastARAM = true
+        sqlData?.isHaveLastARAM = true
 
         if (pMatch.isNeedCalcStats()) {
             var lastPartList = db.runQuery { QueryDsl.insert(tbl_participantsnew).multiple(arrayNewParts) }
@@ -144,14 +144,15 @@ data class Calc_AddMatch (
         }
 
         calcv3.calculateTOPstats(arrayKORDmmr.map { it.second })
+        val savedLols = LOLs().getData({ tbl_lols.show_code notEq 0 })
         var strToTelegram = ""
         arrayKORDmmr.forEach {
             val veResult = calcv3.calculateNewMMR(it.second, it.first, it.second.win)
             it.first.update()
             it.second.update()
 
-            if (it.first.LOL_puuid in sqlData.dataSavedLOL.get().map { sl -> sl.LOL_puuid }) {
-                sqlData.calculatePentakill(it.first, it.second, pMatch)
+            if (it.first.LOL_puuid in savedLols.map { sl -> sl.LOL_puuid }) {
+                sqlData?.calculatePentakill(it.first, it.second, pMatch)
                 strToTelegram += veResult.toStringLow()
                 printLogMMR("Результат: $veResult")
             }
@@ -241,7 +242,7 @@ data class Calc_AddMatch (
         //Бонусные ММР
         data.forEach {
             var additionalMMR = 0.0
-            sqlData.calculatePentakill(it.first, it.second, pMatch)
+            sqlData?.calculatePentakill(it.first, it.second, pMatch)
             additionalMMR += it.second.kills5 * 10.0
             additionalMMR += it.second.kills4 * 5.0
 //            additionalMMR += it.second.tookLargeDamageSurvived * 3.0

@@ -117,7 +117,7 @@ object LeagueMainObject {
                 val messageError = "catchMatch failure: ${res.message} with matchId: $matchId"
                 printLog(messageError)
 
-                if ((res.errorCode == 403 || res.errorCode == 404 || res.errorCode == 429) || agained) null
+                if ((res.errorCode == 403 || res.errorCode == 404 || res.errorCode == 502) || agained) null
                 else {
                     statusLOLRequests = 1
                     catchMatch(matchId)

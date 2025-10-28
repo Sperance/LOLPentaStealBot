@@ -115,7 +115,7 @@ suspend fun SQLData_R2DBC?.sendMessage(messageId: String, message: String, after
     launch {
         try {
             printLog("[SEND MESSAGE] $message")
-            val channelText = sqlData.guild!!.getChannelOf<TextChannel>(Snowflake(messageId))
+            val channelText = sqlData?.guild!!.getChannelOf<TextChannel>(Snowflake(messageId))
             channelText.createMessage {
                 content = message
             }

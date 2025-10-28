@@ -1,6 +1,7 @@
 package ru.descend.bot.postgre.r2dbc.model
 
 import dev.kord.common.entity.Snowflake
+import dev.kord.core.Kord
 import dev.kord.core.cache.data.UserData
 import dev.kord.core.entity.User
 import org.junit.jupiter.params.aggregator.ArgumentAccessException
@@ -32,7 +33,7 @@ data class KORDLOLs(
 
     suspend fun asUser(data: SQLData_R2DBC) : User {
         if (KORD_id == -1) throw ArgumentAccessException("KORDperson is NULL. KORDLOL_id: $id")
-        return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), sqlData.guild.kord)
+        return User(UserData(Snowflake(data.getKORD(KORD_id)!!.KORD_id.toLong()), data.getKORD(KORD_id)!!.KORD_name), sqlData?.guild?.kord?: Kord(""))
     }
 
     override fun toString(): String {
