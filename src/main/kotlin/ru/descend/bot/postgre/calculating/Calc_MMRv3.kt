@@ -16,14 +16,14 @@ enum class PlayerRank(
     val winModifier: Double,
     val loseModifier: Double
 ) {
-    CHALLENGER(3300.0, 0.7, 1.2),
-    GRANDMASTER(3000.0, 0.8, 1.2),
-    MASTER(2400.0, 0.8, 1.1),
-    DIAMOND(2000.0, 0.9, 1.0),
-    PLATINUM(1600.0, 1.0, 0.9),
-    GOLD(1200.0, 1.0, 0.9),
-    SILVER(800.0, 1.1, 0.8),
-    BRONZE(400.0, 1.1, 0.8),
+    CHALLENGER(2200.0, 0.7, 1.2),
+    GRANDMASTER(2000.0, 0.8, 1.2),
+    MASTER(1800.0, 0.8, 1.1),
+    DIAMOND(1500.0, 0.9, 1.0),
+    PLATINUM(1200.0, 1.0, 0.9),
+    GOLD(900.0, 1.0, 0.9),
+    SILVER(600.0, 1.1, 0.8),
+    BRONZE(300.0, 1.1, 0.8),
     IRON(0.0, 1.2, 0.7);
 
     companion object {

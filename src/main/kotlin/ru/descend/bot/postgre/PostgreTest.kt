@@ -10,6 +10,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import org.junit.Test
+import ru.descend.bot.commands.KORD_userCreate
 import ru.descend.bot.datas.Toplols
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
@@ -33,6 +34,19 @@ class PostgreTest {
         val coded = str.toHexInt()
         println("codded: $coded")
         println("encoded: ${coded.fromHexInt()}")
+    }
+
+    fun initCreateUser() {
+        runBlocking {
+            KORD_userCreate(
+                KORDid = "723783902488952924",
+                KORDname = "volandroche",
+                KORDdiscriminator = "",
+                region = "",
+                riotName = "Ультравасилие",
+                riotTag = "RU1"
+            )
+        }
     }
 
     @Test

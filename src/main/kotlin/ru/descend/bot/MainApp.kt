@@ -29,7 +29,6 @@ import ru.descend.bot.datas.getSize
 import ru.descend.bot.datas.isCurrentDay
 import ru.descend.bot.datas.toDate
 import ru.descend.bot.datas.update
-import ru.descend.bot.enums.EnumARAMRank
 import ru.descend.bot.lolapi.LeagueMainObject
 import ru.descend.bot.lolapi.dto.championMasteryDto.ChampionMasteryDtoItem
 import ru.descend.bot.postgre.R2DBC
@@ -47,16 +46,12 @@ import ru.descend.bot.postgre.r2dbc.model.ParticipantsNew.Companion.tbl_particip
 import ru.descend.kotlintelegrambot.Bot
 import ru.descend.kotlintelegrambot.dispatch
 import ru.descend.kotlintelegrambot.dispatcher.telegramError
-import ru.descend.kotlintelegrambot.handlers.handleButtons
-import ru.descend.kotlintelegrambot.handlers.handleCommands
 import ru.descend.kotlintelegrambot.handlers.handleMMRstat
-import ru.descend.kotlintelegrambot.handlers.handleOthers
 import ru.descend.kotlintelegrambot.handlers.last_date_loaded_discord
 import ru.descend.kotlintelegrambot.handlers.last_date_loaded_matches
 import ru.descend.kotlintelegrambot.handlers.stopTelegramBot
 import java.awt.Color
 import java.util.Date
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -86,7 +81,7 @@ fun main() {
 
     Runtime.getRuntime().addShutdownHook(Thread {
         stopTelegramBot()
-        telegram_bot.stopPolling()
+        telegram_bot?.stopPolling()
         scope.cancel("server shutdown")
         printLog("server shutdown")
     })
@@ -105,7 +100,7 @@ private fun startLoadingMatches() = launch {
             val kordLol_lol_id = KORDLOLs().getData().map { it.LOL_id }
             val savedLols = R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
             val loaderMatches = Calc_LoadMAtches()
-            loaderMatches.loadMatches(savedLols, LOAD_SAVED_USER_MATCHES)
+            loaderMatches.loadMatches(savedLols)
             loaderMatches.clearTempData()
             last_date_loaded_matches = Date()
         } else {
@@ -149,6 +144,7 @@ fun startDiscordBot() {
                     sqlData.initialize()
                     sql_data_initialized = true
                     removeMessage()
+                    initCreateUser()
 
                     timerRequestReset((2).minutes)
                     timerMainInformation((121).seconds)
@@ -158,7 +154,7 @@ fun startDiscordBot() {
     }
 }
 
-lateinit var telegram_bot: Bot
+var telegram_bot: Bot? = null
 
 private fun startTelegramBot() {
     telegram_bot = ru.descend.kotlintelegrambot.bot {
@@ -167,13 +163,12 @@ private fun startTelegramBot() {
             handleMMRstat()
 
             telegramError {
-//                telegram_bot.deleteWebhook()
                 printLog("Telegram error: " + error.getErrorMessage())
             }
         }
     }
-    telegram_bot.startPolling()
-    telegram_bot.deleteWebhook()
+    telegram_bot?.startPolling()
+    telegram_bot?.deleteWebhook()
 }
 
 fun timerRequestReset(duration: Duration) = launch {
@@ -188,7 +183,7 @@ suspend fun timerMainInformation(duration: Duration) {
         printLog("[showLeagueHistory::${sqlData.guildSQL.botChannelId}]")
         if (sqlData.guildSQL.botChannelId.isNotEmpty()) {
             last_date_loaded_discord = Date()
-            showLeagueHistory(sqlData)
+//            showLeagueHistory(sqlData)
             garbaceCollect()
             printMemoryUsage(" [TELEGRAM: $telegram_bot]")
         }
@@ -418,7 +413,7 @@ suspend fun editMessageTopContent(builder: UserMessageModifyBuilder, sqlData: SQ
         .from(tbl_participantsnew)
         .leftJoin(tbl_matches) { tbl_matches.id eq tbl_participantsnew.match_id }
         .innerJoin(KORDLOLs.tbl_kordlols) { KORDLOLs.tbl_kordlols.LOL_id eq tbl_participantsnew.LOLperson_id }
-        .where { tbl_matches.matchMode eq "ARAM" ; tbl_matches.bots eq false ; tbl_matches.surrender eq false ; tbl_matches.aborted eq false ; tbl_participantsnew.needCalcStats eq true }
+        .where { tbl_matches.bots eq false ; tbl_matches.surrender eq false ; tbl_matches.aborted eq false ; tbl_participantsnew.needCalcStats eq true }
         .selectAsEntity(tbl_participantsnew)
 
     val statClass = Toppartisipants()

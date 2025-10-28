@@ -36,7 +36,7 @@ data class KORDs(
         val tbl_kords = Meta.korDs
     }
 
-    constructor(guild: Guilds, user: User) : this() {
+    constructor(user: User) : this() {
         this.KORD_id = user.id.value.toString()
         this.KORD_name = user.username
         this.KORD_discriminator = user.discriminator

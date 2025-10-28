@@ -223,7 +223,7 @@ fun arguments() = commands("Arguments") {
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
             //Берем KORD либо существующий, либо создаём новый. Не важно
-            var KORD = KORDs(guilds, user)
+            var KORD = KORDs(user)
             KORD = KORDs().getDataOne({ tbl_kords.KORD_id eq user.toStringUID() }) ?: KORD.create(KORDs::KORD_id).result
 
             //Создаем LOL сразу со связью с аккаунтом Лиги Легенд
@@ -383,7 +383,7 @@ fun arguments() = commands("Arguments") {
             val guilds = R2DBC.getGuild(guild)
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataUser = R2DBC.getKORDLOLs_forKORD(guilds, user.toStringUID())
+            val dataUser = R2DBC.getKORDLOLs_forKORD(user.toStringUID())
             val textMessage = if (dataUser == null) {
                 "Пользователя не существует в базе"
             } else {
@@ -406,7 +406,7 @@ fun arguments() = commands("Arguments") {
             val guilds = R2DBC.getGuild(guild)
             guild.sendMessage(guilds.messageIdDebug, textCommand)
 
-            val dataUser = R2DBC.getKORDLOLs_forKORD(guilds, user.toStringUID())
+            val dataUser = R2DBC.getKORDLOLs_forKORD(user.toStringUID())
             val textMessage = if (dataUser == null) {
                 "Пользователя не существует в базе"
             } else {
@@ -440,4 +440,40 @@ fun arguments() = commands("Arguments") {
             respond(textMessage)
         }
     }
+}
+
+suspend fun KORD_userCreate(KORDid: String, KORDname: String, KORDdiscriminator: String, region: String, riotName: String, riotTag: String): String {
+    var userKORD = KORDs(KORD_id = KORDid, KORD_name = KORDname, KORD_discriminator = KORDdiscriminator)
+    userKORD = KORDs().getDataOne({ tbl_kords.KORD_id eq KORDid }) ?: userKORD.create(KORDs::KORD_id).result
+
+    //Создаем LOL сразу со связью с аккаунтом Лиги Легенд
+    var LOL = LOLs().connectLOL(region, riotName, riotTag)
+    if (LOL == null) {
+        return "Призыватель $riotName#$riotTag не найден в Лиге Легенд"
+    }
+
+    //Если аккаунт есть в базе - ок, если нет - создаём в базе
+    LOL = LOLs().getDataOne({ tbl_lols.LOL_puuid eq LOL!!.LOL_puuid }) ?: LOL.create(LOLs::LOL_puuid).result
+    val allShow = sqlData.dataSavedLOL.get()
+
+    var index = 0
+    while (true) {
+        index++
+        if (allShow.find { it.show_code == index } == null) break
+    }
+
+    val alreadyKORDLOL = KORDLOLs().getDataOne({ tbl_kordlols.KORD_id eq userKORD.id; tbl_kordlols.LOL_id eq LOL!!.id })
+    if (alreadyKORDLOL != null) {
+        return "Призыватель уже связан с аккаунтом лиги легенд (KORDLOL: ${alreadyKORDLOL.id}). Для внесения изменений - сначала удалите из базы пользователя"
+    }
+
+    LOL.show_code = index
+    LOL = LOL.update()
+
+    KORDLOLs(
+        KORD_id = userKORD.id,
+        LOL_id = LOL.id
+    ).create(null).result
+
+    return ""
 }

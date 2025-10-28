@@ -121,10 +121,9 @@ data class Calc_AddMatch (
             arrayNewParts.add(newPart)
         }
 
-        if (pMatch.matchMode != "ARAM") return pMatch
+        if (!pMatch.matchMode.contains("ARAM")) return pMatch
         sqlData.isHaveLastARAM = true
 
-//        val findedCurrent = sqlData.dataKORDLOL.get().find { kl -> kl.LOL_id in arrayNewParts.map { np -> np.LOLperson_id } }
         if (pMatch.isNeedCalcStats()) {
             var lastPartList = db.runQuery { QueryDsl.insert(tbl_participantsnew).multiple(arrayNewParts) }
             if (lastPartList.isEmpty()) lastPartList = arrayNewParts

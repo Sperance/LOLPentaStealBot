@@ -28,10 +28,9 @@ import ru.descend.bot.sqlData
 import ru.descend.bot.toDate
 import ru.descend.bot.toFormatDateTime
 
-//data class statMainTemp_r2(var kord_lol_id: Int, var games: Int, var win: Int, var kill: Int, var kill2: Int, var kill3: Int, var kill4: Int, var kill5: Int, var kordLOL: KORDLOLs?)
 data class statAramDataTemp_r2(var kord_lol_id: Int, var mmr_aram: Double, var mmr_aram_saved: Double, var champion_id: Int?, var mmr: Double?, var mvp_lvp_info: String?, var bold: Boolean, var kordLOL: KORDLOLs?, var LOL: LOLs?)
 
-class SQLData_R2DBC (var guild: Guild, var guildSQL: Guilds) {
+class SQLData_R2DBC(var guild: Guild, var guildSQL: Guilds) {
 
     var isHaveLastARAM = true
     var isNeedUpdateDays = false

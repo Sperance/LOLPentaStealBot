@@ -34,7 +34,7 @@ data class Matches(
         if (surrender) return false
         if (aborted) return false
         if (matchDuration < (60 * 8)) return false
-        if (matchMode != "ARAM") return false
+        if (!matchMode.contains("ARAM")) return false
         return true
     }
 

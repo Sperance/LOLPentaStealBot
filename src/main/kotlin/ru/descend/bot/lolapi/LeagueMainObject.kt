@@ -72,7 +72,7 @@ object LeagueMainObject {
     suspend fun catchMatchID(lol: LOLs, start: Int, count: Int, agained: Boolean = false) : List<String> {
         globalLOLRequests++
         delay(checkRiotQuota())
-        printLog("[catchMatchID::$globalLOLRequests] started with summonerName: ${lol.getCorrectNameWithTag()}(lol_id: ${lol.id}) start: $start count: $count", writeToFile = false)
+        printLog("[catchMatchID::$globalLOLRequests] started with summonerName: ${lol.getCorrectNameWithTag()}(lol_id: ${lol.id}) start: $start count: $count puuid: ${lol.LOL_puuid}", writeToFile = false)
         return when (val res = safeApiCall { reloadRiotQuota() ; leagueService.getMatchIDByPUUID(lol.LOL_puuid, start, count) }){
             is Result.Success -> { res.data }
             is Result.Error -> {

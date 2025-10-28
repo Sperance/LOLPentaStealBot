@@ -19,6 +19,8 @@ import ru.descend.bot.datas.WorkData
 import ru.descend.bot.datas.getData
 import ru.descend.bot.datas.getDataOne
 import ru.descend.bot.lolapi.LeagueMainObject
+import ru.descend.bot.postgre.r2dbc.model.AdditionalValues
+import ru.descend.bot.postgre.r2dbc.model.AdditionalValues.Companion.tbl_additionalvalues
 import ru.descend.bot.postgre.r2dbc.model.Guilds
 import ru.descend.bot.postgre.r2dbc.model.Guilds.Companion.tbl_guilds
 import ru.descend.bot.postgre.r2dbc.model.Heroes
@@ -53,6 +55,7 @@ val db = R2dbcDatabase(connectionFactory, executionOptions = ExecutionOptions(qu
  */
 object R2DBC {
     val stockHEROES = WorkData<Heroes>("HEROES")
+    val stockADDVALUES = WorkData<AdditionalValues>("ADD_VALUES")
 
     suspend fun runTransaction(body: suspend CoroutineTransactionOperator.() -> Unit) = db.withTransaction(transactionAttribute = TransactionAttribute.REQUIRES_NEW) { body.invoke(it) }
 
@@ -72,8 +75,10 @@ object R2DBC {
             db.runQuery { QueryDsl.create(tbl_matches) }
             db.runQuery { QueryDsl.create(tbl_heroes) }
             db.runQuery { QueryDsl.create(tbl_participantsnew) }
+            db.runQuery { QueryDsl.create(tbl_additionalvalues) }
         }
         if (stockHEROES.bodyReset == null) stockHEROES.bodyReset = { Heroes().getData() }
+        if (stockADDVALUES.bodyReset == null) stockADDVALUES.bodyReset = { AdditionalValues().getData() }
 
         LeagueMainObject.catchHeroNames()
     }
@@ -86,7 +91,7 @@ object R2DBC {
     suspend fun getHeroFromNameEN(nameEN: String) = stockHEROES.get().find { it.nameEN == nameEN }
     suspend fun getHeroFromKey(key: String) = stockHEROES.get().find { it.key == key }
 
-    suspend fun getKORDLOLs_forKORD(guilds: Guilds, kord: String) : KORDLOLs? {
+    suspend fun getKORDLOLs_forKORD(kord: String) : KORDLOLs? {
         return db.withTransaction {
             db.runQuery {
                 QueryDsl.from(tbl_kordlols)

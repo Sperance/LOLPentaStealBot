@@ -15,11 +15,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import me.jakejmattson.discordkt.util.descriptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import ru.descend.bot.commands.KORD_userCreate
 import ru.descend.bot.datas.AESUtils
 import ru.descend.bot.datas.DSC_PS
 import ru.descend.bot.datas.decrypt
@@ -361,4 +363,31 @@ fun String.toHexInt(): BigInteger {
 fun BigInteger.fromHexInt(): String {
     val bytes = this.toByteArray()
     return String(bytes, Charsets.UTF_8)
+}
+
+suspend fun initCreateUser() {
+    writeLog(KORD_userCreate(
+        KORDid = "723783902488952924",
+        KORDname = "volandroche",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "Ультравасилие",
+        riotTag = "RU1"
+    ))
+    writeLog(KORD_userCreate(
+        KORDid = "948280038137139200",
+        KORDname = ".descend.",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "Атлант",
+        riotTag = "RU2"
+    ))
+    writeLog(KORD_userCreate(
+        KORDid = "466214358163128321",
+        KORDname = "sibbharta",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "REVOLUCIAN",
+        riotTag = "best"
+    ))
 }
