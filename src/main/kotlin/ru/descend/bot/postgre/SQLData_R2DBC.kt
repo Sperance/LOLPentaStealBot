@@ -2,6 +2,7 @@ package ru.descend.bot.postgre
 
 import dev.kord.core.entity.Guild
 import org.komapper.core.dsl.QueryDsl
+import org.komapper.core.dsl.query.boolean
 import org.komapper.core.dsl.query.double
 import org.komapper.core.dsl.query.int
 import org.komapper.core.dsl.query.string
@@ -70,32 +71,26 @@ class SQLData_R2DBC(var guild: Guild, var guildSQL: Guilds) {
     }
 
     suspend fun getArrayAramMMRData() : ArrayList<statAramDataTemp_r2> {
-        printLog("[getArrayAramMMRData] 1")
         val arrayAramMMRData = ArrayList<statAramDataTemp_r2>()
         measureBlock(EnumMeasures.QUERY, "get_aram_data_param") {
-            printLog("[getArrayAramMMRData] 2")
             R2DBC.runQuery {
-                printLog("[getArrayAramMMRData] 3")
                 QueryDsl.fromTemplate("SELECT * FROM get_aram_data_param()").select { row ->
                     val id = row.int("id")
                     val mmr_aram = row.double("mmr_aram")
                     val mmr_aram_saved = row.double("mmr_aram_saved")
                     val champion_id = row.int("champion_id")
-                    val mmr = row.double("mmr")
+                    val mmr = row.double("game_match_mmr")
                     val mvp_lvp_info = row.string("mvp_lvp_info")
-                    val last_game = row.string("last_game")
-                    arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, champion_id, mmr, mvp_lvp_info,last_game == "+", null, null))
+                    val last_game = row.boolean("last_game")
+                    arrayAramMMRData.add(statAramDataTemp_r2(id!!, mmr_aram!!, mmr_aram_saved!!, champion_id, mmr, mvp_lvp_info, last_game == true, null, null))
                 }
             }
-            printLog("[getArrayAramMMRData] 4")
             val lols = sqlData?.dataSavedLOL?.get() ?: LOLs().getData({ tbl_lols.show_code notEq 0 })
             arrayAramMMRData.forEach {
                 it.kordLOL = getKORDLOL_fromLOL(it.kord_lol_id)
                 it.LOL = lols.find { ll -> ll.id == it.kordLOL?.LOL_id }
             }
-            printLog("[getArrayAramMMRData] 5")
         }
-        printLog("[getArrayAramMMRData] 6")
         return arrayAramMMRData
     }
 

@@ -19,6 +19,7 @@ class Calc_LoadMAtches {
         if (startIndex > lastStarted) lastStarted = startIndex
         lols.forEach {
             if (it.LOL_puuid == "") return@forEach
+            if (it.loaded_1000_matches && startIndex > 0) return@forEach
             atomicIntLoaded.incrementAndGet()
 
             LeagueMainObject.catchMatchID(it, lastStarted, 100).forEach ff@{ matchId ->

@@ -64,10 +64,10 @@ fun main() {
 
     val scope = CoroutineScope(Dispatchers.IO)
 
-//    scope.launch {
-//        printLog("startDiscordBot")
-//        startDiscordBot()
-//    }
+    scope.launch {
+        printLog("startDiscordBot")
+        startDiscordBot()
+    }
 
     scope.launch {
         printLog("startLoadingMatches")
@@ -94,18 +94,15 @@ val atomicIntLoaded = AtomicInteger()
 var sql_data_initialized = false
 
 private fun startLoadingMatches() = launch {
-    delay((30).seconds)
+    initCreateUser()
+    delay((10).seconds)
     while (true) {
-//        if (sql_data_initialized) {
-            val kordLol_lol_id = KORDLOLs().getData().map { it.LOL_id }
-            val savedLols = R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
-            val loaderMatches = Calc_LoadMAtches()
-            loaderMatches.loadMatches(savedLols)
-            loaderMatches.clearTempData()
-            last_date_loaded_matches = Date()
-//        } else {
-//            printLog("[sql_data not initialized]")
-//        }
+        val kordLol_lol_id = KORDLOLs().getData().map { it.LOL_id }
+        val savedLols = R2DBC.runQuery(QueryDsl.from(tbl_lols).where { tbl_lols.id.inList(kordLol_lol_id) })
+        val loaderMatches = Calc_LoadMAtches()
+        loaderMatches.loadMatches(savedLols)
+        loaderMatches.clearTempData()
+        last_date_loaded_matches = Date()
         delay((2).minutes)
     }
 }
@@ -144,7 +141,8 @@ fun startDiscordBot() {
                     sqlData!!.initialize()
                     sql_data_initialized = true
                     removeMessage()
-                    initCreateUser()
+
+                    printLog("Discord initialized")
 
                     timerRequestReset((2).minutes)
                     timerMainInformation((121).seconds)
@@ -183,7 +181,8 @@ suspend fun timerMainInformation(duration: Duration) {
         printLog("[showLeagueHistory::${sqlData?.guildSQL?.botChannelId}]")
         if (sqlData?.guildSQL?.botChannelId?.isNotEmpty() == true) {
             last_date_loaded_discord = Date()
-//            showLeagueHistory(sqlData)
+            if (sqlData != null)
+                showLeagueHistory(sqlData!!)
             garbaceCollect()
             printMemoryUsage(" [TELEGRAM: $telegram_bot]")
         }
@@ -602,7 +601,7 @@ suspend fun editMessageAramMMRDataContent(builder: UserMessageModifyBuilder, sql
     })
     val mainDataList3 = (aramData.map {
         val textBold = if (it.bold) "**" else ""
-        textBold + R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.mvp_lvp_info + " " + it.LOL?.f_aram_last_key?.fromHexInt() + textBold
+        textBold + R2DBC.getHeroFromKey(it.champion_id.toString())?.nameRU + charStr + it.mmr + " " + it.LOL?.f_aram_last_key?.fromHexInt() + textBold
     })
     printLog("[editMessageAramMMRDataContent] 6")
     builder.embed {

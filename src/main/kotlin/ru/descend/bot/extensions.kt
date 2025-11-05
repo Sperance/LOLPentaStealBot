@@ -155,7 +155,7 @@ fun Int.toFormatK() : String {
     while (num >= 1000) {
         num /= 1000
         index++
-        ost = (this % (1000.0.pow(index.toDouble()))).toString().substring(0, 1).toInt()
+        ost = (this % (1000.0.pow(index.toDouble()))).toString()[0].toInt()
     }
     var sumK = ""
     for (i in 1..index){ sumK += "k" }
@@ -205,7 +205,9 @@ fun catchToken(): List<String> {
     if (!file.exists()) {
         file.createNewFile()
     }
-    return decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
+    val decrypted = decrypt(file.readBytes(), DSC_PS).decodeToString().split("\n")
+    printLog("DECRYPTED: $decrypted")
+    return decrypted
 }
 
 fun Any.toTextFields() : String {
@@ -366,7 +368,7 @@ fun BigInteger.fromHexInt(): String {
 }
 
 suspend fun initCreateUser() {
-    writeLog(KORD_userCreate(
+    printLog(KORD_userCreate(
         KORDid = "723783902488952924",
         KORDname = "volandroche",
         KORDdiscriminator = "",
@@ -374,7 +376,7 @@ suspend fun initCreateUser() {
         riotName = "Ультравасилие",
         riotTag = "RU1"
     ))
-    writeLog(KORD_userCreate(
+    printLog(KORD_userCreate(
         KORDid = "948280038137139200",
         KORDname = ".descend.",
         KORDdiscriminator = "",
@@ -382,12 +384,60 @@ suspend fun initCreateUser() {
         riotName = "Атлант",
         riotTag = "RU2"
     ))
-    writeLog(KORD_userCreate(
+    printLog(KORD_userCreate(
         KORDid = "466214358163128321",
         KORDname = "sibbharta",
         KORDdiscriminator = "",
         region = "ru1",
         riotName = "REVOLUCIAN",
         riotTag = "best"
+    ))
+    printLog(KORD_userCreate(
+        KORDid = "466214358163128321",
+        KORDname = "sibbharta",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "Best",
+        riotTag = "RU1"
+    ))
+    printLog(KORD_userCreate(
+        KORDid = "1101137864818950184",
+        KORDname = "vviiccttoorryy",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "VVIICCTTOORRYY",
+        riotTag = "thorn"
+    ))
+    printLog(KORD_userCreate(
+        KORDid = "853568035084435477",
+        KORDname = "a_0127",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "ADV",
+        riotTag = "0127"
+    ))
+    printLog(KORD_userCreate(
+        KORDid = "252731540037959681",
+        KORDname = "syo_bon",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "Syobon",
+        riotTag = "IRONV"
+    ))
+    printLog(KORD_userCreate(
+        KORDid = "460623771926265857",
+        KORDname = "olgatrololo1993",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "Olgatrololo",
+        riotTag = "5839"
+    ))
+    printLog(KORD_userCreate(
+        KORDid = "326335719570407424",
+        KORDname = "doomfiger",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "Ortroks1",
+        riotTag = "RU1"
     ))
 }

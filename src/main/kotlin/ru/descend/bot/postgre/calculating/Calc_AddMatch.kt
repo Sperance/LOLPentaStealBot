@@ -103,8 +103,8 @@ data class Calc_AddMatch (
                     last_loaded = pMatch.matchDateEnd,
                     f_aram_grades = "S:0;A:0;B:0;C:0;D:0;".toHexInt(),
                     f_aram_streaks = "W:0;L:0;".toHexInt(),
-                    f_aram_roles = "D:0;B:0;T:0;S:0;U:0;H:0;".toHexInt()).calculateFromParticipant(part, pMatch).create(null).result
-            } else if (!curLOL.isBot() && curLOL.last_loaded != 0L && curLOL.last_loaded < pMatch.matchDateEnd) {
+                    f_aram_roles = "D:0;B:0;T:0;S:0;U:0;H:0;".toHexInt()).create(null).result
+            } else if (!curLOL.isBot() && curLOL.last_loaded < pMatch.matchDateEnd) {
                 curLOL.LOL_riotIdTagline = part.riotIdTagline
                 curLOL.LOL_region = pMatch.getRegionValue()
                 curLOL.LOL_summonerId = part.summonerId
@@ -112,7 +112,7 @@ data class Calc_AddMatch (
                 curLOL.LOL_summonerLevel = part.summonerLevel
                 curLOL.profile_icon = part.profileIcon
                 curLOL.last_loaded = pMatch.matchDateEnd
-                curLOL = curLOL.calculateFromParticipant(part, pMatch).update()
+                curLOL = curLOL.update()
             }
 
             lolsAll.add(curLOL)
@@ -148,6 +148,7 @@ data class Calc_AddMatch (
         var strToTelegram = ""
         arrayKORDmmr.forEach {
             val veResult = calcv3.calculateNewMMR(it.second, it.first, it.second.win)
+            it.first.calculateFromParticipant(it.second, pMatch)
             it.first.update()
             it.second.update()
 

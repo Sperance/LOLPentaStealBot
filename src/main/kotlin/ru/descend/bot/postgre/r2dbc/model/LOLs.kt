@@ -36,6 +36,7 @@ data class LOLs(
     var last_loaded: Long = 0,
     var mmrAram: Double = 0.0,
     var mmrAramSaved: Double = 0.0,
+    var loaded_1000_matches: Boolean = false,
 
     var f_aram_games: Double = 0.0,
     var f_aram_wins: Double = 0.0,
@@ -51,23 +52,23 @@ data class LOLs(
     var f_aram_grades: BigInteger = BigInteger.ZERO,
     var f_aram_streaks: BigInteger = BigInteger.ZERO,
     var f_aram_roles: BigInteger = BigInteger.ZERO,
-    var show_code: Int = 0
+    var show_code: Int = 0,
 ) {
     companion object {
         val tbl_lols = Meta.loLs
     }
 
-    fun calculateFromParticipant(part: Participant, match: Matches?): LOLs {
+    fun calculateFromParticipant(part: ParticipantsNew, match: Matches?): LOLs {
         if (f_aram_grades == BigInteger.ZERO) f_aram_grades = "S:0;A:0;B:0;C:0;D:0;".toHexInt()
         if (f_aram_streaks == BigInteger.ZERO) f_aram_streaks = "W:0;L:0;".toHexInt()
         if (f_aram_roles == BigInteger.ZERO) f_aram_roles = "D:0;B:0;T:0;S:0;U:0;H:0;".toHexInt()
 
         if (match == null || !match.matchMode.contains("ARAM")) return this
 
-        val kill5 = part.pentaKills
-        val kill4 = part.quadraKills - kill5
-        val kill3 = part.tripleKills - kill4
-        val kill2 = part.doubleKills - kill3
+        val kill5 = part.kills5
+        val kill4 = part.kills4
+        val kill3 = part.kills3
+        val kill2 = part.kills2
 
         f_aram_games += 1
         f_aram_wins += if (part.win) 1 else 0
@@ -76,7 +77,7 @@ data class LOLs(
         f_aram_kills3 += kill3
         f_aram_kills4 += kill4
         f_aram_kills5 += kill5
-        f_aram_deaths += part.challenges?.deathsByEnemyChamps?:0
+        f_aram_deaths += part.deathsByEnemyChamps
         f_aram_assists += part.assists
         if (f_aram_winstreak >= 0 && part.win) { f_aram_winstreak++ }
         else if (f_aram_winstreak <= 0 && part.win) f_aram_winstreak = 1
