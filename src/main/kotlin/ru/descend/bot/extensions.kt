@@ -440,4 +440,12 @@ suspend fun initCreateUser() {
         riotName = "Ortroks1",
         riotTag = "RU1"
     ))
+    printLog(KORD_userCreate(
+        KORDid = "84605623659950080",
+        KORDname = "d_om",
+        KORDdiscriminator = "",
+        region = "ru1",
+        riotName = "DoM",
+        riotTag = "RU1"
+    ))
 }
