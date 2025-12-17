@@ -52,7 +52,6 @@ class Calc_LoadMAtches {
     private suspend fun getNewMatches(list: ArrayList<String>): ArrayList<String> {
         val dataAra = list.joinToString(prefix = "{", postfix = "}")
         val sql = "SELECT remove_matches('$dataAra'::character varying[])"
-        printLog("[SQL] $sql")
         R2DBC.runQuery {
             QueryDsl.fromTemplate(sql).select {
                 val data = it.get<Array<String>>(0)

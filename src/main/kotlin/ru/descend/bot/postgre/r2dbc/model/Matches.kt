@@ -29,12 +29,16 @@ data class Matches(
     var gameType: String = ""
 ) {
 
+    /**
+     * Необходимость считать ММР по матчу
+     */
     fun isNeedCalcStats() : Boolean {
         if (bots) return false
         if (surrender) return false
         if (aborted) return false
         if (matchDuration < (60 * 8)) return false
         if (!matchMode.contains("ARAM")) return false
+        if (gameType != "MATCHED_GAME") return false
         return true
     }
 

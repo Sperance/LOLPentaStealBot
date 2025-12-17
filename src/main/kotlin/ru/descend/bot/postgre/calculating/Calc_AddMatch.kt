@@ -77,7 +77,7 @@ data class Calc_AddMatch (
         val arrayHeroName = ArrayList<Participant>()
         match.info.participants.forEach {part ->
             //Скипуем матчи если хотя бы 1 чел афк
-            if ((part.kills == 0 && part.deaths == 0 && part.assists == 0) || (part.itemsPurchased <= 1)) {
+            if (part.kills == 0 && part.deaths == 0 && part.assists == 0) {
                 printLog("[ADDMTACH] match ${pMatch.matchId} skipped for AFK or Troll.")
                 return pMatch
             }

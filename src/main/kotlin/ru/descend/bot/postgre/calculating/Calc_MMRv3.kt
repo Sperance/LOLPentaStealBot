@@ -440,6 +440,7 @@ data class AramMatchResult(
                 "\n  Стрики=${lol.f_aram_streaks.fromHexInt()}" +
                 "\n  Роли=${lol.f_aram_roles.fromHexInt()}" +
                 "\n  Игрок=$lolName" +
-                "\n  Чемпион=$lolChampion"
+                "\n  Чемпион=$lolChampion" +
+                "\n  ИтогоММР=${lol.mmrAram.to1Digits()}"
     }
 }

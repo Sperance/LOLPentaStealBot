@@ -7,9 +7,9 @@ description = "Unofficial Bot for League of Legends"
 plugins {
     application
     id("java")
-    kotlin("plugin.serialization") version "2.0.0"
-    kotlin("jvm") version "2.0.0"
-    id("com.google.devtools.ksp") version "2.0.0-1.0.22"
+    kotlin("plugin.serialization") version "2.2.0"
+    kotlin("jvm") version "2.2.0"
+    id("com.google.devtools.ksp") version "2.3.3"
 }
 
 repositories {
@@ -48,6 +48,18 @@ dependencies {
     implementation(kotlin("reflect"))
 
     implementation("com.cjcrafter:openai:2.1.0")
+
+    // PostgreSQL
+    implementation("org.postgresql:postgresql:42.7.8")
+
+    val exposed = "1.0.0-rc-3"
+    implementation("org.jetbrains.exposed:exposed-core:$exposed")
+    implementation("org.jetbrains.exposed:exposed-dao:$exposed")
+    implementation("org.jetbrains.exposed:exposed-jdbc:$exposed")
+    implementation("org.jetbrains.exposed:exposed-json:$exposed")
+    implementation("org.jetbrains.exposed:exposed-java-time:$exposed")
+
+    implementation("com.zaxxer:HikariCP:7.0.2")
 }
 
 tasks {

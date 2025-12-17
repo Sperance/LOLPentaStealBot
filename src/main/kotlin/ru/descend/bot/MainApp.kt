@@ -14,8 +14,10 @@ import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.builder.message.embed
 import dev.kord.rest.builder.message.modify.UserMessageModifyBuilder
 import dev.kord.x.emoji.Emojis
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -59,30 +61,51 @@ import kotlin.time.Duration.Companion.seconds
 
 private val discordScope = CoroutineScope(Dispatchers.IO)
 
+private val supervisorJob = SupervisorJob()
+private val scope = CoroutineScope(Dispatchers.IO + supervisorJob)
+
 fun main() {
     printLog("server start")
 
-    val scope = CoroutineScope(Dispatchers.IO)
-
-    scope.launch {
-        printLog("startDiscordBot")
-        startDiscordBot()
+    val exceptionHandler = CoroutineExceptionHandler { _, exception ->
+        printLog("CoroutineException: ${exception.message}")
+        exception.printStackTrace()
     }
 
-    scope.launch {
-        printLog("startLoadingMatches")
-        startLoadingMatches()
+//    scope.launch(exceptionHandler) {
+//        try {
+//            printLog("startDiscordBot")
+//            startDiscordBot()
+//        } catch (e: Exception) {
+//            printLog("startDiscordBot failed: ${e.message}")
+//            e.printStackTrace()
+//        }
+//    }
+
+    scope.launch(exceptionHandler) {
+        try {
+            printLog("startLoadingMatches")
+            startLoadingMatches()
+        } catch (e: Exception) {
+            printLog("startLoadingMatches failed: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
-    scope.launch {
-        printLog("startTelegramBot")
-        startTelegramBot()
+    scope.launch(exceptionHandler) {
+        try {
+            printLog("startTelegramBot")
+            startTelegramBot()
+        } catch (e: Exception) {
+            printLog("startTelegramBot failed: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     Runtime.getRuntime().addShutdownHook(Thread {
         stopTelegramBot()
         telegram_bot?.stopPolling()
-        scope.cancel("server shutdown")
+        supervisorJob.cancel("server shutdown")
         printLog("server shutdown")
     })
 
