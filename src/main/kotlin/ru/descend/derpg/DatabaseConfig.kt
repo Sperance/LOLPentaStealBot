@@ -3,17 +3,14 @@ package ru.descend.derpg
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.v1.core.DatabaseConfig
-import org.jetbrains.exposed.v1.core.Transaction
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteAll
-import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import ru.descend.bot.printLog
-import ru.descend.derpg.test.PostsTable
-import ru.descend.derpg.test.UsersTable
+import ru.descend.derpg.data.characters.CharactersTable
+import ru.descend.derpg.data.users.UsersTable
 
 object DatabaseConfig {
     private var dataSource: HikariDataSource? = null
@@ -57,9 +54,9 @@ object DatabaseConfig {
         database = Database.connect(dataSource!!, databaseConfig = configs)
 
         transaction {
-            SchemaUtils.create(UsersTable, PostsTable)
+            SchemaUtils.create(UsersTable, CharactersTable)
 
-            PostsTable.deleteAll()
+            CharactersTable.deleteAll()
             UsersTable.deleteAll()
         }
     }

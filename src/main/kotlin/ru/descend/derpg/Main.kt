@@ -3,17 +3,17 @@ package ru.descend.derpg
 import kotlinx.coroutines.runBlocking
 import ru.descend.bot.printLog
 import ru.descend.derpg.DatabaseConfig.dbQuery
+import ru.descend.derpg.data.characters.DAOCharacters
+import ru.descend.derpg.data.users.DAOusers
 import ru.descend.derpg.test.ItemObject
-import ru.descend.derpg.test.PostDao
 import ru.descend.derpg.test.PostMetadata
-import ru.descend.derpg.test.UserDao
 
 fun main() {
     runBlocking {
         DatabaseConfig.init()
 
-        val userDao = UserDao()
-        val postDao = PostDao()
+        val userDao = DAOusers()
+        val characterDao = DAOCharacters()
         dbQuery {
             val user = userDao.create {
                 name = "John${System.currentTimeMillis()}"
@@ -29,7 +29,7 @@ fun main() {
             }
 
             // создаём пару постов с jsonb-метаданными
-            postDao.create {
+            characterDao.create {
                 this.user = user
                 title = "First post"
                 content = "Hello JSONB!"
@@ -39,7 +39,7 @@ fun main() {
                 )
             }
 
-            postDao.create {
+            characterDao.create {
                 this.user = user
                 title = "Draft post"
                 content = "Work in progress"
@@ -49,11 +49,11 @@ fun main() {
                 )
             }
 
-            printLog("POSTS 1: ${user.posts.toList()}")
+            printLog("POSTS 1: ${user.getCharacters()}")
 
-            // читаем пользователя и его посты
-            val loaded = userDao.findById(user.id)!!
-            val posts = loaded.posts.toList()   // one-to-many
+
+//            val loaded = userDao.findById(user.id)!!
+            val posts = user.getCharacters()   // one-to-many
 
             printLog("POSTS 2: $posts")
         }

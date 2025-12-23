@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.dao.LongEntityClass
 import org.jetbrains.exposed.v1.javatime.timestamp
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.update
 import org.komapper.core.OptimisticLockException
 import java.time.Instant
