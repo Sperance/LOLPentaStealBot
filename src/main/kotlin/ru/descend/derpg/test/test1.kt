@@ -11,6 +11,7 @@ import org.jetbrains.exposed.v1.dao.LongEntity
 import org.jetbrains.exposed.v1.dao.LongEntityClass
 import org.jetbrains.exposed.v1.javatime.timestamp
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.update
@@ -65,14 +66,15 @@ abstract class ExposedBaseDao<T : BaseTable, E : BaseEntity<*>>(
     // CREATE: возвращает E
     override fun create(body: E.() -> Unit): E {
         val now = Instant.now()
+
         val entity = entityClass.new {
-            // базовые поля
             createdAt = now
             updatedAt = now
             version = 0
+
+            body()
         }
 
-        entity.body()
         return entity
     }
 

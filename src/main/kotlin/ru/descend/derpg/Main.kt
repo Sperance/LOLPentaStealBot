@@ -1,6 +1,7 @@
 package ru.descend.derpg
 
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.exposed.v1.dao.flushCache
 import ru.descend.bot.printLog
 import ru.descend.derpg.DatabaseConfig.dbQuery
 import ru.descend.derpg.data.characters.DAOCharacters
@@ -20,40 +21,57 @@ fun main() {
                 email = "john@example.com"
             }
 
-            userDao.update(user) {
-                email = "CHANGED EMILE1"
-            }
-
-            userDao.update(user) {
-                email = "CHANGED EMILE2"
-            }
-
-            // создаём пару постов с jsonb-метаданными
             characterDao.create {
-                this.user = user
                 title = "First post"
                 content = "Hello JSONB!"
                 metadata = PostMetadata(
-                    tags = listOf(ItemObject("Sword"), ItemObject("Arrow")),
+                    tags = arrayListOf(ItemObject("Sword"), ItemObject("Arrow")),
                     isPublished = true
                 )
+                this.user = user
             }
 
             characterDao.create {
-                this.user = user
                 title = "Draft post"
                 content = "Work in progress"
                 metadata = PostMetadata(
-                    tags = listOf(ItemObject("Body"), ItemObject("")),
+                    tags = arrayListOf(ItemObject("Body")),
                     isPublished = false
                 )
+                this.user = user
             }
 
             printLog("POSTS 1: ${user.getCharacters()}")
 
+            user.getCharacters().forEachIndexed { ind, it ->
 
-//            val loaded = userDao.findById(user.id)!!
-            val posts = user.getCharacters()   // one-to-many
+                // Обновляем metadata - СПОСОБ 1: Создаем новый объект
+//                val currentMetadata = character.metadata
+//                val newTags = currentMetadata.tags.toMutableList().apply {
+//                    add(ItemObject("INSERTED $ind"))
+//                }
+//
+//                character.metadata = currentMetadata.copy(
+//                    tags = newTags,
+//                    isPublished = currentMetadata.isPublished
+//                )
+
+                it.title += " $ind"
+                it.content += " CCC$ind"
+
+                val curMeta = it.metadata
+                val tags = curMeta.tags.toMutableList().apply {
+                    add(ItemObject("INSERTED $ind"))
+                }
+//                curMeta.tags.add(ItemObject("INSERTED $ind"))
+
+                it.metadata = curMeta.copy(
+                    tags = tags,
+                    isPublished = curMeta.isPublished
+                )
+            }
+
+            val posts = user.getCharacters()
 
             printLog("POSTS 2: $posts")
         }

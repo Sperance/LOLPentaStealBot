@@ -13,8 +13,8 @@ import org.jetbrains.exposed.v1.json.jsonb
 
 @Serializable
 data class PostMetadata(
-    val tags: List<ItemObject> = emptyList(),
-    val isPublished: Boolean = false
+    val tags: MutableList<ItemObject> = mutableListOf(),
+    var isPublished: Boolean = false
 ) {
     override fun toString(): String {
         return "PostMetadata(tags=$tags, isPublished=$isPublished)"
