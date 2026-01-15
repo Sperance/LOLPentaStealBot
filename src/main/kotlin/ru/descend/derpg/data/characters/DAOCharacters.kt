@@ -11,6 +11,6 @@ class DAOCharacters : ExposedBaseDao<CharactersTable, CharacterEntity>(
         stmt[table.user] = entity.user.id
         stmt[table.title] = entity.title
         stmt[table.content] = entity.content
-        stmt[table.metadata] = entity.metadata
+        stmt[table.inventory] = entity.inventory
     }
 }

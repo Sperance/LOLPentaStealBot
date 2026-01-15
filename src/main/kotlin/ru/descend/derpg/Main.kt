@@ -2,10 +2,16 @@ package ru.descend.derpg
 
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.dao.flushCache
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.json.contains
+import org.jetbrains.exposed.v1.json.exists
 import ru.descend.bot.printLog
 import ru.descend.derpg.DatabaseConfig.dbQuery
+import ru.descend.derpg.data.characters.CharactersTable
 import ru.descend.derpg.data.characters.DAOCharacters
+import ru.descend.derpg.data.equipments.DAOequipments
 import ru.descend.derpg.data.users.DAOusers
+import ru.descend.derpg.data.users.UsersTable
 import ru.descend.derpg.test.ItemObject
 import ru.descend.derpg.test.PostMetadata
 
@@ -15,6 +21,7 @@ fun main() {
 
         val userDao = DAOusers()
         val characterDao = DAOCharacters()
+        val equipmentDao = DAOequipments()
         dbQuery {
             val user = userDao.create {
                 name = "John${System.currentTimeMillis()}"
@@ -24,56 +31,63 @@ fun main() {
             characterDao.create {
                 title = "First post"
                 content = "Hello JSONB!"
-                metadata = PostMetadata(
-                    tags = arrayListOf(ItemObject("Sword"), ItemObject("Arrow")),
-                    isPublished = true
-                )
+                inventory = arrayListOf(ItemObject("Sword"), ItemObject("Arrow"))
                 this.user = user
             }
 
-            characterDao.create {
+            val charEnt = characterDao.create {
                 title = "Draft post"
                 content = "Work in progress"
-                metadata = PostMetadata(
-                    tags = arrayListOf(ItemObject("Body")),
-                    isPublished = false
-                )
+                inventory = arrayListOf(ItemObject("Body"))
                 this.user = user
+            }
+
+             equipmentDao.create {
+                name = "Sword of sandals1"
+                content = "Description sample"
+                metadata = arrayListOf(ItemObject("STATS"), ItemObject("asd"))
+                this.character = charEnt
+            }
+
+             equipmentDao.create {
+                name = "Sword of sandals2"
+                content = "Description sample"
+                metadata = arrayListOf(ItemObject("STATS"), ItemObject("532"))
+                this.character = charEnt
+            }
+
+             equipmentDao.create {
+                name = "Sword of sandals3"
+                content = "Description sample"
+                metadata = arrayListOf(ItemObject("STATS"), ItemObject("f34t"), ItemObject("34536s"))
+                this.character = charEnt
             }
 
             printLog("POSTS 1: ${user.getCharacters()}")
 
             user.getCharacters().forEachIndexed { ind, it ->
-
-                // Обновляем metadata - СПОСОБ 1: Создаем новый объект
-//                val currentMetadata = character.metadata
-//                val newTags = currentMetadata.tags.toMutableList().apply {
-//                    add(ItemObject("INSERTED $ind"))
-//                }
-//
-//                character.metadata = currentMetadata.copy(
-//                    tags = newTags,
-//                    isPublished = currentMetadata.isPublished
-//                )
-
-                it.title += " $ind"
-                it.content += " CCC$ind"
-
-                val curMeta = it.metadata
-                val tags = curMeta.tags.toMutableList().apply {
-                    add(ItemObject("INSERTED $ind"))
-                }
-//                curMeta.tags.add(ItemObject("INSERTED $ind"))
-
-                it.metadata = curMeta.copy(
-                    tags = tags,
-                    isPublished = curMeta.isPublished
-                )
+                it.inventory = it.inventory.toMutableList().apply { add(ItemObject("Ins: $ind")) }
             }
 
             val posts = user.getCharacters()
 
             printLog("POSTS 2: $posts")
+
+            printLog("activeProjects: ${CharactersTable.selectAll().where { CharactersTable.inventory.exists(".tags") }.count()}")
+            printLog("activeProjects: ${CharactersTable.selectAll().where { CharactersTable.inventory.contains("{\"name\":\"Sword\"}") }.count()}")
+
+            printLog(":::CHARACTERS:::")
+            user.getCharacters().forEach { char ->
+                printLog("\t" + char)
+                printLog("\t:::EQUIP:::")
+                char.getEquipments().forEach { equip ->
+                    equipmentDao.update(equip) {
+                        this.name = "CHANGED NMM"
+                    }
+                    printLog("\t\t" + equip)
+                }
+
+            }
         }
         DatabaseConfig.close()
     }

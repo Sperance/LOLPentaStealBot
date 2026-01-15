@@ -11,9 +11,7 @@ import org.jetbrains.exposed.v1.dao.LongEntity
 import org.jetbrains.exposed.v1.dao.LongEntityClass
 import org.jetbrains.exposed.v1.javatime.timestamp
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
-import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.select
-import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.update
 import org.komapper.core.OptimisticLockException
 import java.time.Instant
@@ -65,17 +63,10 @@ abstract class ExposedBaseDao<T : BaseTable, E : BaseEntity<*>>(
 
     // CREATE: возвращает E
     override fun create(body: E.() -> Unit): E {
-        val now = Instant.now()
-
-        val entity = entityClass.new {
-            createdAt = now
-            updatedAt = now
-            version = 0
-
+        val entityResult = entityClass.new {
             body()
         }
-
-        return entity
+        return entityResult
     }
 
     // READ
@@ -98,9 +89,7 @@ abstract class ExposedBaseDao<T : BaseTable, E : BaseEntity<*>>(
         }
 
     override fun findWhere(condition: Op<Boolean>): List<E> =
-        entityClass.find {
-            condition and table.deletedAt.isNull()
-        }.toList()
+        entityClass.find { condition and table.deletedAt.isNull() }.toList()
 
     override fun findOne(condition: Op<Boolean>): E? =
         entityClass.find {

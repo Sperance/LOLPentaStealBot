@@ -4,10 +4,13 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.dao.LongEntityClass
 import org.jetbrains.exposed.v1.json.jsonb
+import ru.descend.derpg.data.equipments.EquipmentEntity
+import ru.descend.derpg.data.equipments.EquipmentsTable
 import ru.descend.derpg.data.users.UserEntity
 import ru.descend.derpg.data.users.UsersTable
 import ru.descend.derpg.test.BaseEntity
 import ru.descend.derpg.test.BaseTable
+import ru.descend.derpg.test.ItemObject
 import ru.descend.derpg.test.PostMetadata
 
 object CharactersTable : BaseTable("characters") {
@@ -15,10 +18,9 @@ object CharactersTable : BaseTable("characters") {
     val title = varchar("title", 255)
     val content = text("content")
 
-    val metadata = jsonb<PostMetadata>(
-        name = "metadata",
-        jsonConfig = Json,
-        kSerializer = PostMetadata.serializer()
+    val inventory = jsonb<MutableList<ItemObject>>(
+        name = "inventory",
+        jsonConfig = Json
     )
 }
 
@@ -26,14 +28,15 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
     var user by UserEntity referencedOn CharactersTable.user
     var title by CharactersTable.title
     var content by CharactersTable.content
-    var metadata by CharactersTable.metadata
+    var inventory by CharactersTable.inventory
+    private val equipments by EquipmentEntity referrersOn EquipmentsTable.character
 
     override fun toSnapshot(): SnapshotCharacter =
         SnapshotCharacter(
             _id = id.value,
             _title = title,
             _content = content,
-            _metadata = metadata,
+            _inventory = inventory,
             _userId = user.id.value
         ).apply {
             _createdAt = createdAt
@@ -42,8 +45,16 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
             _version = version
         }
 
+    fun getEquipments(): List<EquipmentEntity> {
+        return try {
+            equipments.toList()
+        }catch (_: Exception) {
+            listOf()
+        }
+    }
+
     override fun toString(): String {
-        return "CharacterEntity(user=$user, title='$title', content='$content', metadata=$metadata)"
+        return "CharacterEntity(user=$user, title='$title', content='$content', inventory=$inventory)"
     }
 
     companion object : LongEntityClass<CharacterEntity>(CharactersTable)

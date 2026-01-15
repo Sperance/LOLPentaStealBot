@@ -10,6 +10,7 @@ import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import ru.descend.derpg.data.characters.CharactersTable
+import ru.descend.derpg.data.equipments.EquipmentsTable
 import ru.descend.derpg.data.users.UsersTable
 
 object DatabaseConfig {
@@ -54,10 +55,12 @@ object DatabaseConfig {
         database = Database.connect(dataSource!!, databaseConfig = configs)
 
         transaction {
-            SchemaUtils.create(UsersTable, CharactersTable)
+            SchemaUtils.drop(EquipmentsTable, CharactersTable, UsersTable)
+            SchemaUtils.create(UsersTable, CharactersTable, EquipmentsTable)
 
-            CharactersTable.deleteAll()
-            UsersTable.deleteAll()
+//            EquipmentsTable.deleteAll()
+//            CharactersTable.deleteAll()
+//            UsersTable.deleteAll()
         }
     }
 

@@ -52,7 +52,7 @@ dependencies {
     // PostgreSQL
     implementation("org.postgresql:postgresql:42.7.8")
 
-    val exposed = "1.0.0-rc-3"
+    val exposed = "1.0.0-rc-4"
     implementation("org.jetbrains.exposed:exposed-core:$exposed")
     implementation("org.jetbrains.exposed:exposed-dao:$exposed")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposed")
