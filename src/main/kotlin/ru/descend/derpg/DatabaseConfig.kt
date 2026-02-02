@@ -9,6 +9,7 @@ import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import ru.descend.bot.printLog
 import ru.descend.derpg.data.characters.CharactersTable
 import ru.descend.derpg.data.equipments.EquipmentsTable
 import ru.descend.derpg.data.users.UsersTable
@@ -55,6 +56,7 @@ object DatabaseConfig {
         database = Database.connect(dataSource!!, databaseConfig = configs)
 
         transaction {
+            printLog("create tables")
             SchemaUtils.drop(EquipmentsTable, CharactersTable, UsersTable)
             SchemaUtils.create(UsersTable, CharactersTable, EquipmentsTable)
 
@@ -69,7 +71,6 @@ object DatabaseConfig {
         dataSource = null
     }
 
-    // Более умный вариант: использует текущую транзакцию если она есть
     suspend fun <T> dbQuery(block: suspend JdbcTransaction.() -> T): T {
         return suspendTransaction(db = database) { block(this) }
     }

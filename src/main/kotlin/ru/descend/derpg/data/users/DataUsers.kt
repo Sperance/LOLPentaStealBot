@@ -37,5 +37,9 @@ class UserEntity(id: EntityID<Long>) : BaseEntity<SnapshotUser>(id, UsersTable) 
         }
     }
 
+    override fun toString(): String {
+        return "UserEntity(name='$name', email='$email')"
+    }
+
     companion object : LongEntityClass<UserEntity>(UsersTable)
 }

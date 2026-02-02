@@ -92,15 +92,15 @@ fun main() {
         }
     }
 
-    scope.launch(exceptionHandler) {
-        try {
-            printLog("startTelegramBot")
-            startTelegramBot()
-        } catch (e: Exception) {
-            printLog("startTelegramBot failed: ${e.message}")
-            e.printStackTrace()
-        }
-    }
+//    scope.launch(exceptionHandler) {
+//        try {
+//            printLog("startTelegramBot")
+//            startTelegramBot()
+//        } catch (e: Exception) {
+//            printLog("startTelegramBot failed: ${e.message}")
+//            e.printStackTrace()
+//        }
+//    }
 
     Runtime.getRuntime().addShutdownHook(Thread {
         stopTelegramBot()
