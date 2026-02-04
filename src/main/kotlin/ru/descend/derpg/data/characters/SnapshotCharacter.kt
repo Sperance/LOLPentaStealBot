@@ -1,19 +1,41 @@
 package ru.descend.derpg.data.characters
 
+import ru.descend.bot.addPercent
+import ru.descend.derpg.data.equipments.EquipmentEntity
 import ru.descend.derpg.test.BaseDTO
 import ru.descend.derpg.test.ItemObject
 import ru.descend.derpg.test.PostMetadata
+import kotlin.code
+import kotlin.collections.plusAssign
 
 class SnapshotCharacter(
     val _id: Long,
-    var _title: String,
-    var _content: String,
-    var _params: CharacterParams,
-    var _inventory: MutableList<ItemObject>,
-    var _stats: StatContainer?,
+    var _name: String,
+    var _level: Short,
+    var _experience: Int,
+    var _params: MutableSet<ParamsStock>,
+    var _buffs: StatContainer?,
+    var _equipments: List<EquipmentEntity>?,
     val _userId: Long
 ) : BaseDTO() {
     override fun toString(): String {
-        return "SnapshotCharacter(_id=$_id, _title='$_title', _content='$_content', _params=$_params, _inventory=$_inventory, _stats=$_stats, _userId=$_userId)"
+        return "SnapshotCharacter(_id=$_id, _name='$_name', _params=$_params, _buffs=$_buffs, _userId=$_userId)"
+    }
+
+    fun calculateParamsWithBuffs(): MutableSet<ParamsStock> {
+        val resultSet = _params.map { it.copy() }.toMutableSet()
+
+        _buffs?.let { buffs ->
+            buffs.stats.forEach { buf ->
+                resultSet.find { it.param.code == buf.key.code }?.let { par ->
+                    when (buf.type) {
+                        EnumStatType.FLAT -> par.maxValue += buf.value
+                        EnumStatType.PERCENT -> par.maxValue = par.maxValue.addPercent(buf.value)
+                    }
+                }
+            }
+        }
+
+        return resultSet
     }
 }

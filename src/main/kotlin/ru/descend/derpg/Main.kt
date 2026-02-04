@@ -1,13 +1,8 @@
 package ru.descend.derpg
 
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.json.contains
-import org.jetbrains.exposed.v1.json.exists
 import ru.descend.bot.printLog
 import ru.descend.derpg.DatabaseConfig.dbQuery
-import ru.descend.derpg.data.characters.CharacterParams
-import ru.descend.derpg.data.characters.CharactersTable
 import ru.descend.derpg.data.characters.DAOCharacters
 import ru.descend.derpg.data.characters.EnumStatBool
 import ru.descend.derpg.data.characters.EnumStatKey
@@ -34,25 +29,19 @@ fun main() {
             }
 
             characterDao.create {
-                title = "First post"
-                content = "Hello JSONB!"
-                inventory = arrayListOf(ItemObject("Sword"), ItemObject("Arrow"))
-                params = CharacterParams(inventory_size = 10)
-//                stats = mutableSetOf(Stat(EnumStatKey.LIFE, 200.0), Stat(EnumStatKey.ATTACK_SPEED, 1.0))
+                name = "Deascend"
                 this.user = user
             }
 
             val statContainer = StatContainer(
-                stats = mutableSetOf(Stat(EnumStatKey.LIFE, EnumStatType.FLAT, 100.0), Stat(EnumStatKey.LIFE, EnumStatType.PERCENT, 5.0), Stat(EnumStatKey.ATTACK_SPEED, EnumStatType.FLAT,2.0)),
+                stats = mutableSetOf(Stat(EnumStatKey.LIFE, EnumStatType.FLAT, 200.0), Stat(EnumStatKey.LIFE, EnumStatType.PERCENT, 20.0), Stat(EnumStatKey.ATTACK_SPEED, EnumStatType.FLAT,2.0)),
                 statsBool = mutableSetOf(StatBool(EnumStatBool.IS_BANNED, true), StatBool(EnumStatBool.IS_ALIVE, false))
             )
 
             val charEnt = characterDao.create {
-                title = "Draft post"
-                content = "Work in progress"
-                inventory = arrayListOf(ItemObject("Body"))
-                params = CharacterParams()
-                stats = statContainer
+                name = "ATLANT"
+                params = getStockParams()
+                buffs = statContainer
                 this.user = user
             }
 
@@ -69,6 +58,24 @@ fun main() {
                 metadata = arrayListOf(ItemObject("STATS"), ItemObject("532"))
                 this.character = charEnt
             }
+
+            val charSnap = charEnt.toSnapshot()
+
+            val res1 = charSnap.calculateParamsWithBuffs()
+            printLog("res1: $res1")
+            printLog("stat1: ${res1.find { it.param == EnumStatKey.LIFE }}")
+            printLog("stat1 hash: ${res1.find { it.param == EnumStatKey.LIFE }?.hashCode()}")
+
+            val res2 = charSnap.calculateParamsWithBuffs()
+            printLog("res2: $res2")
+            printLog("stat2: ${res1.find { it.param == EnumStatKey.LIFE }}")
+            printLog("stat2 hash: ${res1.find { it.param == EnumStatKey.LIFE }?.hashCode()}")
+
+            printLog(":::EQUIPMENTS:::")
+            printLog("${charEnt.getEquipments()}")
+
+            printLog(":::EQUIPMENTS:::")
+            printLog("${charEnt.getEquipments()}")
 //
 //             equipmentDao.create {
 //                name = "Sword of sandals3"

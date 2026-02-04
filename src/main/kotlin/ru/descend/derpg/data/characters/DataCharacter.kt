@@ -11,6 +11,7 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.dao.LongEntityClass
 import org.jetbrains.exposed.v1.json.jsonb
+import ru.descend.bot.addPercent
 import ru.descend.derpg.data.equipments.EquipmentEntity
 import ru.descend.derpg.data.equipments.EquipmentsTable
 import ru.descend.derpg.data.users.UserEntity
@@ -22,44 +23,40 @@ import ru.descend.derpg.test.PostMetadata
 
 object CharactersTable : BaseTable("characters") {
     val user = reference("user_id", UsersTable)
-    val title = varchar("title", 255)
-    val content = text("content")
+    val name = varchar("name", 32)
 
-    val params = jsonb<CharacterParams>(
+    val level = short("level").default(1)
+    val experience = integer("experience").default(0)
+
+    val params = jsonb<MutableSet<ParamsStock>>(
         name = "params",
-        jsonConfig = Json {
-            encodeDefaults = false
-        }
-    )
-
-    val inventory = jsonb<MutableList<ItemObject>>(
-        name = "inventory",
         jsonConfig = Json
     )
 
-    val stats = jsonb<StatContainer>(
-        name = "stats",
+    val buffs = jsonb<StatContainer>(
+        name = "buffs",
         jsonConfig = Json
     ).nullable()
 }
 
 class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, CharactersTable) {
     var user by UserEntity referencedOn CharactersTable.user
-    var title by CharactersTable.title
-    var content by CharactersTable.content
+    var name by CharactersTable.name
+    var level by CharactersTable.level
+    var experience by CharactersTable.experience
     var params by CharactersTable.params
-    var inventory by CharactersTable.inventory
-    var stats by CharactersTable.stats
+    var buffs by CharactersTable.buffs
     private val equipments by EquipmentEntity referrersOn EquipmentsTable.character
 
     override fun toSnapshot(): SnapshotCharacter =
         SnapshotCharacter(
             _id = id.value,
-            _title = title,
-            _content = content,
+            _name = name,
+            _level = level,
+            _experience = experience,
             _params = params,
-            _inventory = inventory,
-            _stats = stats,
+            _buffs = buffs,
+            _equipments = getEquipments(),
             _userId = user.id.value
         ).apply {
             _createdAt = createdAt
@@ -76,8 +73,20 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
         }
     }
 
+    fun getStockParams(): MutableSet<ParamsStock> {
+        val stock = mutableSetOf<ParamsStock>()
+        stock.add(ParamsStock(EnumStatKey.LIFE, 0.0, 100.0))
+        stock.add(ParamsStock(EnumStatKey.STR, 1.0, 1.0))
+        stock.add(ParamsStock(EnumStatKey.DEX, 1.0, 1.0))
+        stock.add(ParamsStock(EnumStatKey.INT, 1.0, 1.0))
+        stock.add(ParamsStock(EnumStatKey.INVENTORY_SIZE, 10.0, 10.0))
+        stock.add(ParamsStock(EnumStatKey.CRIT_DAMAGE, 100.0, 200.0))
+        stock.add(ParamsStock(EnumStatKey.ATTACK_SPEED, 0.1, 1.0))
+        return stock
+    }
+
     override fun toString(): String {
-        return "CharacterEntity(user=$user, title='$title', content='$content', params=$params, inventory=$inventory, stats=$stats)"
+        return "CharacterEntity(user=$user, name='$name', params=$params, buffs=$buffs)"
     }
 
     companion object : LongEntityClass<CharacterEntity>(CharactersTable)
@@ -89,27 +98,33 @@ data class StatContainer(
     val statsBool: MutableSet<StatBool>
 )
 
-enum class EnumStatKey(val code: Int) {
-    LIFE(10),
-    MANA(11),
+enum class EnumStatKey(val code: String, val description: String) {
+    LIFE("A1", "Здоровье"),
+    MANA("A2", "Мана"),
+    RAGE("A3", "Энергия"),
 
-    STR(100),
-    DEX(101),
-    INT(102),
+    STR("B1", "Сила"),
+    DEX("B2", "Ловкость"),
+    INT("B3", "Интеллект"),
 
-    PHYSICAL_DAMAGE(1000),
-    MAGICAL_DAMAGE(1001),
-    ATTACK_SPEED(1002),
+    CRIT_CHANCE("C0", "Шанс критического удара"),
+    CRIT_DAMAGE("C1", "Критический урон"),
+    PHYSICAL_DAMAGE("C2", "Физический урон"),
+    MAGICAL_DAMAGE("C3", "Магический урон"),
+    ATTACK_SPEED("C4", "Скорость атаки"),
 
-    FIRE_RESIST(2001),
-    COLD_RESIST(2002),
-    LIGHTNING_RESIST(2003)
+    MAGIC_RESIST("D0", "Сопротивление магии"),
+    FIRE_RESIST("D1", "Сопротивление огню"),
+    COLD_RESIST("D2", "Сопротивление холоду"),
+    LIGHTNING_RESIST("D3", "Сопротивление молнии"),
+    CHARM_RESIST("D4", "Сопротивление хаосу"),
+
+    INVENTORY_SIZE("E1", "Размер инвентаря")
 }
 
 enum class EnumStatType(val code: Int) {
     FLAT(1),
-    PERCENT(2),
-    MORE(3)
+    PERCENT(2)
 }
 
 @Serializable(with = CompactStatSerializer::class)
@@ -139,7 +154,7 @@ object CompactStatSerializer : KSerializer<Stat> {
                 throw IllegalArgumentException("Invalid Stat format: $stringValue. Expected 'code:type:value'")
             }
 
-            val code = parts[0].toInt()
+            val code = parts[0]
             val type = parts[1].toInt()
             val value = parts[2].toDouble()
 
@@ -156,9 +171,9 @@ object CompactStatSerializer : KSerializer<Stat> {
 /**************/
 
 
-enum class EnumStatBool(val code: Int) {
-    IS_ALIVE(0),
-    IS_BANNED(1)
+enum class EnumStatBool(val code: String) {
+    IS_ALIVE("BL0"),
+    IS_BANNED("BL1")
 }
 
 @Serializable(with = CompactStatBoolSerializer::class)
@@ -187,7 +202,7 @@ object CompactStatBoolSerializer : KSerializer<StatBool> {
                 throw IllegalArgumentException("Invalid StatBool format: $stringValue. Expected 'code:value'")
             }
 
-            val code = parts[0].toInt()
+            val code = parts[0]
             val value = parts[1].toBoolean()
 
             val statKey = EnumStatBool.entries.find { it.code == code } ?: throw IllegalArgumentException("Unknown EnumStatBool code: $code")
@@ -201,8 +216,46 @@ object CompactStatBoolSerializer : KSerializer<StatBool> {
 
 /****************/
 
-@Serializable
-data class CharacterParams(
-    var min_health: Double = 0.0,
-    var inventory_size: Int = 0
-)
+@Serializable(with = CompactParamsStockSerializer::class)
+data class ParamsStock(
+    var param: EnumStatKey,
+    var minValue: Double,
+    var maxValue: Double
+) {
+    fun copy(): ParamsStock {
+        return ParamsStock(
+            param = this.param,
+            minValue = this.minValue,
+            maxValue = this.maxValue
+        )
+    }
+}
+
+object CompactParamsStockSerializer : KSerializer<ParamsStock> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ParamsStock", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: ParamsStock) {
+        encoder.encodeString("${value.param.code}:${value.minValue}:${value.maxValue}")
+    }
+
+    override fun deserialize(decoder: Decoder): ParamsStock {
+        val stringValue = decoder.decodeString()
+
+        try {
+            val parts = stringValue.split(":", limit = 3)
+            if (parts.size != 3) {
+                throw IllegalArgumentException("Invalid ParamsStock format: $stringValue. Expected 'code:value'")
+            }
+
+            val code = parts[0]
+            val minValue = parts[1].toDouble()
+            val maxValue = parts[2].toDouble()
+
+            val statKey = EnumStatKey.entries.find { it.code == code } ?: throw IllegalArgumentException("Unknown EnumParamsStock code: $code")
+
+            return ParamsStock(statKey, minValue, maxValue)
+        } catch (e: NumberFormatException) {
+            throw IllegalArgumentException("Invalid number format in ParamsStock: $stringValue", e)
+        }
+    }
+}

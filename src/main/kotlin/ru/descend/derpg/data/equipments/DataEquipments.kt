@@ -44,7 +44,7 @@ class EquipmentEntity(id: EntityID<Long>) : BaseEntity<SnapshotEquipment>(id, Eq
         )
 
     override fun toString(): String {
-        return "EquipmentEntity(character=$character, name='$name', content='$content', uuid=$uuid, metadata=$metadata)"
+        return "EquipmentEntity(character_id=${character.id}, name='$name', content='$content', uuid=$uuid, metadata=$metadata)"
     }
 
     companion object : LongEntityClass<EquipmentEntity>(EquipmentsTable)
