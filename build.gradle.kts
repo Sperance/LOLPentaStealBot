@@ -52,7 +52,7 @@ dependencies {
     // PostgreSQL
     implementation("org.postgresql:postgresql:42.7.8")
 
-    val exposed = "1.0.0-rc-4"
+    val exposed = "1.1.0"
     implementation("org.jetbrains.exposed:exposed-core:$exposed")
     implementation("org.jetbrains.exposed:exposed-dao:$exposed")
     implementation("org.jetbrains.exposed:exposed-jdbc:$exposed")
@@ -102,10 +102,4 @@ tasks.withType<Jar> {
     from({
         configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
     })
-}
-
-tasks {
-    withType<Test>().configureEach {
-        useJUnitPlatform()
-    }
 }

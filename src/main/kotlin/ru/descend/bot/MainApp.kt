@@ -65,7 +65,7 @@ private val supervisorJob = SupervisorJob()
 private val scope = CoroutineScope(Dispatchers.IO + supervisorJob)
 
 fun main() {
-    printLog("server start")
+    println("server start")
 
     val exceptionHandler = CoroutineExceptionHandler { _, exception ->
         printLog("CoroutineException: ${exception.message}")

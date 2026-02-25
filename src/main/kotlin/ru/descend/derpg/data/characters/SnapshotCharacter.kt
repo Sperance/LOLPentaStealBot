@@ -14,19 +14,20 @@ class SnapshotCharacter(
     var _level: Short,
     var _experience: Int,
     var _params: MutableSet<ParamsStock>,
-    var _buffs: StatContainer?,
+    var _buffs: MutableSet<Stat>?,
+    var _bools: MutableSet<StatBool>?,
     var _equipments: List<EquipmentEntity>?,
     val _userId: Long
 ) : BaseDTO() {
     override fun toString(): String {
-        return "SnapshotCharacter(_id=$_id, _name='$_name', _params=$_params, _buffs=$_buffs, _userId=$_userId)"
+        return "SnapshotCharacter(_id=$_id, _name='$_name', _params=$_params, _buffs=$_buffs, _bools=$_bools, _userId=$_userId)"
     }
 
     fun calculateParamsWithBuffs(): MutableSet<ParamsStock> {
         val resultSet = _params.map { it.copy() }.toMutableSet()
 
         _buffs?.let { buffs ->
-            buffs.stats.forEach { buf ->
+            buffs.forEach { buf ->
                 resultSet.find { it.param.code == buf.key.code }?.let { par ->
                     when (buf.type) {
                         EnumStatType.FLAT -> par.maxValue += buf.value

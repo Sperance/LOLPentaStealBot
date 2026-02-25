@@ -33,8 +33,13 @@ object CharactersTable : BaseTable("characters") {
         jsonConfig = Json
     )
 
-    val buffs = jsonb<StatContainer>(
+    val buffs = jsonb<MutableSet<Stat>>(
         name = "buffs",
+        jsonConfig = Json
+    ).nullable()
+
+    val bools = jsonb<MutableSet<StatBool>>(
+        name = "bools",
         jsonConfig = Json
     ).nullable()
 }
@@ -46,6 +51,7 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
     var experience by CharactersTable.experience
     var params by CharactersTable.params
     var buffs by CharactersTable.buffs
+    var bools by CharactersTable.bools
     private val equipments by EquipmentEntity referrersOn EquipmentsTable.character
 
     override fun toSnapshot(): SnapshotCharacter =
@@ -56,6 +62,7 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
             _experience = experience,
             _params = params,
             _buffs = buffs,
+            _bools = bools,
             _equipments = getEquipments(),
             _userId = user.id.value
         ).apply {
@@ -91,12 +98,6 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
 
     companion object : LongEntityClass<CharacterEntity>(CharactersTable)
 }
-
-@Serializable
-data class StatContainer(
-    val stats: MutableSet<Stat>,
-    val statsBool: MutableSet<StatBool>
-)
 
 enum class EnumStatKey(val code: String, val description: String) {
     LIFE("A1", "Здоровье"),

@@ -1,4 +1,4 @@
-package ru.descend.bot.postgre.r2dbc.model
+﻿package ru.descend.bot.postgre.r2dbc.model
 
 import org.komapper.annotation.KomapperAutoIncrement
 import org.komapper.annotation.KomapperEntity
@@ -30,7 +30,7 @@ data class Matches(
 ) {
 
     /**
-     * Необходимость считать ММР по матчу
+     * ????????????? ??????? ??? ?? ?????
      */
     fun isNeedCalcStats() : Boolean {
         if (bots) return false
@@ -49,6 +49,6 @@ data class Matches(
     fun getRegionValue() = matchId.substringBefore("_")
 
     override fun toString(): String {
-        return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode', date='${matchDateEnd.toFormatDate()}')"
+        return "Matches(id=$id, matchId='$matchId', matchMode='$matchMode', map='$mapId', date='${matchDateEnd.toFormatDate()}')"
     }
 }

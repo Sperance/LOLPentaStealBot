@@ -14,6 +14,7 @@ class DAOCharacters : ExposedBaseDao<CharactersTable, CharacterEntity>(
         stmt[table.experience] = entity.experience
         stmt[table.params] = entity.params
         stmt[table.buffs] = entity.buffs
+        stmt[table.bools] = entity.bools
     }
 
     @Suppress("SENSELESS_COMPARISON")
