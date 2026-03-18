@@ -1,14 +1,16 @@
 package ru.descend.derpg.data.equipments
 
 import kotlinx.serialization.json.Json
+import org.jetbrains.exposed.v1.core.UuidColumnType
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.dao.LongEntityClass
 import org.jetbrains.exposed.v1.json.jsonb
 import ru.descend.derpg.data.characters.CharacterEntity
 import ru.descend.derpg.data.characters.CharactersTable
-import ru.descend.derpg.data.characters.ParamsStock
-import ru.descend.derpg.data.characters.Stat
-import ru.descend.derpg.data.characters.StatBool
+import ru.descend.derpg.enums.EnumEquipmentType
+import ru.descend.derpg.model.ParamsStock
+import ru.descend.derpg.model.Stat
+import ru.descend.derpg.model.StatBool
 import ru.descend.derpg.test.BaseEntity
 import ru.descend.derpg.test.BaseTable
 import kotlin.uuid.ExperimentalUuidApi
@@ -20,6 +22,7 @@ object EquipmentsTable : BaseTable("equipments") {
     val name = varchar("name", 255)
     val content = text("content")
     val uuid = uuid("uuid").uniqueIndex().clientDefault { Uuid.random() }
+    val enumEquipmentType = enumeration("enum_equipment_type", EnumEquipmentType::class)
 
     val requirements = jsonb<MutableSet<Stat>>(
         name = "requirements",
@@ -47,8 +50,8 @@ class EquipmentEntity(id: EntityID<Long>) : BaseEntity<SnapshotEquipment>(id, Eq
     var character by CharacterEntity referencedOn EquipmentsTable.character
     var name by EquipmentsTable.name
     var content by EquipmentsTable.content
-
     var uuid by EquipmentsTable.uuid
+    var enumEquipmentType by EquipmentsTable.enumEquipmentType
 
     var requirements by EquipmentsTable.requirements
     var params by EquipmentsTable.params
@@ -61,11 +64,11 @@ class EquipmentEntity(id: EntityID<Long>) : BaseEntity<SnapshotEquipment>(id, Eq
             _name = name,
             _content = content,
             _uuid = uuid,
+            _enumEquipmentType = enumEquipmentType,
             _requirements = requirements,
             _params = params,
             _buffs = buffs,
-            _bools = bools,
-            _character = character.toSnapshot()
+            _bools = bools
         )
 
     override fun toString(): String {

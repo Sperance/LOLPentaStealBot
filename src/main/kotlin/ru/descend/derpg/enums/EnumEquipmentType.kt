@@ -1,0 +1,9 @@
+package ru.descend.derpg.enums
+
+enum class EnumEquipmentType(val text: String) {
+    HELMET("Шлем"),
+    BODY("Кираса"),
+    GLOVES("Перчатки"),
+    RING("Кольцо"),
+    BOOTS("Ботинки")
+}

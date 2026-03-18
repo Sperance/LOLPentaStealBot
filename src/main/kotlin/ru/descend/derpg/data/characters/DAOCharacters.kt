@@ -1,6 +1,8 @@
 package ru.descend.derpg.data.characters
 
 import org.jetbrains.exposed.v1.core.statements.UpdateStatement
+import ru.descend.bot.printLog
+import ru.descend.derpg.data.inventory.InventoryEntity
 import ru.descend.derpg.test.ExposedBaseDao
 
 class DAOCharacters : ExposedBaseDao<CharactersTable, CharacterEntity>(
@@ -19,11 +21,21 @@ class DAOCharacters : ExposedBaseDao<CharactersTable, CharacterEntity>(
 
     @Suppress("SENSELESS_COMPARISON")
     override fun create(body: CharacterEntity.() -> Unit): CharacterEntity {
-        val entity = CharacterEntity.new {
+        val entity = CharacterEntity.new char@ {
             body()
-
-            if (params == null) params = getStockParams()
         }
+
+        if (entity.params == null) {
+            entity.params = entity.getStockParams()
+        }
+
+        if (entity.inventory.empty()) {
+            InventoryEntity.new inv@{
+                this.character = entity
+                this.items = mutableSetOf()
+            }
+        }
+
         return entity
     }
 }

@@ -14,6 +14,7 @@ class DAOequipments : ExposedBaseDao<EquipmentsTable, EquipmentEntity>(
         stmt[table.name] = entity.name
         stmt[table.content] = entity.content
         stmt[table.uuid] = entity.uuid
+        stmt[table.enumEquipmentType] = entity.enumEquipmentType
         stmt[table.requirements] = entity.requirements
         stmt[table.params] = entity.params
         stmt[table.buffs] = entity.buffs

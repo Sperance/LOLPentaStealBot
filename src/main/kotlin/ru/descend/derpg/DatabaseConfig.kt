@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import ru.descend.bot.printLog
 import ru.descend.derpg.data.characters.CharactersTable
 import ru.descend.derpg.data.equipments.EquipmentsTable
+import ru.descend.derpg.data.inventory.InventoryTable
 import ru.descend.derpg.data.users.UsersTable
 
 object DatabaseConfig {
@@ -57,8 +58,8 @@ object DatabaseConfig {
 
         transaction {
             printLog("create tables")
-            SchemaUtils.drop(EquipmentsTable, CharactersTable, UsersTable)
-            SchemaUtils.create(UsersTable, CharactersTable, EquipmentsTable)
+            SchemaUtils.drop(EquipmentsTable, CharactersTable, UsersTable, InventoryTable)
+            SchemaUtils.create(InventoryTable, UsersTable, CharactersTable, EquipmentsTable)
 
 //            EquipmentsTable.deleteAll()
 //            CharactersTable.deleteAll()
