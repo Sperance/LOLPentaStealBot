@@ -109,7 +109,10 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
         val currentItems = bools?.toMutableSet() ?: mutableSetOf()
 
         //Если параметр уже есть - обновляем, если нет - добавляем
-        currentItems.find { it.key == value.key }?.let { tt -> tt.value = value.value }?:currentItems.add(value)
+        currentItems.find { it.key == value.key }?.
+        let { tt ->
+            tt.value = value.value
+        }?:currentItems.add(value)
 
         bools = currentItems
         return ResultExec.Success()
@@ -128,12 +131,21 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
     /**
      * Установка значения параметра (или добавления, если параметра нет)
      * @param value нужный параметр
+     * @param minVal итоговое значение параметра не сможет быть ниже указанного
+     * @param maxVal итоговое значение параметра не сможет быть выше указанного
      */
-    fun setStat(value: ParamsStock): ResultExec {
+    fun setStat(value: ParamsStock, minVal: Double? = null, maxVal: Double? = null): ResultExec {
+        if (minVal != null && maxVal != null && minVal > maxVal) throw Exception("В методе setStat параметр minVal не может быть больше, чем параметр maxVal")
+
         val currentItems = params.toMutableSet()
 
         //Если параметр уже есть - обновляем, если нет - добавляем
-        currentItems.find { it.param == value.param }?.let { tt -> tt.value = value.value }?:currentItems.add(value)
+        currentItems.find { it.param == value.param }?.
+        let { tt ->
+            tt.value = value.value
+            if (minVal != null && tt.value < minVal) tt.value = minVal
+            if (maxVal != null && tt.value > maxVal) tt.value = maxVal
+        }?:currentItems.add(value)
 
         params = currentItems
         return ResultExec.Success()
@@ -142,11 +154,16 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
     /**
      * Добавление параметра или увеличение значения параметра
      * @param value необходимый параметр для модификации
+     * @param maxVal итоговое значение параметра не сможет быть выше указанного
      */
-    fun addStat(value: ParamsStock): ResultExec {
+    fun addStat(value: ParamsStock, maxVal: Double? = null): ResultExec {
         val currentItems = params.toMutableSet()
 
-        currentItems.find { it.param == value.param }?.let { tt -> tt.value += value.value }?:currentItems.add(value)
+        currentItems.find { it.param == value.param }?.
+        let { tt ->
+            tt.value += value.value
+            if (maxVal != null && tt.value > maxVal) tt.value = maxVal
+        }?:currentItems.add(value)
 
         params = currentItems
         return ResultExec.Success()
@@ -155,8 +172,9 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
     /**
      * Уменьшение значения параметра
      * @param value элемент для уменьшения с количеством
+     * @param minVal итоговое значение параметра не сможет быть ниже указанного
      */
-    fun remStat(value: ParamsStock): ResultExec {
+    fun remStat(value: ParamsStock, minVal: Double? = null): ResultExec {
 
         //Находим ссылку на нужный параметр
         getStat(value.param)?.let { param ->
@@ -167,6 +185,8 @@ class CharacterEntity(id: EntityID<Long>) : BaseEntity<SnapshotCharacter>(id, Ch
                 //Параметр не должен быть меньше нуля (пока) и не должен быть полностью удален (всегда)
                 param.value = 0.0
             }
+
+            if (minVal != null && param.value < minVal) param.value = minVal
         }
 
         return ResultExec.Success()

@@ -56,7 +56,7 @@ fun main() {
 
             charEnt.remStat(ParamsStock(EnumStatKey.MAGIC_RESIST, 0.1))
             charEnt.remStat(ParamsStock(EnumStatKey.MAGIC_RESIST, 39.0))
-//            charEnt.remStat(ParamsStock(EnumStatKey.MAGIC_RESIST, 1.0))
+            charEnt.remStat(ParamsStock(EnumStatKey.MAGIC_RESIST, 1.0))
 
             printLog(charEnt.getInventory().addItem(ItemStock(EnumItem.RESOURCE_WD, 400)))
             printLog(charEnt.getInventory().addItem(ItemStock(EnumItem.RESOURCE_WD, 4)))
